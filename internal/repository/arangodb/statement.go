@@ -51,4 +51,7 @@ const (
 			LIMIT @limit
 			RETURN stock
 	`
+	stockDelQ = `
+		REMOVE @key IN @@stocks_collection
+	`
 )

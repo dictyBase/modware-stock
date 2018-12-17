@@ -2,6 +2,8 @@ package arangodb
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	driver "github.com/arangodb/go-driver"
 	manager "github.com/dictyBase/arangomanager"
@@ -90,7 +92,34 @@ func (ar *arangorepository) AddStock(ns *stock.NewStock) (*model.StockDoc, error
 
 // EditStock updates an existing stock
 func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, error) {
+	m := &model.StockDoc{}
+	attr := us.Data.Attributes
+	// check if order exists
+	em, err := ar.GetStock(us.Data.Id)
+	if err != nil {
+		return m, err
+	}
+	if em.NotFound {
+		m.NotFound = true
+		return m, nil
+	}
+	bindVars := getUpdatableBindParams(attr)
+	var bindParams []string
+	for k := range bindVars {
+		bindParams = append(bindParams, fmt.Sprintf("%s: @%s", k, k))
+	}
+	stockUpdQ := fmt.Sprintf(stockUpd, strings.Join(bindParams, ","))
+	bindVars["@stocks_collection"] = ar.stock.Name()
+	bindVars["key"] = us.Data.Id
 
+	rupd, err := ar.database.DoRun(stockUpdQ, bindVars)
+	if err != nil {
+		return m, err
+	}
+	if err := rupd.Read(m); err != nil {
+		return m, err
+	}
+	return m, nil
 }
 
 // ListStocks provides a list of all stocks
@@ -110,7 +139,78 @@ func (ar *arangorepository) ListPlasmids(cursor int64, limit int64) ([]*model.St
 
 // RemoveStock removes a stock
 func (ar *arangorepository) RemoveStock(id string) error {
+	m := &model.StockDoc{}
+	_, err := ar.stock.ReadDocument(context.Background(), id, m)
+	if err != nil {
+		if driver.IsNotFound(err) {
+			return fmt.Errorf("stock record with id %s does not exist %s", id, err)
+		}
+		return err
+	}
+	bindVars := map[string]interface{}{
+		"@stocks_collection": ar.stock.Name(),
+		"@key":               id,
+	}
+	err = ar.database.Do(
+		stockDelQ, bindVars,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
+func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
+	bindVars := make(map[string]interface{})
+	if len(attr.UpdatedBy) > 0 {
+		bindVars["updated_by"] = attr.UpdatedBy
+	}
+	if len(attr.Summary) > 0 {
+		bindVars["summary"] = attr.Summary
+	}
+	if len(attr.EditableSummary) > 0 {
+		bindVars["editable_summary"] = attr.EditableSummary
+	}
+	if len(attr.Depositor) > 0 {
+		bindVars["depositor"] = attr.Depositor
+	}
+	if len(attr.Genes) > 0 {
+		bindVars["genes"] = attr.Genes
+	}
+	if len(attr.Dbxrefs) > 0 {
+		bindVars["dbxrefs"] = attr.Dbxrefs
+	}
+	if len(attr.Publications) > 0 {
+		bindVars["publications"] = attr.Publications
+	}
+	if len(attr.StrainProperties.SystematicName) > 0 {
+		bindVars["systematic_name"] = attr.StrainProperties.SystematicName
+	}
+	if len(attr.StrainProperties.Descriptor_) > 0 {
+		bindVars["descriptor"] = attr.StrainProperties.Descriptor_
+	}
+	if len(attr.StrainProperties.Species) > 0 {
+		bindVars["species"] = attr.StrainProperties.Species
+	}
+	if len(attr.StrainProperties.Plasmid) > 0 {
+		bindVars["plasmid"] = attr.StrainProperties.Plasmid
+	}
+	if len(attr.StrainProperties.Parents) > 0 {
+		bindVars["parents"] = attr.StrainProperties.Parents
+	}
+	if len(attr.StrainProperties.Names) > 0 {
+		bindVars["names"] = attr.StrainProperties.Names
+	}
+	if len(attr.PlasmidProperties.ImageMap) > 0 {
+		bindVars["image_map"] = attr.PlasmidProperties.ImageMap
+	}
+	if len(attr.PlasmidProperties.Sequence) > 0 {
+		bindVars["sequence"] = attr.PlasmidProperties.Sequence
+	}
+	if len(attr.PlasmidProperties.Keywords) > 0 {
+		bindVars["keywords"] = attr.PlasmidProperties.Keywords
+	}
+	return bindVars
 }
 
 // ClearStocks clears all stocks from the repository datasource
