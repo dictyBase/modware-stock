@@ -35,12 +35,57 @@ func NewStockRepo(connP *manager.ConnectParams, coll string) (repository.StockRe
 
 // GetStock retrieves biological stock from database
 func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
-
+	m := &model.StockDoc{}
+	bindVars := map[string]interface{}{
+		"@stocks_collection": ar.stock.Name(),
+		"key":                id,
+	}
+	r, err := ar.database.GetRow(stockGet, bindVars)
+	if err != nil {
+		return m, err
+	}
+	if r.IsEmpty() {
+		m.NotFound = true
+		return m, nil
+	}
+	if err := r.Read(m); err != nil {
+		return m, err
+	}
+	return m, nil
 }
 
 // AddStock creates a new biological stock
 func (ar *arangorepository) AddStock(ns *stock.NewStock) (*model.StockDoc, error) {
-
+	m := &model.StockDoc{}
+	attr := ns.Data.Attributes
+	bindVars := map[string]interface{}{
+		"@stocks_collection": ar.stock.Name(),
+		"@created_by":        attr.CreatedBy,
+		"@updated_by":        attr.UpdatedBy,
+		"@summary":           attr.Summary,
+		"@editable_summary":  attr.EditableSummary,
+		"@depositor":         attr.Depositor,
+		"@genes":             attr.Genes,
+		"@dbxrefs":           attr.Dbxrefs,
+		"@publications":      attr.Publications,
+		"@systematic_name":   attr.StrainProperties.SystematicName,
+		"@descriptor":        attr.StrainProperties.Descriptor,
+		"@species":           attr.StrainProperties.Species,
+		"@plasmid":           attr.StrainProperties.Plasmid,
+		"@parents":           attr.StrainProperties.Parents,
+		"@names":             attr.StrainProperties.Names,
+		"@image_map":         attr.PlasmidProperties.ImageMap,
+		"@sequence":          attr.PlasmidProperties.Sequence,
+		"@keywords":          attr.PlasmidProperties.Keywords,
+	}
+	r, err := ar.database.DoRun(stockIns, bindVars)
+	if err != nil {
+		return m, err
+	}
+	if err := r.Read(m); err != nil {
+		return m, err
+	}
+	return m, nil
 }
 
 // EditStock updates an existing stock
