@@ -124,7 +124,33 @@ func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, e
 
 // ListStocks provides a list of all stocks
 func (ar *arangorepository) ListStocks(cursor int64, limit int64) ([]*model.StockDoc, error) {
-
+	var om []*model.StockDoc
+	var stmt string
+	bindVars := map[string]interface{}{
+		"@stocks_collection": ar.stock.Name(),
+		"limit":              limit + 1,
+	}
+	if cursor == 0 { // no cursor so return first set of result
+		stmt = stockList
+	} else {
+		bindVars["next_cursor"] = cursor
+		stmt = stockListWithCursor
+	}
+	rs, err := ar.database.SearchRows(stmt, bindVars)
+	if err != nil {
+		return om, err
+	}
+	if rs.IsEmpty() {
+		return om, nil
+	}
+	for rs.Scan() {
+		m := &model.StockDoc{}
+		if err := rs.Read(m); err != nil {
+			return om, err
+		}
+		om = append(om, m)
+	}
+	return om, nil
 }
 
 // ListStrains provides a list of all strains
