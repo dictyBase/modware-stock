@@ -39,9 +39,10 @@ func NewStockRepo(connP *manager.ConnectParams, coll string) (repository.StockRe
 func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	bindVars := map[string]interface{}{
-		"@stocks_collection": ar.stock.Name(),
-		"key":                id,
+		"@stock_collection": ar.stock.Name(),
+		"key":               id,
 	}
+	// Need to use stockGetStrain or stockGetPlasmid
 	r, err := ar.database.GetRow(stockGet, bindVars)
 	if err != nil {
 		return m, err
@@ -61,25 +62,25 @@ func (ar *arangorepository) AddStock(ns *stock.NewStock) (*model.StockDoc, error
 	m := &model.StockDoc{}
 	attr := ns.Data.Attributes
 	bindVars := map[string]interface{}{
-		"@stocks_collection": ar.stock.Name(),
-		"@created_by":        attr.CreatedBy,
-		"@updated_by":        attr.UpdatedBy,
-		"@summary":           attr.Summary,
-		"@editable_summary":  attr.EditableSummary,
-		"@depositor":         attr.Depositor,
-		"@genes":             attr.Genes,
-		"@dbxrefs":           attr.Dbxrefs,
-		"@publications":      attr.Publications,
-		"@systematic_name":   attr.StrainProperties.SystematicName,
-		"@descriptor":        attr.StrainProperties.Descriptor,
-		"@species":           attr.StrainProperties.Species,
-		"@plasmid":           attr.StrainProperties.Plasmid,
-		"@parents":           attr.StrainProperties.Parents,
-		"@names":             attr.StrainProperties.Names,
-		"@image_map":         attr.PlasmidProperties.ImageMap,
-		"@sequence":          attr.PlasmidProperties.Sequence,
-		"@keywords":          attr.PlasmidProperties.Keywords,
+		"@stock_collection": ar.stock.Name(),
+		"@created_by":       attr.CreatedBy,
+		"@updated_by":       attr.UpdatedBy,
+		"@summary":          attr.Summary,
+		"@editable_summary": attr.EditableSummary,
+		"@depositor":        attr.Depositor,
+		"@genes":            attr.Genes,
+		"@dbxrefs":          attr.Dbxrefs,
+		"@publications":     attr.Publications,
+		"@systematic_name":  attr.StrainProperties.SystematicName,
+		"@descriptor":       attr.StrainProperties.Descriptor,
+		"@species":          attr.StrainProperties.Species,
+		"@plasmid":          attr.StrainProperties.Plasmid,
+		"@parents":          attr.StrainProperties.Parents,
+		"@names":            attr.StrainProperties.Names,
+		"@image_map":        attr.PlasmidProperties.ImageMap,
+		"@sequence":         attr.PlasmidProperties.Sequence,
 	}
+	// Need to use stockStrainIns or stockPlasmidIns
 	r, err := ar.database.DoRun(stockIns, bindVars)
 	if err != nil {
 		return m, err
@@ -109,7 +110,7 @@ func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, e
 		bindParams = append(bindParams, fmt.Sprintf("%s: @%s", k, k))
 	}
 	stockUpdQ := fmt.Sprintf(stockUpd, strings.Join(bindParams, ","))
-	bindVars["@stocks_collection"] = ar.stock.Name()
+	bindVars["@stock_collection"] = ar.stock.Name()
 	bindVars["key"] = us.Data.Id
 
 	rupd, err := ar.database.DoRun(stockUpdQ, bindVars)
@@ -127,8 +128,8 @@ func (ar *arangorepository) ListStocks(cursor int64, limit int64) ([]*model.Stoc
 	var om []*model.StockDoc
 	var stmt string
 	bindVars := map[string]interface{}{
-		"@stocks_collection": ar.stock.Name(),
-		"limit":              limit + 1,
+		"@stock_collection": ar.stock.Name(),
+		"limit":             limit + 1,
 	}
 	if cursor == 0 { // no cursor so return first set of result
 		stmt = stockList
@@ -174,8 +175,8 @@ func (ar *arangorepository) RemoveStock(id string) error {
 		return err
 	}
 	bindVars := map[string]interface{}{
-		"@stocks_collection": ar.stock.Name(),
-		"@key":               id,
+		"@stock_collection": ar.stock.Name(),
+		"@key":              id,
 	}
 	err = ar.database.Do(
 		stockDelQ, bindVars,
@@ -232,9 +233,6 @@ func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interf
 	}
 	if len(attr.PlasmidProperties.Sequence) > 0 {
 		bindVars["sequence"] = attr.PlasmidProperties.Sequence
-	}
-	if len(attr.PlasmidProperties.Keywords) > 0 {
-		bindVars["keywords"] = attr.PlasmidProperties.Keywords
 	}
 	return bindVars
 }
