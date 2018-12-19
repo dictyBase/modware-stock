@@ -103,6 +103,76 @@ const (
 			LIMIT @limit
 			RETURN stock
 	`
+	strainList = `
+		FOR s IN @@stock_collection
+			FOR v IN 1..1 OUTBOUND s GRAPH @graph
+				SORT s.created_at DESC
+				LIMIT @limit
+				RETURN MERGE(
+					s,
+					{
+						strain_properties: { 
+							systematic_name: v.systematic_name, 
+							descriptor: v.descriptor, 
+							species: v.species, 
+							plasmid: v.plasmid, 
+							parents: v.parents, 
+							names: v.names
+						} 
+					}
+				)
+	`
+	strainListWithCursor = `
+		FOR s IN @@stock_collection
+			FOR v IN 1..1 OUTBOUND s GRAPH @graph
+				FILTER s.created_at <= DATE_ISO8601(@next_cursor)
+				SORT s.created_at DESC
+				LIMIT @limit
+				RETURN MERGE(
+					s,
+					{
+						strain_properties: { 
+							systematic_name: v.systematic_name, 
+							descriptor: v.descriptor, 
+							species: v.species, 
+							plasmid: v.plasmid, 
+							parents: v.parents, 
+							names: v.names
+						} 
+					}
+				)
+	`
+	plasmidList = `
+		FOR s IN @@stock_collection
+			FOR v IN 1..1 OUTBOUND s GRAPH @graph
+				SORT s.created_at DESC
+				LIMIT @limit
+				RETURN MERGE(
+					s,
+					{
+						plasmid_properties: { 
+							image_map: v.image_map,
+							sequence: v.sequence
+						} 
+					}
+				)	
+	`
+	plasmidListWithCursor = `
+		FOR s IN @@stock_collection
+			FOR v IN 1..1 OUTBOUND s GRAPH @graph
+				FILTER s.created_at <= DATE_ISO8601(@next_cursor)
+				SORT s.created_at DESC
+				LIMIT @limit
+				RETURN MERGE(
+					s,
+					{
+						plasmid_properties: { 
+							image_map: v.image_map,
+							sequence: v.sequence
+						} 
+					}
+				)		
+	`
 	stockDelQ = `
 		REMOVE @key IN @@stock_collection
 	`

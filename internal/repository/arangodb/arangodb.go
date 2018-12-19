@@ -156,12 +156,66 @@ func (ar *arangorepository) ListStocks(cursor int64, limit int64) ([]*model.Stoc
 
 // ListStrains provides a list of all strains
 func (ar *arangorepository) ListStrains(cursor int64, limit int64) ([]*model.StockDoc, error) {
-
+	var om []*model.StockDoc
+	var stmt string
+	bindVars := map[string]interface{}{
+		"@stock_collection": ar.stock.Name(),
+		"limit":             limit + 1,
+		"graph":             "stock2strain",
+	}
+	if cursor == 0 { // no cursor so return first set of result
+		stmt = strainList
+	} else {
+		bindVars["next_cursor"] = cursor
+		stmt = strainListWithCursor
+	}
+	rs, err := ar.database.SearchRows(stmt, bindVars)
+	if err != nil {
+		return om, err
+	}
+	if rs.IsEmpty() {
+		return om, nil
+	}
+	for rs.Scan() {
+		m := &model.StockDoc{}
+		if err := rs.Read(m); err != nil {
+			return om, err
+		}
+		om = append(om, m)
+	}
+	return om, nil
 }
 
 // ListPlasmids provides a list of all plasmids
 func (ar *arangorepository) ListPlasmids(cursor int64, limit int64) ([]*model.StockDoc, error) {
-
+	var om []*model.StockDoc
+	var stmt string
+	bindVars := map[string]interface{}{
+		"@stock_collection": ar.stock.Name(),
+		"limit":             limit + 1,
+		"graph":             "stock2plasmid",
+	}
+	if cursor == 0 { // no cursor so return first set of result
+		stmt = plasmidList
+	} else {
+		bindVars["next_cursor"] = cursor
+		stmt = plasmidListWithCursor
+	}
+	rs, err := ar.database.SearchRows(stmt, bindVars)
+	if err != nil {
+		return om, err
+	}
+	if rs.IsEmpty() {
+		return om, nil
+	}
+	for rs.Scan() {
+		m := &model.StockDoc{}
+		if err := rs.Read(m); err != nil {
+			return om, err
+		}
+		om = append(om, m)
+	}
+	return om, nil
 }
 
 // RemoveStock removes a stock
