@@ -2,6 +2,9 @@ package arangodb
 
 const (
 	stockStrainIns = `
+		LET kg = (
+			INSERT {} INTO stock_key_generator RETURN NEW
+		)
 		LET n = (
 			INSERT {
 				created_at: DATE_ISO8601(DATE_NOW()),
@@ -14,6 +17,7 @@ const (
 				genes: @genes,
 				dbxrefs: @dbxrefs,
 				publications: @publications,
+				stock_id: CONCAT("DBS0", kg[0]._key)
 			} INTO @@stock_collection RETURN NEW
 		)
 		LET o = (
@@ -30,6 +34,9 @@ const (
 		RETURN n[0]
 	`
 	stockPlasmidIns = `
+		LET kg = (
+			INSERT {} INTO stock_key_generator RETURN NEW
+		)
 		LET n = (
 			INSERT {
 				created_at: DATE_ISO8601(DATE_NOW()),
@@ -42,6 +49,7 @@ const (
 				genes: @genes,
 				dbxrefs: @dbxrefs,
 				publications: @publications,
+				stock_id: CONCAT("DBS0", kg[0]._key)
 			} INTO @@stock_collection RETURN NEW
 		)
 		LET o = (
