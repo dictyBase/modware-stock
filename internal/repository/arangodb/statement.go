@@ -100,6 +100,11 @@ const (
 			WITH { %s }
 			IN @@stock_collection RETURN NEW
 	`
+	parentUpd = `
+		UPDATE { _key: @key }
+			WITH { _to: @parent }
+			IN @@parent_strain_collection RETURN NEW
+	`
 	stockList = `
 		FOR stock IN @@stock_collection
 			SORT stock.created_at DESC
