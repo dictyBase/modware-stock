@@ -39,6 +39,7 @@ func RunServer(c *cli.Context) error {
 		Stock:              c.String("stock-collection"),
 		Strain:             c.String("strain-collection"),
 		Plasmid:            c.String("plasmid-collection"),
+		StockKeyGenerator:  c.String("stock-key-generator-collection"),
 		StockPlasmid:       c.String("stock-plasmid-edge"),
 		StockStrain:        c.String("stock-strain-edge"),
 		ParentStrain:       c.String("parent-strain-edge"),

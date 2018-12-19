@@ -10,6 +10,7 @@ import (
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
+	validator "gopkg.in/go-playground/validator.v9"
 )
 
 // CollectionParams are the arangodb collections required for storing stocks
@@ -20,6 +21,8 @@ type CollectionParams struct {
 	Strain string `validate:"required"`
 	// PLasmid is the collection for storing plasmid properties
 	Plasmid string `validate:"required"`
+	// StockKeyGenerator is the collection for generating unique stock IDs
+	StockKeyGenerator string `validate:"required"`
 	// StockPlasmid is the edge collection for connecting stocks and plasmids
 	StockPlasmid string `validate:"required"`
 	// StockStrain is the edge collection for connecting stocks and strains
@@ -35,14 +38,27 @@ type CollectionParams struct {
 }
 
 type arangorepository struct {
-	sess     *manager.Session
-	database *manager.Database
-	stock    driver.Collection
+	sess          *manager.Session
+	database      *manager.Database
+	stock         driver.Collection
+	strain        driver.Collection
+	plasmid       driver.Collection
+	stockKey      driver.Collection
+	stockPlasmid  driver.Collection
+	stockStrain   driver.Collection
+	parentStrain  driver.Collection
+	stock2Plasmid driver.Graph
+	stock2Strain  driver.Graph
+	strain2Parent driver.Graph
 }
 
 // NewStockRepo acts as constructor for database
 func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (repository.StockRepository, error) {
 	ar := &arangorepository{}
+	validate := validator.New()
+	if err := validate.Struct(collP); err != nil {
+		return ar, err
+	}
 	sess, db, err := manager.NewSessionDb(connP)
 	if err != nil {
 		return ar, err
@@ -53,8 +69,79 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 	if err != nil {
 		return ar, err
 	}
-	// need to add remaining collections and graphs
 	ar.stock = stockc
+	strainc, err := db.FindOrCreateCollection(collP.Strain, &driver.CreateCollectionOptions{})
+	if err != nil {
+		return ar, err
+	}
+	ar.strain = strainc
+	plasmidc, err := db.FindOrCreateCollection(collP.Plasmid, &driver.CreateCollectionOptions{})
+	if err != nil {
+		return ar, err
+	}
+	ar.plasmid = plasmidc
+	stockkeyc, err := db.FindOrCreateCollection(collP.StockKeyGenerator, &driver.CreateCollectionOptions{})
+	if err != nil {
+		return ar, err
+	}
+	ar.stockKey = stockkeyc
+	stockplasmidc, err := db.FindOrCreateCollection(collP.StockPlasmid, &driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge})
+	if err != nil {
+		return ar, err
+	}
+	ar.stockPlasmid = stockplasmidc
+	stockstrainc, err := db.FindOrCreateCollection(collP.StockStrain, &driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge})
+	if err != nil {
+		return ar, err
+	}
+	ar.stockStrain = stockstrainc
+	parentc, err := db.FindOrCreateCollection(collP.ParentStrain, &driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge})
+	if err != nil {
+		return ar, err
+	}
+	ar.parentStrain = parentc
+	stock2plasmidg, err := db.FindOrCreateGraph(
+		collP.Stock2PlasmidGraph,
+		[]driver.EdgeDefinition{
+			driver.EdgeDefinition{
+				Collection: stockplasmidc.Name(),
+				From:       []string{stockc.Name()},
+				To:         []string{plasmidc.Name()},
+			},
+		},
+	)
+	if err != nil {
+		return ar, err
+	}
+	ar.stock2Plasmid = stock2plasmidg
+	stock2straing, err := db.FindOrCreateGraph(
+		collP.Stock2StrainGraph,
+		[]driver.EdgeDefinition{
+			driver.EdgeDefinition{
+				Collection: stockstrainc.Name(),
+				From:       []string{stockc.Name()},
+				To:         []string{strainc.Name()},
+			},
+		},
+	)
+	if err != nil {
+		return ar, err
+	}
+	ar.stock2Strain = stock2straing
+	strain2parentg, err := db.FindOrCreateGraph(
+		collP.Strain2ParentGraph,
+		[]driver.EdgeDefinition{
+			driver.EdgeDefinition{
+				Collection: parentc.Name(),
+				From:       []string{stockc.Name()},
+				To:         []string{stockc.Name()},
+			},
+		},
+	)
+	if err != nil {
+		return ar, err
+	}
+	ar.strain2Parent = strain2parentg
 	return ar, nil
 }
 
