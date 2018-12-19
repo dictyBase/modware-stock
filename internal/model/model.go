@@ -13,6 +13,7 @@ type StockDoc struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 	CreatedBy       string    `json:"created_by"`
 	UpdatedBy       string    `json:"updated_by"`
+	StockID         string    `json:"stock_id"`
 	Summary         string    `json:"summary"`
 	EditableSummary string    `json:"editable_summary"`
 	Depositor       string    `json:"depositor"`

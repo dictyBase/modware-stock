@@ -66,6 +66,7 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 	ar.sess = sess
 	ar.database = db
 	stockc, err := db.FindOrCreateCollection(collP.Stock, &driver.CreateCollectionOptions{})
+	// KeyOptions: {type: "autoincrement", increment: 1, offset: 370000}
 	if err != nil {
 		return ar, err
 	}
