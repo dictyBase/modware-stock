@@ -31,7 +31,9 @@ const (
 			} INTO @@strain_collection RETURN NEW
 		)
 		INSERT { _from: n[0]._id, _to: o[0]._id } IN @@stock_strain_collection
-		RETURN n[0]
+		FOR p IN @parents
+			INSERT { _from: p, _to: n[0]._id } IN @@parent_strain_collection
+		RETURN DISTINCT n[0]
 	`
 	stockPlasmidIns = `
 		LET kg = (
