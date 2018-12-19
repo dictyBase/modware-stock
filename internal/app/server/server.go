@@ -35,7 +35,18 @@ func RunServer(c *cli.Context) error {
 		Port:     arPort,
 		Istls:    c.Bool("is-secure"),
 	}
-	srepo, err := arangodb.NewStockRepo(connP, "stocks")
+	collP := &arangodb.CollectionParams{
+		Stock:              c.String("stock-collection"),
+		Strain:             c.String("strain-collection"),
+		Plasmid:            c.String("plasmid-collection"),
+		StockPlasmid:       c.String("stock-plasmid-edge"),
+		StockStrain:        c.String("stock-strain-edge"),
+		ParentStrain:       c.String("parent-strain-edge"),
+		Stock2PlasmidGraph: c.String("stock2plasmid-graph"),
+		Stock2StrainGraph:  c.String("stock2strain-graph"),
+		Strain2ParentGraph: c.String("strain2parent-graph"),
+	}
+	srepo, err := arangodb.NewStockRepo(connP, collP)
 	if err != nil {
 		return cli.NewExitError(
 			fmt.Sprintf("cannot connect to arangodb stocks repository %s", err.Error()),

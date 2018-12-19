@@ -12,6 +12,28 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository"
 )
 
+// CollectionParams are the arangodb collections required for storing stocks
+type CollectionParams struct {
+	// Stock is the collection for storing all stocks
+	Stock string `validate:"required"`
+	// Strain is the collection for storing strain properties
+	Strain string `validate:"required"`
+	// PLasmid is the collection for storing plasmid properties
+	Plasmid string `validate:"required"`
+	// StockPlasmid is the edge collection for connecting stocks and plasmids
+	StockPlasmid string `validate:"required"`
+	// StockStrain is the edge collection for connecting stocks and strains
+	StockStrain string `validate:"required"`
+	// ParentStrain is the edge collection for connecting strains to their parents
+	ParentStrain string `validate:"required"`
+	// Stock2PlasmidGraph is the named graph for connecting stocks to plasmids
+	Stock2PlasmidGraph string `validate:"required"`
+	// Stock2StrainGraph is the named graph for connecting stocks to strains
+	Stock2StrainGraph string `validate:"required"`
+	// Strain2ParentGraph is the named graph for connecting strains to their parents
+	Strain2ParentGraph string `validate:"required"`
+}
+
 type arangorepository struct {
 	sess     *manager.Session
 	database *manager.Database
@@ -19,7 +41,7 @@ type arangorepository struct {
 }
 
 // NewStockRepo acts as constructor for database
-func NewStockRepo(connP *manager.ConnectParams, coll string) (repository.StockRepository, error) {
+func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (repository.StockRepository, error) {
 	ar := &arangorepository{}
 	sess, db, err := manager.NewSessionDb(connP)
 	if err != nil {
@@ -27,10 +49,11 @@ func NewStockRepo(connP *manager.ConnectParams, coll string) (repository.StockRe
 	}
 	ar.sess = sess
 	ar.database = db
-	stockc, err := db.FindOrCreateCollection(coll, &driver.CreateCollectionOptions{})
+	stockc, err := db.FindOrCreateCollection(collP.Stock, &driver.CreateCollectionOptions{})
 	if err != nil {
 		return ar, err
 	}
+	// need to add remaining collections and graphs
 	ar.stock = stockc
 	return ar, nil
 }
