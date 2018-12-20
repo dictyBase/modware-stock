@@ -157,9 +157,11 @@ func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 		"@parent_strain_collection": ar.parentStrain.Name(),
 		"@stock_plasmid_collection": ar.stockPlasmid.Name(),
 	}
-	//
-	// Need to set stmt to either stockGetStrain or stockGetPlasmid
-	//
+	if id[:3] == "DBS" {
+		stmt = stockGetStrain
+	} else {
+		stmt = stockGetPlasmid
+	}
 	r, err := ar.database.GetRow(stmt, bindVars)
 	if err != nil {
 		return m, err
