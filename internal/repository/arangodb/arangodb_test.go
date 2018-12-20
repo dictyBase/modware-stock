@@ -100,18 +100,67 @@ func TestAddStrain(t *testing.T) {
 	}
 	assert := assert.New(t)
 	assert.Equal(m.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
+	assert.Equal(m.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
+	assert.Equal(m.Summary, ns.Data.Attributes.Summary, "should match summary")
+	assert.Equal(m.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
+	assert.Equal(m.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
+	assert.Equal(m.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
+	// assert.Equal(m.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
+	// assert.Equal(m.Descriptor, ns.Data.Attributes.StrainProperties.Descriptor_, "should match descriptor")
+	// assert.Equal(m.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
+	// assert.Equal(m.Parents, ns.Data.Attributes.StrainProperties.Parents, "should match parents")
+	// assert.Equal(m.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
+	// assert.Empty(m.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
+	assert.Empty(m.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should have empty plasmid field")
 	assert.NotEmpty(m.Key, "should not have empty key")
 }
 
-// func TestGetStock(t *testing.T) {
-// 	connP := getConnectParams()
-// 	collP := getCollectionParams()
-// 	repo, err := NewStockRepo(connP, collP)
-// 	if err != nil {
-// 		t.Fatalf("error in connecting to stock repository %s", err)
-// 	}
-// 	defer repo.ClearStocks()
-// }
+func TestGetStock(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer repo.ClearStocks()
+	// ns := newTestStrain("george@costanza.com")
+	// m, err := repo.AddStrain(ns)
+	// if err != nil {
+	// 	t.Fatalf("error in adding strain %s", err)
+	// }
+	// g, err := repo.GetStock(m.Key)
+	// if err != nil {
+	// 	t.Fatalf("error in getting stock %s with ID %s", m.Key, err)
+	// }
+	// assert := assert.New(t)
+	// assert.Equal(g.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
+	// assert.Equal(g.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
+	// assert.Equal(g.Summary, ns.Data.Attributes.Summary, "should match summary")
+	// assert.Equal(g.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
+	// assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
+	// assert.Equal(g.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
+	// assert.Equal(g.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
+	// assert.Equal(g.Descriptor, ns.Data.Attributes.StrainProperties.Descriptor_, "should match descriptor")
+	// assert.Equal(g.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
+	// assert.Equal(g.Parents, ns.Data.Attributes.StrainProperties.Parents, "should match parents")
+	// assert.Equal(g.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
+	// assert.Empty(g.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
+	// assert.Empty(g.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should have empty plasmid field")
+	// assert.Equal(len(g.Dbxrefs), 6, "should match length of six dbxrefs")
+	// assert.NotEmpty(g.Key, "should not have empty key/id")
+	// assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
+	// assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
+
+	// ne, err := repo.GetStock("1")
+	// if err != nil {
+	// 	t.Fatalf(
+	// 		"error in fetching stock %s with ID %s",
+	// 		"1",
+	// 		err,
+	// 	)
+	// }
+	// assert.True(ne.NotFound, "entry should not exist")
+}
 
 // func TestEditStock(t *testing.T) {
 

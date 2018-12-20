@@ -151,15 +151,14 @@ func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	var stmt string
 	bindVars := map[string]interface{}{
-		"@stock_collection":         ar.stock.Name(),
-		"key":                       id,
-		"@stock_strain_collection":  ar.stockStrain.Name(),
-		"@parent_strain_collection": ar.parentStrain.Name(),
-		"@stock_plasmid_collection": ar.stockPlasmid.Name(),
+		"@stock_collection": ar.stock.Name(),
+		"key":               id,
 	}
 	if id[:3] == "DBS" {
+		bindVars["graph"] = ar.stock2Strain.Name()
 		stmt = stockGetStrain
 	} else {
+		bindVars["graph"] = ar.stock2Plasmid.Name()
 		stmt = stockGetPlasmid
 	}
 	r, err := ar.database.GetRow(stmt, bindVars)
