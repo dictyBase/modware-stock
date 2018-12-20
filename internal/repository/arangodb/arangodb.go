@@ -379,7 +379,7 @@ func (ar *arangorepository) RemoveStock(id string) error {
 	}
 	bindVars := map[string]interface{}{
 		"@stock_collection": ar.stock.Name(),
-		"@key":              id,
+		"key":               id,
 	}
 	err = ar.database.Do(
 		stockDelQ, bindVars,

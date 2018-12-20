@@ -178,6 +178,33 @@ func TestGetStock(t *testing.T) {
 
 // }
 
-// func RemoveStock(t *testing.T) {
-
-// }
+func TestRemoveStock(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer repo.ClearStocks()
+	ns := newTestStrain("george@costanza.com")
+	m, err := repo.AddStrain(ns)
+	if err != nil {
+		t.Fatalf("error in adding strain: %s", err)
+	}
+	err = repo.RemoveStock(m.Key)
+	if err != nil {
+		t.Fatalf("error in removing stock %s with stock id %s",
+			m.StockID,
+			err)
+	}
+	ne, err := repo.GetStock(m.Key)
+	if err != nil {
+		t.Fatalf(
+			"error in fetching stock %s with ID %s",
+			m.Key,
+			err,
+		)
+	}
+	assert := assert.New(t)
+	assert.True(ne.NotFound, "entry should not exist")
+}
