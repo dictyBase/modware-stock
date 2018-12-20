@@ -149,12 +149,18 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 // GetStock retrieves biological stock from database
 func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
+	var stmt string
 	bindVars := map[string]interface{}{
-		"@stock_collection": ar.stock.Name(),
-		"key":               id,
+		"@stock_collection":         ar.stock.Name(),
+		"key":                       id,
+		"@stock_strain_collection":  ar.stockStrain.Name(),
+		"@parent_strain_collection": ar.parentStrain.Name(),
+		"@stock_plasmid_collection": ar.stockPlasmid.Name(),
 	}
-	// Need to use stockGetStrain or stockGetPlasmid
-	r, err := ar.database.GetRow(stockGet, bindVars)
+	//
+	// Need to set stmt to either stockGetStrain or stockGetPlasmid
+	//
+	r, err := ar.database.GetRow(stmt, bindVars)
 	if err != nil {
 		return m, err
 	}
@@ -171,6 +177,7 @@ func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 // AddStock creates a new biological stock
 func (ar *arangorepository) AddStock(ns *stock.NewStock) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
+	var stmt string
 	attr := ns.Data.Attributes
 	bindVars := map[string]interface{}{
 		"@stock_collection": ar.stock.Name(),
@@ -191,8 +198,12 @@ func (ar *arangorepository) AddStock(ns *stock.NewStock) (*model.StockDoc, error
 		"@image_map":        attr.PlasmidProperties.ImageMap,
 		"@sequence":         attr.PlasmidProperties.Sequence,
 	}
-	// Need to use stockStrainIns or stockPlasmidIns
-	r, err := ar.database.DoRun(stockIns, bindVars)
+	if len(attr.StrainProperties.SystematicName) > 0 {
+		stmt = stockStrainIns
+	} else {
+		stmt = stockPlasmidIns
+	}
+	r, err := ar.database.DoRun(stmt, bindVars)
 	if err != nil {
 		return m, err
 	}

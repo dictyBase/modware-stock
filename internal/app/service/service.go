@@ -227,7 +227,7 @@ func (s *StockService) ListStocks(ctx context.Context, r *stock.ListParameters) 
 }
 
 // ListStrains lists all existing strains
-func (s *StockService) ListStrains(ctx context.Context, r *stock.ListParameters) (*stock.StockCollection, error) {
+func (s *StockService) ListStrains(ctx context.Context, r *stock.StrainListParameters) (*stock.StockCollection, error) {
 	sc := &stock.StockCollection{}
 	if len(r.Filter) == 0 { // no filter parameters
 		mc, err := s.repo.ListStocks(r.Cursor, r.Limit)
@@ -279,7 +279,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.ListParameters)
 }
 
 // ListPlasmids lists all existing plasmids
-func (s *StockService) ListPlasmids(ctx context.Context, r *stock.ListParameters) (*stock.StockCollection, error) {
+func (s *StockService) ListPlasmids(ctx context.Context, r *stock.PlasmidListParameters) (*stock.StockCollection, error) {
 	sc := &stock.StockCollection{}
 	if len(r.Filter) == 0 { // no filter parameters
 		mc, err := s.repo.ListStocks(r.Cursor, r.Limit)
@@ -326,8 +326,8 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.ListParameters
 	return sc, nil
 }
 
-// DeleteStock removes an existing stock
-func (s *StockService) DeleteStock(ctx context.Context, r *stock.StockId) (*empty.Empty, error) {
+// RemoveStock removes an existing stock
+func (s *StockService) RemoveStock(ctx context.Context, r *stock.StockId) (*empty.Empty, error) {
 	e := &empty.Empty{}
 	if err := r.Validate(); err != nil {
 		return e, aphgrpc.HandleInvalidParamError(ctx, err)
