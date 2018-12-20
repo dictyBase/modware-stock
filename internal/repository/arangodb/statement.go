@@ -3,7 +3,7 @@ package arangodb
 const (
 	stockStrainIns = `
 		LET kg = (
-			INSERT {} INTO stock_key_generator RETURN NEW
+			INSERT {} INTO @@stock_key_generator RETURN NEW
 		)
 		LET n = (
 			INSERT {

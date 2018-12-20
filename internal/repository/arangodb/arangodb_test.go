@@ -9,6 +9,7 @@ import (
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/stretchr/testify/assert"
 )
 
 var gta *testarango.TestArango
@@ -39,14 +40,14 @@ func getCollectionParams() *CollectionParams {
 	}
 }
 
-func newTestStrain(consumer string) *stock.NewStock {
+func newTestStrain(createdby string) *stock.NewStock {
 	return &stock.NewStock{
 		Data: &stock.NewStock_Data{
 			Type: "stock",
 			Id:   "DBS0238532",
 			Attributes: &stock.NewStockAttributes{
-				CreatedBy:       "george@costanza.com",
-				UpdatedBy:       "george@costanza.com",
+				CreatedBy:       createdby,
+				UpdatedBy:       createdby,
 				Summary:         "Radiation-sensitive mutant.",
 				EditableSummary: "Radiation-sensitive mutant.",
 				Depositor:       "Rob Guyer (Reg Deering)",
@@ -55,7 +56,7 @@ func newTestStrain(consumer string) *stock.NewStock {
 					SystematicName: "yS13",
 					Descriptor_:    "yS13",
 					Species:        "Dictyostelium discoideum",
-					Parents:        []string{"NC4 (DdB)"},
+					Parents:        []string{"stock/NC4(DdB)"},
 					Names:          []string{"gammaS13", "gammaS-13", "γS-13"},
 				},
 			},
@@ -84,17 +85,32 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestGetStock(t *testing.T) {
+func TestAddStrain(t *testing.T) {
 	connP := getConnectParams()
 	collP := getCollectionParams()
-	_, err := NewStockRepo(connP, collP)
+	repo, err := NewStockRepo(connP, collP)
 	if err != nil {
-		t.Fatalf("error in connecting to data source %s", err)
+		t.Fatalf("error in connecting to stock repository %s", err)
 	}
+	defer repo.ClearStocks()
+	ns := newTestStrain("george@costanza.com")
+	m, err := repo.AddStrain(ns)
+	if err != nil {
+		t.Fatalf("error in adding strain: %s", err)
+	}
+	assert := assert.New(t)
+	assert.Equal(m.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
+	assert.NotEmpty(m.Key, "should not have empty key")
 }
 
-// func TestAddStock(t *testing.T) {
-
+// func TestGetStock(t *testing.T) {
+// 	connP := getConnectParams()
+// 	collP := getCollectionParams()
+// 	repo, err := NewStockRepo(connP, collP)
+// 	if err != nil {
+// 		t.Fatalf("error in connecting to stock repository %s", err)
+// 	}
+// 	defer repo.ClearStocks()
 // }
 
 // func TestEditStock(t *testing.T) {

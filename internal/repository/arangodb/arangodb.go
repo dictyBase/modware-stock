@@ -176,36 +176,62 @@ func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 	return m, nil
 }
 
-// AddStock creates a new biological stock
-func (ar *arangorepository) AddStock(ns *stock.NewStock) (*model.StockDoc, error) {
+// AddStrain creates a new strain stock
+func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	var stmt string
 	attr := ns.Data.Attributes
 	bindVars := map[string]interface{}{
-		"@stock_collection": ar.stock.Name(),
-		"@created_by":       attr.CreatedBy,
-		"@updated_by":       attr.UpdatedBy,
-		"@summary":          attr.Summary,
-		"@editable_summary": attr.EditableSummary,
-		"@depositor":        attr.Depositor,
-		"@genes":            attr.Genes,
-		"@dbxrefs":          attr.Dbxrefs,
-		"@publications":     attr.Publications,
-		"@systematic_name":  attr.StrainProperties.SystematicName,
-		"@descriptor":       attr.StrainProperties.Descriptor,
-		"@species":          attr.StrainProperties.Species,
-		"@plasmid":          attr.StrainProperties.Plasmid,
-		"@parents":          attr.StrainProperties.Parents,
-		"@names":            attr.StrainProperties.Names,
-		"@image_map":        attr.PlasmidProperties.ImageMap,
-		"@sequence":         attr.PlasmidProperties.Sequence,
+		"@stock_collection":         ar.stock.Name(),
+		"@stock_key_generator":      ar.stockKey.Name(),
+		"@strain_collection":        ar.strain.Name(),
+		"@stock_strain_collection":  ar.stockStrain.Name(),
+		"@parent_strain_collection": ar.parentStrain.Name(),
+		"@created_by":               attr.CreatedBy,
+		"@updated_by":               attr.UpdatedBy,
+		"@summary":                  attr.Summary,
+		"@editable_summary":         attr.EditableSummary,
+		"@depositor":                attr.Depositor,
+		"@genes":                    attr.Genes,
+		"@dbxrefs":                  attr.Dbxrefs,
+		"@publications":             attr.Publications,
+		"@systematic_name":          attr.StrainProperties.SystematicName,
+		"@descriptor":               attr.StrainProperties.Descriptor_,
+		"@species":                  attr.StrainProperties.Species,
+		"@plasmid":                  attr.StrainProperties.Plasmid,
+		"@parents":                  attr.StrainProperties.Parents,
+		"@names":                    attr.StrainProperties.Names,
 	}
-	if len(attr.StrainProperties.SystematicName) > 0 {
-		stmt = stockStrainIns
-	} else {
-		stmt = stockPlasmidIns
+	r, err := ar.database.DoRun(stockStrainIns, bindVars)
+	if err != nil {
+		return m, err
 	}
-	r, err := ar.database.DoRun(stmt, bindVars)
+	if err := r.Read(m); err != nil {
+		return m, err
+	}
+	return m, nil
+}
+
+// AddStock creates a new plasmid stock
+func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, error) {
+	m := &model.StockDoc{}
+	attr := ns.Data.Attributes
+	bindVars := map[string]interface{}{
+		"@stock_collection":         ar.stock.Name(),
+		"@stock_key_generator":      ar.stockKey.Name(),
+		"@plasmid_collection":       ar.plasmid.Name(),
+		"@stock_plasmid_collection": ar.stockPlasmid.Name(),
+		"@created_by":               attr.CreatedBy,
+		"@updated_by":               attr.UpdatedBy,
+		"@summary":                  attr.Summary,
+		"@editable_summary":         attr.EditableSummary,
+		"@depositor":                attr.Depositor,
+		"@genes":                    attr.Genes,
+		"@dbxrefs":                  attr.Dbxrefs,
+		"@publications":             attr.Publications,
+		"@image_map":                attr.PlasmidProperties.ImageMap,
+		"@sequence":                 attr.PlasmidProperties.Sequence,
+	}
+	r, err := ar.database.DoRun(stockPlasmidIns, bindVars)
 	if err != nil {
 		return m, err
 	}

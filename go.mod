@@ -33,6 +33,7 @@ require (
 	github.com/pmylund/go-cache v2.1.0+incompatible // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.2.0
+	github.com/stretchr/testify v1.2.2
 	golang.org/x/net v0.0.0-20181217023233-e147a9138326 // indirect
 	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f // indirect
 	golang.org/x/sys v0.0.0-20181218192612-074acd46bca6 // indirect
