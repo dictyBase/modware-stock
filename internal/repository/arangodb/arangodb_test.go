@@ -43,7 +43,7 @@ func getCollectionParams() *CollectionParams {
 func newTestStrain(createdby string) *stock.NewStock {
 	return &stock.NewStock{
 		Data: &stock.NewStock_Data{
-			Type: "stock",
+			Type: "strain",
 			Id:   "DBS0238532",
 			Attributes: &stock.NewStockAttributes{
 				CreatedBy:       createdby,

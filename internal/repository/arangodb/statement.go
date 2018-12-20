@@ -30,14 +30,14 @@ const (
 				names: @names
 			} INTO @@strain_collection RETURN NEW
 		)
-		INSERT { _from: n[0]._id, _to: o[0]._id } IN @@stock_strain_collection
+		INSERT { _from: n[0]._id, _to: o[0]._id } INTO @@stock_strain_collection
 		FOR p IN @parents
-			INSERT { _from: p, _to: n[0]._id } IN @@parent_strain_collection
+			INSERT { _from: p, _to: n[0]._id } INTO @@parent_strain_collection
 		RETURN DISTINCT n[0]
 	`
 	stockPlasmidIns = `
 		LET kg = (
-			INSERT {} INTO stock_key_generator RETURN NEW
+			INSERT {} INTO @@stock_key_generator RETURN NEW
 		)
 		LET n = (
 			INSERT {
@@ -60,7 +60,7 @@ const (
 				sequence: @sequence,
 			} INTO @@plasmid_collection RETURN NEW
 		)
-		INSERT { _from: n[0]._id, _to: o[0]._id } IN @@stock_plasmid_collection
+		INSERT { _from: n[0]._id, _to: o[0]._id } INTO @@stock_plasmid_collection
 		RETURN n[0]
 	`
 	stockGetStrain = `

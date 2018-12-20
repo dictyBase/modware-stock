@@ -211,7 +211,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 	return m, nil
 }
 
-// AddStock creates a new plasmid stock
+// AddPlasmid creates a new plasmid stock
 func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	attr := ns.Data.Attributes
