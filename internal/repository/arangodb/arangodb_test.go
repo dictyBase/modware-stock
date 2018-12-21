@@ -64,6 +64,27 @@ func newTestStrain(createdby string) *stock.NewStock {
 	}
 }
 
+func newTestPlasmid(createdby string) *stock.NewStock {
+	return &stock.NewStock{
+		Data: &stock.NewStock_Data{
+			Type: "plasmid",
+			Id:   "DBP0999999",
+			Attributes: &stock.NewStockAttributes{
+				CreatedBy:       createdby,
+				UpdatedBy:       createdby,
+				Summary:         "this is a test plasmid",
+				EditableSummary: "this is a test plasmid",
+				Depositor:       "george@costanza.com",
+				Publications:    []string{"1348970"},
+				PlasmidProperties: &stock.PlasmidProperties{
+					ImageMap: "http://dictybase.org/data/plasmid/images/87.jpg",
+					Sequence: "tttttyyyyjkausadaaaavvvvvv",
+				},
+			},
+		},
+	}
+}
+
 func TestMain(m *testing.M) {
 	ta, err := testarango.NewTestArangoFromEnv(true)
 	if err != nil {
@@ -105,13 +126,39 @@ func TestAddStrain(t *testing.T) {
 	assert.Equal(m.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
 	assert.Equal(m.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
 	assert.Equal(m.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
-	// assert.Equal(m.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
-	// assert.Equal(m.Descriptor, ns.Data.Attributes.StrainProperties.Descriptor_, "should match descriptor")
-	// assert.Equal(m.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
-	// assert.Equal(m.Parents, ns.Data.Attributes.StrainProperties.Parents, "should match parents")
-	// assert.Equal(m.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
-	// assert.Empty(m.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
+	assert.Equal(m.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
+	assert.Equal(m.Descriptor, ns.Data.Attributes.StrainProperties.Descriptor_, "should match descriptor")
+	assert.Equal(m.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
+	assert.Equal(m.Parents, ns.Data.Attributes.StrainProperties.Parents, "should match parents")
+	assert.Equal(m.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
+	assert.Empty(m.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
 	assert.Empty(m.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should have empty plasmid field")
+	assert.NotEmpty(m.Key, "should not have empty key")
+}
+
+func TestAddPlasmid(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer repo.ClearStocks()
+	ns := newTestPlasmid("george@costanza.com")
+	m, err := repo.AddPlasmid(ns)
+	if err != nil {
+		t.Fatalf("error in adding plasmid: %s", err)
+	}
+	assert := assert.New(t)
+	assert.Equal(m.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
+	assert.Equal(m.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
+	assert.Equal(m.Summary, ns.Data.Attributes.Summary, "should match summary")
+	assert.Equal(m.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
+	assert.Equal(m.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
+	assert.Equal(m.Publications, ns.Data.Attributes.Publications, "should match publications")
+	assert.Equal(m.ImageMap, ns.Data.Attributes.PlasmidProperties.ImageMap, "should match image_map")
+	assert.Equal(m.Sequence, ns.Data.Attributes.PlasmidProperties.Sequence, "should match sequence")
+	assert.Empty(m.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
 	assert.NotEmpty(m.Key, "should not have empty key")
 }
 

@@ -60,7 +60,7 @@ const (
 		LET o = (
 			INSERT {
 				image_map: @image_map,
-				sequence: @sequence,
+				sequence: @sequence
 			} INTO @@plasmid_collection RETURN NEW
 		)
 		INSERT { _from: n[0]._id, _to: o[0]._id } INTO @@stock_plasmid_collection
