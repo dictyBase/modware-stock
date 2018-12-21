@@ -72,7 +72,7 @@ const (
 	stockGetStrain = `
 		FOR s IN @@stock_collection
 			FOR v IN 1..1 OUTBOUND s GRAPH @graph
-				FILTER s._key == @key
+				FILTER s.stock_id == @id
 				RETURN MERGE(
 					s,
 					{
@@ -90,7 +90,7 @@ const (
 	stockGetPlasmid = `
 		FOR s IN @@stock_collection
 			FOR v IN 1..1 OUTBOUND s GRAPH @graph
-				FILTER s._key == @key
+				FILTER s.stock_id == @id
 				RETURN MERGE(
 					s,
 					{
