@@ -35,7 +35,9 @@ const (
 			INSERT { _from: p, _to: n[0]._id } INTO @@parent_strain_collection
 		RETURN MERGE(
 			n[0],
-			o[0]
+			{
+				strain_properties: o[0]
+			}
 		)
 	`
 	stockPlasmidIns = `
@@ -66,7 +68,9 @@ const (
 		INSERT { _from: n[0]._id, _to: o[0]._id } INTO @@stock_plasmid_collection
 		RETURN MERGE(
 			n[0],
-			o[0]
+			{
+				plasmid_properties: o[0]
+			}
 		)
 	`
 	stockGetStrain = `
