@@ -28,6 +28,5 @@ type StockDoc struct {
 	Names           []string  `json:"names"`
 	ImageMap        string    `json:"image_map"`
 	Sequence        string    `json:"sequence"`
-	Keywords        []string  `json:"keywords"`
 	NotFound        bool
 }
