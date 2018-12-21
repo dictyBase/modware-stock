@@ -33,7 +33,10 @@ const (
 		INSERT { _from: n[0]._id, _to: o[0]._id } INTO @@stock_strain_collection
 		FOR p IN @parents
 			INSERT { _from: p, _to: n[0]._id } INTO @@parent_strain_collection
-		RETURN DISTINCT n[0]
+		RETURN MERGE(
+			n[0],
+			o[0]
+		)
 	`
 	stockPlasmidIns = `
 		LET kg = (
@@ -61,7 +64,10 @@ const (
 			} INTO @@plasmid_collection RETURN NEW
 		)
 		INSERT { _from: n[0]._id, _to: o[0]._id } INTO @@stock_plasmid_collection
-		RETURN n[0]
+		RETURN MERGE(
+			n[0],
+			o[0]
+		)
 	`
 	stockGetStrain = `
 		FOR s IN @@stock_collection
