@@ -89,41 +89,41 @@ func (s *StockService) CreateStock(ctx context.Context, r *stock.NewStock) (*sto
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
-	m, err := s.repo.AddStock(r)
-	if err != nil {
-		return st, aphgrpc.HandleInsertError(ctx, err)
-	}
-	if m.NotFound {
-		return st, aphgrpc.HandleNotFoundError(ctx, err)
-	}
-	st.Data = &stock.Stock_Data{
-		Type: s.GetResourceName(),
-		Id:   m.Key, // need to make sure this is DBS/DBP ID
-		Attributes: &stock.StockAttributes{
-			CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-			UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-			CreatedBy:       m.CreatedBy,
-			UpdatedBy:       m.UpdatedBy,
-			Summary:         m.Summary,
-			EditableSummary: m.EditableSummary,
-			Depositor:       m.Depositor,
-			Genes:           m.Genes,
-			Dbxrefs:         m.Dbxrefs,
-			Publications:    m.Publications,
-			StrainProperties: &stock.StrainProperties{
-				SystematicName: m.SystematicName,
-				Descriptor_:    m.Descriptor,
-				Species:        m.Species,
-				Plasmid:        m.Plasmid,
-				Parents:        m.Parents,
-				Names:          m.Names,
-			},
-			PlasmidProperties: &stock.PlasmidProperties{
-				ImageMap: m.ImageMap,
-				Sequence: m.Sequence,
-			},
-		},
-	}
+	// m, err := s.repo.AddStock(r)
+	// if err != nil {
+	// 	return st, aphgrpc.HandleInsertError(ctx, err)
+	// }
+	// if m.NotFound {
+	// 	return st, aphgrpc.HandleNotFoundError(ctx, err)
+	// }
+	// st.Data = &stock.Stock_Data{
+	// 	Type: s.GetResourceName(),
+	// 	Id:   m.Key, // need to make sure this is DBS/DBP ID
+	// 	Attributes: &stock.StockAttributes{
+	// 		CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+	// 		UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+	// 		CreatedBy:       m.CreatedBy,
+	// 		UpdatedBy:       m.UpdatedBy,
+	// 		Summary:         m.Summary,
+	// 		EditableSummary: m.EditableSummary,
+	// 		Depositor:       m.Depositor,
+	// 		Genes:           m.Genes,
+	// 		Dbxrefs:         m.Dbxrefs,
+	// 		Publications:    m.Publications,
+	// 		StrainProperties: &stock.StrainProperties{
+	// 			SystematicName: m.SystematicName,
+	// 			Descriptor_:    m.Descriptor,
+	// 			Species:        m.Species,
+	// 			Plasmid:        m.Plasmid,
+	// 			Parents:        m.Parents,
+	// 			Names:          m.Names,
+	// 		},
+	// 		PlasmidProperties: &stock.PlasmidProperties{
+	// 			ImageMap: m.ImageMap,
+	// 			Sequence: m.Sequence,
+	// 		},
+	// 	},
+	// }
 	s.publisher.Publish(s.Topics["stockCreate"], st)
 	return st, nil
 }
