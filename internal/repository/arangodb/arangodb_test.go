@@ -37,6 +37,7 @@ func getCollectionParams() *CollectionParams {
 		Stock2PlasmidGraph: "stock2plasmid",
 		Stock2StrainGraph:  "stock2strain",
 		Strain2ParentGraph: "strain2parent",
+		KeyOffset:          270000,
 	}
 }
 
