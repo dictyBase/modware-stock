@@ -35,6 +35,9 @@ type CollectionParams struct {
 	Stock2StrainGraph string `validate:"required"`
 	// Strain2ParentGraph is the named graph for connecting strains to their parents
 	Strain2ParentGraph string `validate:"required"`
+	// KeyOffset is the initial offset for stock id generation. It is needed to
+	// maintain the previous stock identifiers.
+	KeyOffset int `validate:"required"`
 }
 
 type arangorepository struct {
@@ -65,8 +68,14 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 	}
 	ar.sess = sess
 	ar.database = db
-	stockc, err := db.FindOrCreateCollection(collP.Stock, &driver.CreateCollectionOptions{})
-	// KeyOptions: {type: "autoincrement", increment: 1, offset: 370000}
+	stockc, err := db.FindOrCreateCollection(
+		collP.Stock,
+		&driver.CreateCollectionOptions{
+			KeyOptions: &driver.CollectionKeyOptions{
+				Increment: 1,
+				Offset:    collP.KeyOffset,
+			},
+		})
 	if err != nil {
 		return ar, err
 	}
