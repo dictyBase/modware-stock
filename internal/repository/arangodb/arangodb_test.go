@@ -203,7 +203,7 @@ func TestGetStock(t *testing.T) {
 	if err != nil {
 		t.Fatalf(
 			"error in fetching stock %s with ID %s",
-			"1",
+			"DBS01",
 			err,
 		)
 	}
