@@ -1,14 +1,18 @@
 package arangodb
 
 import (
+	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"testing"
+	"time"
 
 	driver "github.com/arangodb/go-driver"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -214,9 +218,80 @@ func TestGetStock(t *testing.T) {
 
 // }
 
-// func TestListStocks(t *testing.T) {
+func TestListStocks(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer repo.ClearStocks()
+	// add 10 new test strains
+	for i := 1; i <= 10; i++ {
+		ns := newTestStrain(fmt.Sprintf("%s@kramericaindustries.com", RandString(10)))
+		_, err := repo.AddStrain(ns)
+		if err != nil {
+			t.Fatalf("error in adding strain %s", err)
+		}
+	}
+	// add 5 new test plasmids
+	for i := 1; i <= 5; i++ {
+		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
+		_, err := repo.AddPlasmid(np)
+		if err != nil {
+			t.Fatalf("error in adding plasmid %s", err)
+		}
+	}
+	// get first five results
+	ls, err := repo.ListStocks(0, 4)
+	if err != nil {
+		t.Fatalf("error in getting first five stocks %s", err)
+	}
+	assert := assert.New(t)
+	assert.Equal(len(ls), 5, "should match the provided limit number + 1")
 
-// }
+	for _, stock := range ls {
+		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
+		assert.NotEmpty(stock.Key, "should not have empty key")
+	}
+	assert.NotEqual(ls[0].CreatedBy, ls[1].CreatedBy, "should have different created_by")
+	// convert fifth result to numeric timestamp in milliseconds
+	// so we can use this as cursor
+	ti := toTimestamp(ls[4].CreatedAt)
+
+	// get next five results (5-9)
+	ls2, err := repo.ListStocks(ti, 4)
+	if err != nil {
+		t.Fatalf("error in getting stocks 5-9 %s", err)
+	}
+	assert.Equal(len(ls2), 5, "should match the provided limit number + 1")
+	assert.Equal(ls2[0], ls[4], "last item from first five results and first item from next five results should be the same")
+	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different consumers")
+
+	// convert ninth result to numeric timestamp
+	ti2 := toTimestamp(ls2[4].CreatedAt)
+	// get last five results (9-13)
+	ls3, err := repo.ListStocks(ti2, 4)
+	if err != nil {
+		t.Fatalf("error in getting stocks 9-13 %s", err)
+	}
+	assert.Equal(len(ls3), 5, "should match the provided limit number + 1")
+	assert.Equal(ls3[0].CreatedBy, ls2[4].CreatedBy, "last item from previous five results and first item from next five results should be the same")
+
+	// convert 13th result to numeric timestamp
+	ti3 := toTimestamp(ls3[4].CreatedAt)
+	// get last results
+	ls4, err := repo.ListStocks(ti3, 4)
+	if err != nil {
+		t.Fatalf("error in getting stocks 13-15 %s", err)
+	}
+	assert.Equal(len(ls4), 3, "should only bring last three results")
+	assert.Equal(ls3[4].CreatedBy, ls4[0].CreatedBy, "last item from previous five results and first item from next three results should be the same")
+	testModelListSort(ls, t)
+	testModelListSort(ls2, t)
+	testModelListSort(ls3, t)
+	testModelListSort(ls4, t)
+}
 
 // func TestListStrains(t *testing.T) {
 
@@ -255,4 +330,46 @@ func TestRemoveStock(t *testing.T) {
 	}
 	assert := assert.New(t)
 	assert.True(ne.NotFound, "entry should not exist")
+}
+
+func testModelListSort(m []*model.StockDoc, t *testing.T) {
+	it, err := NewPairWiseIterator(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert := assert.New(t)
+	for it.NextPair() {
+		cm, nm := it.Pair()
+		assert.Truef(
+			nm.CreatedAt.Before(cm.CreatedAt),
+			"date %s should be before %s",
+			nm.CreatedAt.String(),
+			cm.CreatedAt.String(),
+		)
+	}
+}
+
+const (
+	charSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+)
+
+var seedRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+func stringWithCharset(length int, charset string) string {
+	var b []byte
+	for i := 0; i < length; i++ {
+		b = append(
+			b,
+			charset[seedRand.Intn(len(charset))],
+		)
+	}
+	return string(b)
+}
+
+func RandString(length int) string {
+	return stringWithCharset(length, charSet)
+}
+
+func toTimestamp(t time.Time) int64 {
+	return t.UnixNano() / 1000000
 }
