@@ -56,7 +56,7 @@ const (
 				genes: @genes,
 				dbxrefs: @dbxrefs,
 				publications: @publications,
-				stock_id: CONCAT("DBS0", kg[0]._key)
+				stock_id: CONCAT("DBP0", kg[0]._key)
 			} INTO @@stock_collection RETURN NEW
 		)
 		LET o = (
@@ -153,14 +153,14 @@ const (
 				RETURN MERGE(
 					s,
 					{
-						strain_properties: { 
-							systematic_name: v.systematic_name, 
-							descriptor: v.descriptor, 
-							species: v.species, 
-							plasmid: v.plasmid, 
-							parents: v.parents, 
+						strain_properties: {
+							systematic_name: v.systematic_name,
+							descriptor: v.descriptor,
+							species: v.species,
+							plasmid: v.plasmid,
+							parents: v.parents,
 							names: v.names
-						} 
+						}
 					}
 				)
 	`
@@ -194,14 +194,14 @@ const (
 				RETURN MERGE(
 					s,
 					{
-						strain_properties: { 
-							systematic_name: v.systematic_name, 
-							descriptor: v.descriptor, 
-							species: v.species, 
-							plasmid: v.plasmid, 
-							parents: v.parents, 
+						strain_properties: {
+							systematic_name: v.systematic_name,
+							descriptor: v.descriptor,
+							species: v.species,
+							plasmid: v.plasmid,
+							parents: v.parents,
 							names: v.names
-						} 
+						}
 					}
 				)
 	`
@@ -235,12 +235,12 @@ const (
 				RETURN MERGE(
 					s,
 					{
-						plasmid_properties: { 
+						plasmid_properties: {
 							image_map: v.image_map,
 							sequence: v.sequence
-						} 
+						}
 					}
-				)	
+				)
 	`
 	plasmidListFilter = `
 		FOR s IN %s
@@ -268,12 +268,12 @@ const (
 				RETURN MERGE(
 					s,
 					{
-						plasmid_properties: { 
+						plasmid_properties: {
 							image_map: v.image_map,
 							sequence: v.sequence
-						} 
+						}
 					}
-				)		
+				)
 	`
 	plasmidListFilterWithCursor = `
 			FOR s IN %s
