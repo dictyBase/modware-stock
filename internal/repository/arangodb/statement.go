@@ -35,7 +35,9 @@ const (
 			INSERT { _from: p, _to: n[0]._id } INTO @@parent_strain_collection
 		RETURN MERGE(
 			n[0],
-			o[0]
+			{
+				strain_properties: o[0]
+			}
 		)
 	`
 	stockPlasmidIns = `
@@ -66,13 +68,15 @@ const (
 		INSERT { _from: n[0]._id, _to: o[0]._id } INTO @@stock_plasmid_collection
 		RETURN MERGE(
 			n[0],
-			o[0]
+			{
+				plasmid_properties: o[0]
+			}
 		)
 	`
 	stockGetStrain = `
 		FOR s IN @@stock_collection
 			FOR v IN 1..1 OUTBOUND s GRAPH @graph
-				FILTER s._key == @key
+				FILTER s.stock_id == @id
 				RETURN MERGE(
 					s,
 					{
@@ -90,7 +94,7 @@ const (
 	stockGetPlasmid = `
 		FOR s IN @@stock_collection
 			FOR v IN 1..1 OUTBOUND s GRAPH @graph
-				FILTER s._key == @key
+				FILTER s.stock_id == @id
 				RETURN MERGE(
 					s,
 					{

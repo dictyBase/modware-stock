@@ -1,14 +1,18 @@
 package arangodb
 
 import (
+	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"testing"
+	"time"
 
 	driver "github.com/arangodb/go-driver"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -127,13 +131,13 @@ func TestAddStrain(t *testing.T) {
 	assert.Equal(m.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
 	assert.Equal(m.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
 	assert.Equal(m.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
-	assert.Equal(m.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
-	assert.Equal(m.Descriptor, ns.Data.Attributes.StrainProperties.Descriptor_, "should match descriptor")
-	assert.Equal(m.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
-	assert.Equal(m.Parents, ns.Data.Attributes.StrainProperties.Parents, "should match parents")
-	assert.Equal(m.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
+	assert.Equal(m.StrainProperties.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
+	assert.Equal(m.StrainProperties.Descriptor, ns.Data.Attributes.StrainProperties.Descriptor_, "should match descriptor")
+	assert.Equal(m.StrainProperties.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
+	assert.Equal(m.StrainProperties.Parents, ns.Data.Attributes.StrainProperties.Parents, "should match parents")
+	assert.Equal(m.StrainProperties.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
 	assert.Empty(m.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
-	assert.Empty(m.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should have empty plasmid field")
+	assert.Empty(m.StrainProperties.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should have empty plasmid field")
 	assert.NotEmpty(m.Key, "should not have empty key")
 }
 
@@ -157,8 +161,8 @@ func TestAddPlasmid(t *testing.T) {
 	assert.Equal(m.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
 	assert.Equal(m.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
 	assert.Equal(m.Publications, ns.Data.Attributes.Publications, "should match publications")
-	assert.Equal(m.ImageMap, ns.Data.Attributes.PlasmidProperties.ImageMap, "should match image_map")
-	assert.Equal(m.Sequence, ns.Data.Attributes.PlasmidProperties.Sequence, "should match sequence")
+	assert.Equal(m.PlasmidProperties.ImageMap, ns.Data.Attributes.PlasmidProperties.ImageMap, "should match image_map")
+	assert.Equal(m.PlasmidProperties.Sequence, ns.Data.Attributes.PlasmidProperties.Sequence, "should match sequence")
 	assert.Empty(m.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
 	assert.NotEmpty(m.Key, "should not have empty key")
 }
@@ -171,52 +175,123 @@ func TestGetStock(t *testing.T) {
 		t.Fatalf("error in connecting to stock repository %s", err)
 	}
 	defer repo.ClearStocks()
-	// ns := newTestStrain("george@costanza.com")
-	// m, err := repo.AddStrain(ns)
-	// if err != nil {
-	// 	t.Fatalf("error in adding strain %s", err)
-	// }
-	// g, err := repo.GetStock(m.Key)
-	// if err != nil {
-	// 	t.Fatalf("error in getting stock %s with ID %s", m.Key, err)
-	// }
-	// assert := assert.New(t)
-	// assert.Equal(g.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
-	// assert.Equal(g.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
-	// assert.Equal(g.Summary, ns.Data.Attributes.Summary, "should match summary")
-	// assert.Equal(g.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
-	// assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
-	// assert.Equal(g.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
-	// assert.Equal(g.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
-	// assert.Equal(g.Descriptor, ns.Data.Attributes.StrainProperties.Descriptor_, "should match descriptor")
-	// assert.Equal(g.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
-	// assert.Equal(g.Parents, ns.Data.Attributes.StrainProperties.Parents, "should match parents")
-	// assert.Equal(g.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
-	// assert.Empty(g.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
-	// assert.Empty(g.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should have empty plasmid field")
-	// assert.Equal(len(g.Dbxrefs), 6, "should match length of six dbxrefs")
-	// assert.NotEmpty(g.Key, "should not have empty key/id")
-	// assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
-	// assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
+	ns := newTestStrain("george@costanza.com")
+	m, err := repo.AddStrain(ns)
+	if err != nil {
+		t.Fatalf("error in adding strain %s", err)
+	}
+	g, err := repo.GetStock(m.StockID)
+	if err != nil {
+		t.Fatalf("error in getting stock %s with ID %s", m.StockID, err)
+	}
+	assert := assert.New(t)
+	assert.Equal(g.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
+	assert.Equal(g.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
+	assert.Equal(g.Summary, ns.Data.Attributes.Summary, "should match summary")
+	assert.Equal(g.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
+	assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
+	assert.Equal(g.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
+	assert.Equal(g.StrainProperties.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
+	assert.Equal(g.StrainProperties.Descriptor, ns.Data.Attributes.StrainProperties.Descriptor_, "should match descriptor")
+	assert.Equal(g.StrainProperties.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
+	assert.Equal(g.StrainProperties.Parents, ns.Data.Attributes.StrainProperties.Parents, "should match parents")
+	assert.Equal(g.StrainProperties.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
+	assert.Empty(g.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
+	assert.Empty(g.StrainProperties.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should have empty plasmid field")
+	assert.Equal(len(g.Dbxrefs), 6, "should match length of six dbxrefs")
+	assert.NotEmpty(g.Key, "should not have empty key")
+	assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
+	assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
 
-	// ne, err := repo.GetStock("1")
-	// if err != nil {
-	// 	t.Fatalf(
-	// 		"error in fetching stock %s with ID %s",
-	// 		"1",
-	// 		err,
-	// 	)
-	// }
-	// assert.True(ne.NotFound, "entry should not exist")
+	ne, err := repo.GetStock("DBS01")
+	if err != nil {
+		t.Fatalf(
+			"error in fetching stock %s with ID %s",
+			"DBS01",
+			err,
+		)
+	}
+	assert.True(ne.NotFound, "entry should not exist")
 }
 
 // func TestEditStock(t *testing.T) {
 
 // }
 
-// func TestListStocks(t *testing.T) {
+func TestListStocks(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer repo.ClearStocks()
+	// add 10 new test strains
+	for i := 1; i <= 10; i++ {
+		ns := newTestStrain(fmt.Sprintf("%s@kramericaindustries.com", RandString(10)))
+		_, err := repo.AddStrain(ns)
+		if err != nil {
+			t.Fatalf("error in adding strain %s", err)
+		}
+	}
+	// add 5 new test plasmids
+	for i := 1; i <= 5; i++ {
+		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
+		_, err := repo.AddPlasmid(np)
+		if err != nil {
+			t.Fatalf("error in adding plasmid %s", err)
+		}
+	}
+	// get first five results
+	ls, err := repo.ListStocks(0, 4)
+	if err != nil {
+		t.Fatalf("error in getting first five stocks %s", err)
+	}
+	assert := assert.New(t)
+	assert.Equal(len(ls), 5, "should match the provided limit number + 1")
 
-// }
+	for _, stock := range ls {
+		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
+		assert.NotEmpty(stock.Key, "should not have empty key")
+	}
+	assert.NotEqual(ls[0].CreatedBy, ls[1].CreatedBy, "should have different created_by")
+	// convert fifth result to numeric timestamp in milliseconds
+	// so we can use this as cursor
+	ti := toTimestamp(ls[4].CreatedAt)
+
+	// get next five results (5-9)
+	ls2, err := repo.ListStocks(ti, 4)
+	if err != nil {
+		t.Fatalf("error in getting stocks 5-9 %s", err)
+	}
+	assert.Equal(len(ls2), 5, "should match the provided limit number + 1")
+	assert.Equal(ls2[0], ls[4], "last item from first five results and first item from next five results should be the same")
+	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different consumers")
+
+	// convert ninth result to numeric timestamp
+	ti2 := toTimestamp(ls2[4].CreatedAt)
+	// get last five results (9-13)
+	ls3, err := repo.ListStocks(ti2, 4)
+	if err != nil {
+		t.Fatalf("error in getting stocks 9-13 %s", err)
+	}
+	assert.Equal(len(ls3), 5, "should match the provided limit number + 1")
+	assert.Equal(ls3[0].CreatedBy, ls2[4].CreatedBy, "last item from previous five results and first item from next five results should be the same")
+
+	// convert 13th result to numeric timestamp
+	ti3 := toTimestamp(ls3[4].CreatedAt)
+	// get last results
+	ls4, err := repo.ListStocks(ti3, 4)
+	if err != nil {
+		t.Fatalf("error in getting stocks 13-15 %s", err)
+	}
+	assert.Equal(len(ls4), 3, "should only bring last three results")
+	assert.Equal(ls3[4].CreatedBy, ls4[0].CreatedBy, "last item from previous five results and first item from next three results should be the same")
+	testModelListSort(ls, t)
+	testModelListSort(ls2, t)
+	testModelListSort(ls3, t)
+	testModelListSort(ls4, t)
+}
 
 // func TestListStrains(t *testing.T) {
 
@@ -241,8 +316,8 @@ func TestRemoveStock(t *testing.T) {
 	}
 	err = repo.RemoveStock(m.Key)
 	if err != nil {
-		t.Fatalf("error in removing stock %s with stock id %s",
-			m.StockID,
+		t.Fatalf("error in removing stock %s with key %s",
+			m.Key,
 			err)
 	}
 	ne, err := repo.GetStock(m.Key)
@@ -255,4 +330,46 @@ func TestRemoveStock(t *testing.T) {
 	}
 	assert := assert.New(t)
 	assert.True(ne.NotFound, "entry should not exist")
+}
+
+func testModelListSort(m []*model.StockDoc, t *testing.T) {
+	it, err := NewPairWiseIterator(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert := assert.New(t)
+	for it.NextPair() {
+		cm, nm := it.Pair()
+		assert.Truef(
+			nm.CreatedAt.Before(cm.CreatedAt),
+			"date %s should be before %s",
+			nm.CreatedAt.String(),
+			cm.CreatedAt.String(),
+		)
+	}
+}
+
+const (
+	charSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+)
+
+var seedRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+func stringWithCharset(length int, charset string) string {
+	var b []byte
+	for i := 0; i < length; i++ {
+		b = append(
+			b,
+			charset[seedRand.Intn(len(charset))],
+		)
+	}
+	return string(b)
+}
+
+func RandString(length int) string {
+	return stringWithCharset(length, charSet)
+}
+
+func toTimestamp(t time.Time) int64 {
+	return t.UnixNano() / 1000000
 }

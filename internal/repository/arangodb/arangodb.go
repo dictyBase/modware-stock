@@ -161,7 +161,7 @@ func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 	var stmt string
 	bindVars := map[string]interface{}{
 		"@stock_collection": ar.stock.Name(),
-		"key":               id,
+		"id":                id,
 	}
 	if id[:3] == "DBS" {
 		bindVars["graph"] = ar.stock2Strain.Name()
