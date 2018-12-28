@@ -32,14 +32,11 @@ func getConnectParams() *manager.ConnectParams {
 func getCollectionParams() *CollectionParams {
 	return &CollectionParams{
 		Stock:              "stock",
-		Strain:             "strain",
-		Plasmid:            "plasmid",
+		StockProp:          "stockprop",
 		StockKeyGenerator:  "stock_key_generator",
-		StockPlasmid:       "stock_plasmid",
-		StockStrain:        "stock_strain",
+		StockType:          "stock_type",
 		ParentStrain:       "parent_strain",
-		Stock2PlasmidGraph: "stock2plasmid",
-		Stock2StrainGraph:  "stock2strain",
+		StockPropTypeGraph: "stockprop_type",
 		Strain2ParentGraph: "strain2parent",
 		KeyOffset:          270000,
 	}
