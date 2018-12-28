@@ -159,6 +159,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 		"@stock_collection":            ar.stock.Name(),
 		"@stock_key_generator":         ar.stockKey.Name(),
 		"@stock_properties_collection": ar.stockProp.Name(),
+		"@stock_type_collection":       ar.stockType.Name(),
 		"@parent_strain_collection":    ar.parentStrain.Name(),
 		"created_by":                   attr.CreatedBy,
 		"updated_by":                   attr.UpdatedBy,
@@ -192,6 +193,7 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, err
 	bindVars := map[string]interface{}{
 		"@stock_collection":            ar.stock.Name(),
 		"@stock_key_generator":         ar.stockKey.Name(),
+		"@stock_type_collection":       ar.stockType.Name(),
 		"@stock_properties_collection": ar.stockProp.Name(),
 		"created_by":                   attr.CreatedBy,
 		"updated_by":                   attr.UpdatedBy,
