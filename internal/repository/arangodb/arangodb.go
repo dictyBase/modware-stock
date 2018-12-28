@@ -17,22 +17,16 @@ import (
 type CollectionParams struct {
 	// Stock is the collection for storing all stocks
 	Stock string `validate:"required"`
-	// Strain is the collection for storing strain properties
-	Strain string `validate:"required"`
-	// PLasmid is the collection for storing plasmid properties
-	Plasmid string `validate:"required"`
+	// Stockprop is the collection for storing stock properties
+	StockProp string `validate:"required"`
 	// StockKeyGenerator is the collection for generating unique stock IDs
 	StockKeyGenerator string `validate:"required"`
-	// StockPlasmid is the edge collection for connecting stocks and plasmids
-	StockPlasmid string `validate:"required"`
-	// StockStrain is the edge collection for connecting stocks and strains
-	StockStrain string `validate:"required"`
+	// StockType is the edge collection for connecting stocks to their types
+	StockType string `validate:"required"`
 	// ParentStrain is the edge collection for connecting strains to their parents
 	ParentStrain string `validate:"required"`
-	// Stock2PlasmidGraph is the named graph for connecting stocks to plasmids
-	Stock2PlasmidGraph string `validate:"required"`
-	// Stock2StrainGraph is the named graph for connecting stocks to strains
-	Stock2StrainGraph string `validate:"required"`
+	// StockPropTypeGraph is the named graph for connecting stock properties to types
+	StockPropTypeGraph string `validate:"required"`
 	// Strain2ParentGraph is the named graph for connecting strains to their parents
 	Strain2ParentGraph string `validate:"required"`
 	// KeyOffset is the initial offset for stock id generation. It is needed to
@@ -44,14 +38,11 @@ type arangorepository struct {
 	sess          *manager.Session
 	database      *manager.Database
 	stock         driver.Collection
-	strain        driver.Collection
-	plasmid       driver.Collection
+	stockProp     driver.Collection
 	stockKey      driver.Collection
-	stockPlasmid  driver.Collection
-	stockStrain   driver.Collection
+	stockType     driver.Collection
 	parentStrain  driver.Collection
-	stock2Plasmid driver.Graph
-	stock2Strain  driver.Graph
+	stockPropType driver.Graph
 	strain2Parent driver.Graph
 }
 
@@ -80,64 +71,40 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 		return ar, err
 	}
 	ar.stock = stockc
-	strainc, err := db.FindOrCreateCollection(collP.Strain, &driver.CreateCollectionOptions{})
+	spropc, err := db.FindOrCreateCollection(collP.StockProp, &driver.CreateCollectionOptions{})
 	if err != nil {
 		return ar, err
 	}
-	ar.strain = strainc
-	plasmidc, err := db.FindOrCreateCollection(collP.Plasmid, &driver.CreateCollectionOptions{})
-	if err != nil {
-		return ar, err
-	}
-	ar.plasmid = plasmidc
+	ar.stockProp = spropc
 	stockkeyc, err := db.FindOrCreateCollection(collP.StockKeyGenerator, &driver.CreateCollectionOptions{})
 	if err != nil {
 		return ar, err
 	}
 	ar.stockKey = stockkeyc
-	stockplasmidc, err := db.FindOrCreateCollection(collP.StockPlasmid, &driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge})
+	stypec, err := db.FindOrCreateCollection(collP.StockType, &driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge})
 	if err != nil {
 		return ar, err
 	}
-	ar.stockPlasmid = stockplasmidc
-	stockstrainc, err := db.FindOrCreateCollection(collP.StockStrain, &driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge})
-	if err != nil {
-		return ar, err
-	}
-	ar.stockStrain = stockstrainc
+	ar.stockType = stypec
 	parentc, err := db.FindOrCreateCollection(collP.ParentStrain, &driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge})
 	if err != nil {
 		return ar, err
 	}
 	ar.parentStrain = parentc
-	stock2plasmidg, err := db.FindOrCreateGraph(
-		collP.Stock2PlasmidGraph,
+	sproptypeg, err := db.FindOrCreateGraph(
+		collP.StockPropTypeGraph,
 		[]driver.EdgeDefinition{
 			driver.EdgeDefinition{
-				Collection: stockplasmidc.Name(),
+				Collection: stypec.Name(),
 				From:       []string{stockc.Name()},
-				To:         []string{plasmidc.Name()},
+				To:         []string{spropc.Name()},
 			},
 		},
 	)
 	if err != nil {
 		return ar, err
 	}
-	ar.stock2Plasmid = stock2plasmidg
-	stock2straing, err := db.FindOrCreateGraph(
-		collP.Stock2StrainGraph,
-		[]driver.EdgeDefinition{
-			driver.EdgeDefinition{
-				Collection: stockstrainc.Name(),
-				From:       []string{stockc.Name()},
-				To:         []string{strainc.Name()},
-			},
-		},
-	)
-	if err != nil {
-		return ar, err
-	}
-	ar.stock2Strain = stock2straing
+	ar.stockPropType = sproptypeg
 	strain2parentg, err := db.FindOrCreateGraph(
 		collP.Strain2ParentGraph,
 		[]driver.EdgeDefinition{
@@ -160,14 +127,14 @@ func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	var stmt string
 	bindVars := map[string]interface{}{
-		"@stock_collection": ar.stock.Name(),
-		"id":                id,
+		"@stock_collection":      ar.stock.Name(),
+		"@stock_type_collection": ar.stockType.Name(),
+		"id":                     id,
+		"graph":                  ar.stockPropType.Name(),
 	}
 	if id[:3] == "DBS" {
-		bindVars["graph"] = ar.stock2Strain.Name()
 		stmt = stockGetStrain
 	} else {
-		bindVars["graph"] = ar.stock2Plasmid.Name()
 		stmt = stockGetPlasmid
 	}
 	r, err := ar.database.GetRow(stmt, bindVars)
@@ -189,25 +156,25 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 	m := &model.StockDoc{}
 	attr := ns.Data.Attributes
 	bindVars := map[string]interface{}{
-		"@stock_collection":         ar.stock.Name(),
-		"@stock_key_generator":      ar.stockKey.Name(),
-		"@strain_collection":        ar.strain.Name(),
-		"@stock_strain_collection":  ar.stockStrain.Name(),
-		"@parent_strain_collection": ar.parentStrain.Name(),
-		"created_by":                attr.CreatedBy,
-		"updated_by":                attr.UpdatedBy,
-		"summary":                   attr.Summary,
-		"editable_summary":          attr.EditableSummary,
-		"depositor":                 attr.Depositor,
-		"genes":                     attr.Genes,
-		"dbxrefs":                   attr.Dbxrefs,
-		"publications":              attr.Publications,
-		"systematic_name":           attr.StrainProperties.SystematicName,
-		"descriptor":                attr.StrainProperties.Descriptor_,
-		"species":                   attr.StrainProperties.Species,
-		"plasmid":                   attr.StrainProperties.Plasmid,
-		"parents":                   attr.StrainProperties.Parents,
-		"names":                     attr.StrainProperties.Names,
+		"@stock_collection":            ar.stock.Name(),
+		"@stock_key_generator":         ar.stockKey.Name(),
+		"@stock_properties_collection": ar.stockProp.Name(),
+		"@stock_type_collection":       ar.stockType.Name(),
+		"@parent_strain_collection":    ar.parentStrain.Name(),
+		"created_by":                   attr.CreatedBy,
+		"updated_by":                   attr.UpdatedBy,
+		"summary":                      attr.Summary,
+		"editable_summary":             attr.EditableSummary,
+		"depositor":                    attr.Depositor,
+		"genes":                        attr.Genes,
+		"dbxrefs":                      attr.Dbxrefs,
+		"publications":                 attr.Publications,
+		"systematic_name":              attr.StrainProperties.SystematicName,
+		"descriptor":                   attr.StrainProperties.Descriptor_,
+		"species":                      attr.StrainProperties.Species,
+		"plasmid":                      attr.StrainProperties.Plasmid,
+		"parents":                      attr.StrainProperties.Parents,
+		"names":                        attr.StrainProperties.Names,
 	}
 	r, err := ar.database.DoRun(stockStrainIns, bindVars)
 	if err != nil {
@@ -224,20 +191,20 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, err
 	m := &model.StockDoc{}
 	attr := ns.Data.Attributes
 	bindVars := map[string]interface{}{
-		"@stock_collection":         ar.stock.Name(),
-		"@stock_key_generator":      ar.stockKey.Name(),
-		"@plasmid_collection":       ar.plasmid.Name(),
-		"@stock_plasmid_collection": ar.stockPlasmid.Name(),
-		"created_by":                attr.CreatedBy,
-		"updated_by":                attr.UpdatedBy,
-		"summary":                   attr.Summary,
-		"editable_summary":          attr.EditableSummary,
-		"depositor":                 attr.Depositor,
-		"genes":                     attr.Genes,
-		"dbxrefs":                   attr.Dbxrefs,
-		"publications":              attr.Publications,
-		"image_map":                 attr.PlasmidProperties.ImageMap,
-		"sequence":                  attr.PlasmidProperties.Sequence,
+		"@stock_collection":            ar.stock.Name(),
+		"@stock_key_generator":         ar.stockKey.Name(),
+		"@stock_type_collection":       ar.stockType.Name(),
+		"@stock_properties_collection": ar.stockProp.Name(),
+		"created_by":                   attr.CreatedBy,
+		"updated_by":                   attr.UpdatedBy,
+		"summary":                      attr.Summary,
+		"editable_summary":             attr.EditableSummary,
+		"depositor":                    attr.Depositor,
+		"genes":                        attr.Genes,
+		"dbxrefs":                      attr.Dbxrefs,
+		"publications":                 attr.Publications,
+		"image_map":                    attr.PlasmidProperties.ImageMap,
+		"sequence":                     attr.PlasmidProperties.Sequence,
 	}
 	r, err := ar.database.DoRun(stockPlasmidIns, bindVars)
 	if err != nil {
@@ -319,7 +286,7 @@ func (ar *arangorepository) ListStrains(cursor int64, limit int64) ([]*model.Sto
 	bindVars := map[string]interface{}{
 		"@stock_collection": ar.stock.Name(),
 		"limit":             limit + 1,
-		"graph":             "stock2strain",
+		"graph":             "stockprop_type",
 	}
 	if cursor == 0 { // no cursor so return first set of result
 		stmt = strainList
@@ -351,7 +318,7 @@ func (ar *arangorepository) ListPlasmids(cursor int64, limit int64) ([]*model.St
 	bindVars := map[string]interface{}{
 		"@stock_collection": ar.stock.Name(),
 		"limit":             limit + 1,
-		"graph":             "stock2plasmid",
+		"graph":             "stockprop_type",
 	}
 	if cursor == 0 { // no cursor so return first set of result
 		stmt = plasmidList
