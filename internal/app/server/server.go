@@ -32,20 +32,18 @@ func RunServer(c *cli.Context) error {
 		Pass:     c.String("arangodb-pass"),
 		Database: c.String("arangodb-database"),
 		Host:     c.String("arangodb-host"),
-		Port:     arPort,
 		Istls:    c.Bool("is-secure"),
+		Port:     arPort,
 	}
 	collP := &arangodb.CollectionParams{
 		Stock:              c.String("stock-collection"),
-		Strain:             c.String("strain-collection"),
-		Plasmid:            c.String("plasmid-collection"),
+		StockProp:          c.String("stockprop-collection"),
 		StockKeyGenerator:  c.String("stock-key-generator-collection"),
-		StockPlasmid:       c.String("stock-plasmid-edge"),
-		StockStrain:        c.String("stock-strain-edge"),
+		StockType:          c.String("stock-type-edge"),
 		ParentStrain:       c.String("parent-strain-edge"),
-		Stock2PlasmidGraph: c.String("stock2plasmid-graph"),
-		Stock2StrainGraph:  c.String("stock2strain-graph"),
+		StockPropTypeGraph: c.String("stockproptype-graph"),
 		Strain2ParentGraph: c.String("strain2parent-graph"),
+		KeyOffset:          c.Int("keyoffset"),
 	}
 	srepo, err := arangodb.NewStockRepo(connP, collP)
 	if err != nil {
