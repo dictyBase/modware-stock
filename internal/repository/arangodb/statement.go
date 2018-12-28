@@ -28,9 +28,9 @@ const (
 				plasmid: @plasmid,
 				parents: @parents,
 				names: @names
-			} INTO @@strain_collection RETURN NEW
+			} INTO @@stock_properties_collection RETURN NEW
 		)
-		INSERT { _from: n[0]._id, _to: o[0]._id } INTO @@stock_strain_collection
+		INSERT { _from: n[0]._id, _to: o[0]._id, type: 'strain' } INTO @@stock_type_collection
 		FOR p IN @parents
 			INSERT { _from: p, _to: n[0]._id } INTO @@parent_strain_collection
 		RETURN MERGE(
@@ -63,9 +63,9 @@ const (
 			INSERT {
 				image_map: @image_map,
 				sequence: @sequence
-			} INTO @@plasmid_collection RETURN NEW
+			} INTO @@stock_properties_collection RETURN NEW
 		)
-		INSERT { _from: n[0]._id, _to: o[0]._id } INTO @@stock_plasmid_collection
+		INSERT { _from: n[0]._id, _to: o[0]._id, type: 'plasmid' } INTO @@stock_type_collection
 		RETURN MERGE(
 			n[0],
 			{
@@ -76,34 +76,38 @@ const (
 	stockGetStrain = `
 		FOR s IN @@stock_collection
 			FOR v IN 1..1 OUTBOUND s GRAPH @graph
-				FILTER s.stock_id == @id
-				RETURN MERGE(
-					s,
-					{
-						strain_properties: { 
-							systematic_name: v.systematic_name, 
-							descriptor: v.descriptor, 
-							species: v.species, 
-							plasmid: v.plasmid, 
-							parents: v.parents, 
-							names: v.names
-						} 
-					}
-				)
+				FOR e IN @@stock_type_collection
+					FILTER e.type == 'strain'
+					FILTER s.stock_id == @id
+					RETURN MERGE(
+						s,
+						{
+							strain_properties: { 
+								systematic_name: v.systematic_name, 
+								descriptor: v.descriptor, 
+								species: v.species, 
+								plasmid: v.plasmid, 
+								parents: v.parents, 
+								names: v.names
+							} 
+						}
+					)
 	`
 	stockGetPlasmid = `
 		FOR s IN @@stock_collection
 			FOR v IN 1..1 OUTBOUND s GRAPH @graph
-				FILTER s.stock_id == @id
-				RETURN MERGE(
-					s,
-					{
-						plasmid_properties: { 
-							image_map: v.image_map,
-							sequence: v.sequence
-						} 
-					}
-				)
+				FOR e IN @@stock_type_collection
+					FILTER e.type == 'strain'
+					FILTER s.stock_id == @id
+					RETURN MERGE(
+						s,
+						{
+							plasmid_properties: { 
+								image_map: v.image_map,
+								sequence: v.sequence
+							} 
+						}
+					)
 	`
 	stockUpd = `
 		UPDATE { _key: @key }
