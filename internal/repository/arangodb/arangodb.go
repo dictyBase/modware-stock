@@ -7,6 +7,7 @@ import (
 
 	driver "github.com/arangodb/go-driver"
 	manager "github.com/dictyBase/arangomanager"
+	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
@@ -249,18 +250,51 @@ func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, e
 }
 
 // ListStocks provides a list of all stocks
-func (ar *arangorepository) ListStocks(cursor int64, limit int64) ([]*model.StockDoc, error) {
+func (ar *arangorepository) ListStocks(cursor int64, limit int64, filter string) ([]*model.StockDoc, error) {
 	var om []*model.StockDoc
 	var stmt string
 	bindVars := map[string]interface{}{
 		"@stock_collection": ar.stock.Name(),
 		"limit":             limit + 1,
 	}
-	if cursor == 0 { // no cursor so return first set of result
-		stmt = stockList
+	if len(filter) > 0 {
+		s, err := query.ParseFilterString(filter)
+		if err != nil {
+			fmt.Println("error parsing filter string", err)
+		}
+		n, err := query.GenAQLFilterStatement(fmap, s)
+		if err != nil {
+			fmt.Println("error generating AQL filter statement", err)
+		}
+		// at this point I have generated a filter line (n) based on given string
+		// need to handle singular item found in array
+		// (i.e. gene==xyz) <- need to look that up in genes field
+		// FOR document IN documents FILTER "xyz" IN document.genes[*] RETURN document
+		// need to check type for strain/plasmid
+		// right now the statements below are for all stocks, doesn't have the strain/plasmid type filter
+		if cursor == 0 {
+			stmt = fmt.Sprintf(
+				stockListFilter,
+				ar.stock.Name(),
+				n,
+				limit+1,
+			)
+		} else {
+			stmt = fmt.Sprintf(
+				stockListFilterWithCursor,
+				ar.stock.Name(),
+				cursor,
+				n,
+				limit+1,
+			)
+		}
 	} else {
-		bindVars["next_cursor"] = cursor
-		stmt = stockListWithCursor
+		if cursor == 0 { // no cursor so return first set of result
+			stmt = stockList
+		} else {
+			bindVars["next_cursor"] = cursor
+			stmt = stockListWithCursor
+		}
 	}
 	rs, err := ar.database.SearchRows(stmt, bindVars)
 	if err != nil {
@@ -342,6 +376,19 @@ func (ar *arangorepository) ListPlasmids(cursor int64, limit int64) ([]*model.St
 	}
 	return om, nil
 }
+
+// SearchStocks searches through stock collection using specified filters
+// func (ar *arangorepository) SearchStocks(filter string) (string, error) {
+// 	s, err := query.ParseFilterString(filter)
+// 	if err != nil {
+// 		fmt.Println("error parsing filter string", err)
+// 	}
+// 	n, err := query.GenAQLFilterStatement(fmap, s)
+// 	if err != nil {
+// 		fmt.Println("error generating AQL filter statement", err)
+// 	}
+// 	return n, nil
+// }
 
 // RemoveStock removes a stock
 func (ar *arangorepository) RemoveStock(id string) error {

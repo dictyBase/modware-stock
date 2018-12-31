@@ -125,12 +125,27 @@ const (
 			LIMIT @limit
 			RETURN stock
 	`
+	stockListFilter = `
+		FOR stock in %s
+			%s
+			SORT stock.created_at DESC
+			LIMIT %d
+			RETURN stock
+	`
 	stockListWithCursor = `
 		FOR stock in @@stock_collection
 			FILTER stock.created_at <= DATE_ISO8601(@next_cursor)
 			SORT stock.created_at DESC
 			LIMIT @limit
 			RETURN stock
+	`
+	stockListFilterWithCursor = `
+		FOR stock in %s
+			FILTER stock.created_at <= DATE_ISO8601(%d)
+			%s
+			SORT stock.created_at DESC
+			LIMIT %d
+			RETURN stock	
 	`
 	strainList = `
 		FOR s IN @@stock_collection
