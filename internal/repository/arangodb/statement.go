@@ -1,6 +1,12 @@
 package arangodb
 
 const (
+	stockFindQ = `
+		FOR s IN @@stock_collection
+			FILTER s.stock_id == @id
+			LIMIT 1
+			RETURN s
+	`
 	stockStrainIns = `
 		LET kg = (
 			INSERT {} INTO @@stock_key_generator RETURN NEW
@@ -26,7 +32,6 @@ const (
 				descriptor: @descriptor,
 				species: @species,
 				plasmid: @plasmid,
-				parents: @parents,
 				names: @names
 			} INTO @@stock_properties_collection RETURN NEW
 		)
@@ -36,7 +41,7 @@ const (
 		RETURN MERGE(
 			n[0],
 			{
-				strain_properties: o[0]
+				strain_properties: MERGE ( o[0] , { parents: @parents })
 			}
 		)
 	`
