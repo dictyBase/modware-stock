@@ -154,28 +154,12 @@ func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 // AddStrain creates a new strain stock
 func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	attr := ns.Data.Attributes
-	bindVars := map[string]interface{}{
-		"@stock_collection":            ar.stock.Name(),
-		"@stock_key_generator":         ar.stockKey.Name(),
-		"@stock_properties_collection": ar.stockProp.Name(),
-		"@stock_type_collection":       ar.stockType.Name(),
-		"@parent_strain_collection":    ar.parentStrain.Name(),
-		"created_by":                   attr.CreatedBy,
-		"updated_by":                   attr.UpdatedBy,
-		"summary":                      attr.Summary,
-		"editable_summary":             attr.EditableSummary,
-		"depositor":                    attr.Depositor,
-		"genes":                        attr.Genes,
-		"dbxrefs":                      attr.Dbxrefs,
-		"publications":                 attr.Publications,
-		"systematic_name":              attr.StrainProperties.SystematicName,
-		"descriptor":                   attr.StrainProperties.Descriptor_,
-		"species":                      attr.StrainProperties.Species,
-		"plasmid":                      attr.StrainProperties.Plasmid,
-		"parents":                      attr.StrainProperties.Parents,
-		"names":                        attr.StrainProperties.Names,
-	}
+	bindVars := getAddableBindParams(ns.Data.Attributes)
+	bindVars["@stock_collection"] = ar.stock.Name()
+	bindVars["@stock_key_generator"] = ar.stockKey.Name()
+	bindVars["@stock_properties_collection"] = ar.stockProp.Name()
+	bindVars["@stock_type_collection"] = ar.stockType.Name()
+	bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
 	r, err := ar.database.DoRun(stockStrainIns, bindVars)
 	if err != nil {
 		return m, err
@@ -414,6 +398,37 @@ func (ar *arangorepository) RemoveStock(id string) error {
 		return err
 	}
 	return nil
+}
+
+func getAddableBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
+	return map[string]interface{}{
+		"summary":          normalizeStrBindParam(attr.Summary),
+		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
+		"depositor":        normalizeStrBindParam(attr.Depositor),
+		"genes":            normalizeStrBindParam(attr.Genes),
+		"dbxrefs":          normalizeStrBindParam(attr.Dbxrefs),
+		"publications":     normalizeStrBindParam(attr.Publications),
+		"plasmid":          normalizeStrBindParam(attr.StrainProperties.Plasmid),
+		"parents":          normalizeSliceBindParam(attr.StrainProperties.Parents),
+		"names":            normalizeSliceBindParam(attr.StrainProperties.Names),
+		"systematic_name":  attr.StrainProperties.SystematicName,
+		"descriptor":       attr.StrainProperties.Descriptor,
+		"species":          attr.StrainProperties.Species,
+	}
+}
+
+func normalizeSliceBindParam(s []string) interface{} {
+	if len(s) > 0 {
+		return s
+	}
+	return "null"
+}
+
+func normalizeStrBindParam(str string) string {
+	if len(str) > 0 {
+		return str
+	}
+	return "null"
 }
 
 func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
