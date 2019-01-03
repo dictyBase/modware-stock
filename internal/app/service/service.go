@@ -171,7 +171,7 @@ func (s *StockService) UpdateStock(ctx context.Context, r *stock.StockUpdate) (*
 }
 
 // ListStocks lists all existing stocks
-func (s *StockService) ListStocks(ctx context.Context, r *stock.ListParameters) (*stock.StockCollection, error) {
+func (s *StockService) ListStocks(ctx context.Context, r *stock.StockParameters) (*stock.StockCollection, error) {
 	sc := &stock.StockCollection{}
 	// if len(r.Filter) == 0 { // no filter parameters
 	// 	mc, err := s.repo.ListStocks(r.Cursor, r.Limit)
@@ -227,7 +227,7 @@ func (s *StockService) ListStocks(ctx context.Context, r *stock.ListParameters) 
 }
 
 // ListStrains lists all existing strains
-func (s *StockService) ListStrains(ctx context.Context, r *stock.StrainListParameters) (*stock.StockCollection, error) {
+func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters) (*stock.StockCollection, error) {
 	sc := &stock.StockCollection{}
 	// if len(r.Filter) == 0 { // no filter parameters
 	// 	mc, err := s.repo.ListStocks(r.Cursor, r.Limit)
@@ -279,7 +279,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StrainListParam
 }
 
 // ListPlasmids lists all existing plasmids
-func (s *StockService) ListPlasmids(ctx context.Context, r *stock.PlasmidListParameters) (*stock.StockCollection, error) {
+func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameters) (*stock.StockCollection, error) {
 	sc := &stock.StockCollection{}
 	// if len(r.Filter) == 0 { // no filter parameters
 	// 	mc, err := s.repo.ListStocks(r.Cursor, r.Limit)

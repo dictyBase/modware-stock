@@ -154,6 +154,21 @@ func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 // AddStrain creates a new strain stock
 func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
+	if len(ns.Data.Attributes.StrainProperties.Parents) > 0 {
+		pVars := map[string]interface{}{
+			"@stock_collection": ar.stock.Name(),
+		}
+		for _, p := range ns.Data.Attributes.StrainProperties.Parents {
+			pVars["id"] = p
+			count, err := ar.database.CountWithParams(stockFindQ, pVars)
+			if err != nil {
+				return m, fmt.Errorf("error in searching for parent %s %s", p, err)
+			}
+			if count == 0 {
+				return m, fmt.Errorf("parent id %s not found", p)
+			}
+		}
+	}
 	bindVars := getAddableBindParams(ns.Data.Attributes)
 	bindVars["@stock_collection"] = ar.stock.Name()
 	bindVars["@stock_key_generator"] = ar.stockKey.Name()
@@ -355,9 +370,9 @@ func getAddableBindParams(attr *stock.NewStockAttributes) map[string]interface{}
 		"summary":          normalizeStrBindParam(attr.Summary),
 		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
 		"depositor":        normalizeStrBindParam(attr.Depositor),
-		"genes":            normalizeStrBindParam(attr.Genes),
-		"dbxrefs":          normalizeStrBindParam(attr.Dbxrefs),
-		"publications":     normalizeStrBindParam(attr.Publications),
+		"genes":            normalizeSliceBindParam(attr.Genes),
+		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
+		"publications":     normalizeSliceBindParam(attr.Publications),
 		"plasmid":          normalizeStrBindParam(attr.StrainProperties.Plasmid),
 		"parents":          normalizeSliceBindParam(attr.StrainProperties.Parents),
 		"names":            normalizeSliceBindParam(attr.StrainProperties.Names),

@@ -14,8 +14,12 @@ github.com/dictyBase/apihelpers v0.0.0-20181218160245-dce81474776f h1:OK7SIEJdVW
 github.com/dictyBase/apihelpers v0.0.0-20181218160245-dce81474776f/go.mod h1:WMCcrIvQoc3UBfA643QFDQufK2a+7mYGgkGxVFWfJus=
 github.com/dictyBase/arangomanager v0.0.0-20181218130251-d14408fc23ef h1:SYvSzPeNoGkAUiEZ0FExU+0bn3WPTsI94Y8MKW7r+fw=
 github.com/dictyBase/arangomanager v0.0.0-20181218130251-d14408fc23ef/go.mod h1:0H8JGH8tnla3cagGMgyAc2+KuseooHKsv4Byx3jeKO4=
+github.com/dictyBase/arangomanager v0.0.0-20190103004726-690b3fc199ad h1:b7LVaWZFjxtVEQ59MvXVvJj8elvLw0z1shQjkSEjpHs=
+github.com/dictyBase/arangomanager v0.0.0-20190103004726-690b3fc199ad/go.mod h1:0H8JGH8tnla3cagGMgyAc2+KuseooHKsv4Byx3jeKO4=
 github.com/dictyBase/go-genproto v0.0.0-20181219024755-b22a716cfdd6 h1:1LimfelEbrfB6mPKQg0lMCW5Lve6MN9WVgCn4sig1Zs=
 github.com/dictyBase/go-genproto v0.0.0-20181219024755-b22a716cfdd6/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
+github.com/dictyBase/go-genproto v0.0.0-20190102170824-4df4b59b10d4 h1:xX9N/MtXCW50S0Lk94TSOTMB8bQVuo2q+pUBSwfsfwg=
+github.com/dictyBase/go-genproto v0.0.0-20190102170824-4df4b59b10d4/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/garyburd/redigo v1.6.0 h1:0VruCpn7yAIIu7pWVClQC8wxCJEcG3nyzpMSHKi1PQc=
