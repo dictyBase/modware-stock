@@ -23,8 +23,11 @@ github.com/dictyBase/go-genproto v0.0.0-20181219024755-b22a716cfdd6 h1:1LimfelEb
 github.com/dictyBase/go-genproto v0.0.0-20181219024755-b22a716cfdd6/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
 github.com/dictyBase/go-genproto v0.0.0-20190102170824-4df4b59b10d4 h1:xX9N/MtXCW50S0Lk94TSOTMB8bQVuo2q+pUBSwfsfwg=
 github.com/dictyBase/go-genproto v0.0.0-20190102170824-4df4b59b10d4/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
+<<<<<<< HEAD
 github.com/emirpasic/gods v1.12.0 h1:QAUIPSaCu4G+POclxeqb3F+WPpdKqFGlw36+yOzGlrg=
 github.com/emirpasic/gods v1.12.0/go.mod h1:YfzfFFoVP/catgzJb4IKIqXjX78Ha8FMSDh3ymbK86o=
+=======
+>>>>>>> refactor: add validation for parent ids
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/garyburd/redigo v1.6.0 h1:0VruCpn7yAIIu7pWVClQC8wxCJEcG3nyzpMSHKi1PQc=
