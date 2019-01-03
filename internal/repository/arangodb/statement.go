@@ -5,9 +5,45 @@ const (
 		FOR s IN @@stock_collection
 			FILTER s.stock_id == @id
 			LIMIT 1
-			RETURN s
+			RETURN s._id
 	`
 	stockStrainIns = `
+		LET kg = (
+			INSERT {} INTO @@stock_key_generator RETURN NEW
+		)
+		LET n = (
+			INSERT {
+				created_at: DATE_ISO8601(DATE_NOW()),
+				updated_at: DATE_ISO8601(DATE_NOW()),
+				created_by: @created_by,
+				updated_by: @updated_by,
+				summary: @summary,
+				editable_summary: @editable_summary,
+				depositor: @depositor,
+				genes: @genes,
+				dbxrefs: @dbxrefs,
+				publications: @publications,
+				stock_id: CONCAT("DBS0", kg[0]._key)
+			} INTO @@stock_collection RETURN NEW
+		)
+		LET o = (
+			INSERT {
+				systematic_name: @systematic_name,
+				descriptor: @descriptor,
+				species: @species,
+				plasmid: @plasmid,
+				names: @names
+			} INTO @@stock_properties_collection RETURN NEW
+		)
+		INSERT { _from: n[0]._id, _to: o[0]._id, type: 'strain' } INTO @@stock_type_collection
+		RETURN MERGE(
+			n[0],
+			{
+				strain_properties: o[0]
+			}
+		)
+	`
+	stockStrainWithParentsIns = `
 		LET kg = (
 			INSERT {} INTO @@stock_key_generator RETURN NEW
 		)
@@ -41,7 +77,7 @@ const (
 		RETURN MERGE(
 			n[0],
 			{
-				strain_properties: MERGE ( o[0] , { parents: @parents })
+				strain_properties: o[0]
 			}
 		)
 	`
