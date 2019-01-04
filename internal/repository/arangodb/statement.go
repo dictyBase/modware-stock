@@ -75,39 +75,37 @@ const (
 	`
 	stockGetStrain = `
 		FOR s IN @@stock_collection
-			FOR v IN 1..1 OUTBOUND s GRAPH @graph
-				FOR e IN @@stock_type_collection
-					FILTER e.type == 'strain'
-					FILTER s.stock_id == @id
-					RETURN MERGE(
-						s,
-						{
-							strain_properties: { 
-								systematic_name: v.systematic_name, 
-								descriptor: v.descriptor, 
-								species: v.species, 
-								plasmid: v.plasmid, 
-								parents: v.parents, 
-								names: v.names
-							} 
-						}
-					)
+			FOR v, e IN 1..1 OUTBOUND s GRAPH @graph
+				FILTER e.type == 'strain'
+				FILTER s.stock_id == @id
+				RETURN MERGE(
+					s,
+					{
+						strain_properties: {
+							systematic_name: v.systematic_name, 
+							descriptor: v.descriptor, 
+							species: v.species, 
+							plasmid: v.plasmid, 
+							parents: v.parents, 
+							names: v.names
+						} 
+					}
+				)
 	`
 	stockGetPlasmid = `
 		FOR s IN @@stock_collection
-			FOR v IN 1..1 OUTBOUND s GRAPH @graph
-				FOR e IN @@stock_type_collection
-					FILTER e.type == 'strain'
-					FILTER s.stock_id == @id
-					RETURN MERGE(
-						s,
-						{
-							plasmid_properties: { 
-								image_map: v.image_map,
-								sequence: v.sequence
-							} 
-						}
-					)
+			FOR v, e IN 1..1 OUTBOUND s GRAPH @graph
+				FILTER e.type == 'strain'
+				FILTER s.stock_id == @id
+				RETURN MERGE(
+					s,
+					{
+						plasmid_properties: { 
+							image_map: v.image_map,
+							sequence: v.sequence
+						} 
+					}
+				)
 	`
 	stockUpd = `
 		UPDATE { _key: @key }
@@ -168,7 +166,8 @@ const (
 	`
 	strainListFilter = `
 		FOR s IN %s
-			FOR v IN 1..1 OUTBOUND s GRAPH %s
+			FOR v, e IN 1..1 OUTBOUND s GRAPH '%s'
+				FILTER e.type == 'strain'
 				%s
 				SORT s.created_at DESC
 				LIMIT %d
@@ -208,7 +207,8 @@ const (
 	`
 	strainListFilterWithCursor = `
 		FOR s IN %s
-			FOR v IN 1..1 OUTBOUND s GRAPH %s
+			FOR v, e IN 1..1 OUTBOUND s GRAPH '%s'
+				FILTER e.type == 'strain'
 				%s
 				FILTER s.created_at <= DATE_ISO8601(%d)
 				SORT s.created_at DESC
@@ -244,7 +244,8 @@ const (
 	`
 	plasmidListFilter = `
 		FOR s IN %s
-			FOR v IN 1..1 OUTBOUND s GRAPH %s
+			FOR v, e IN 1..1 OUTBOUND s GRAPH '%s'
+				FILTER e.type == 'plasmid'
 				%s
 				SORT s.created_at DESC
 				LIMIT %d
@@ -276,7 +277,8 @@ const (
 	`
 	plasmidListFilterWithCursor = `
 			FOR s IN %s
-				FOR v IN 1..1 OUTBOUND s GRAPH %s
+				FOR v, e IN 1..1 OUTBOUND s GRAPH '%s'
+					FILTER e.type == 'plasmid'
 					%s
 					FILTER s.created_at <= DATE_ISO8601(%d)
 					SORT s.created_at DESC

@@ -316,7 +316,7 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 			stmt = fmt.Sprintf(
 				strainListFilter,
 				ar.stock.Name(),
-				ar.stockType.Name(),
+				ar.stockPropType.Name(),
 				n,
 				l+1,
 			)
@@ -324,7 +324,7 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 			stmt = fmt.Sprintf(
 				plasmidListFilter,
 				ar.stock.Name(),
-				ar.stockType.Name(),
+				ar.stockPropType.Name(),
 				n,
 				l+1,
 			)
@@ -341,7 +341,7 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 			stmt = fmt.Sprintf(
 				strainListFilterWithCursor,
 				ar.stock.Name(),
-				ar.stockType.Name(),
+				ar.stockPropType.Name(),
 				n,
 				c,
 				l+1,
@@ -350,7 +350,7 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 			stmt = fmt.Sprintf(
 				plasmidListFilterWithCursor,
 				ar.stock.Name(),
-				ar.stockType.Name(),
+				ar.stockPropType.Name(),
 				n,
 				c,
 				l+1,
