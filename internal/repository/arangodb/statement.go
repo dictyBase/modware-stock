@@ -29,7 +29,7 @@ const (
 		LET o = (
 			INSERT {
 				systematic_name: @systematic_name,
-				descriptor: @descriptor,
+				label: @label,
 				species: @species,
 				plasmid: @plasmid,
 				names: @names
@@ -65,7 +65,7 @@ const (
 		LET o = (
 			INSERT {
 				systematic_name: @systematic_name,
-				descriptor: @descriptor,
+				label: @label,
 				species: @species,
 				plasmid: @plasmid,
 				names: @names
@@ -196,7 +196,7 @@ const (
 					{
 						strain_properties: {
 							systematic_name: v.systematic_name,
-							descriptor: v.descriptor,
+							label: v.label,
 							species: v.species,
 							plasmid: v.plasmid,
 							parents: v.parents,
@@ -237,7 +237,7 @@ const (
 					{
 						strain_properties: {
 							systematic_name: v.systematic_name,
-							descriptor: v.descriptor,
+							label: v.label,
 							species: v.species,
 							plasmid: v.plasmid,
 							parents: v.parents,

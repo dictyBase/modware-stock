@@ -154,28 +154,41 @@ func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 // AddStrain creates a new strain stock
 func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	if len(ns.Data.Attributes.StrainProperties.Parents) > 0 {
+	var stmt string
+	var bindVars map[string]interface{}
+	if len(ns.Data.Attributes.StrainProperties.Parents) > 0 { // in case parents are present
+		var parents []string
 		pVars := map[string]interface{}{
 			"@stock_collection": ar.stock.Name(),
 		}
 		for _, p := range ns.Data.Attributes.StrainProperties.Parents {
-			pVars["id"] = p
-			count, err := ar.database.CountWithParams(stockFindQ, pVars)
+			var pid string
+			r, err := ar.database.GetRow(stockFindQ, pVars)
 			if err != nil {
 				return m, fmt.Errorf("error in searching for parent %s %s", p, err)
 			}
-			if count == 0 {
-				return m, fmt.Errorf("parent id %s not found", p)
+			if r.IsEmpty() {
+				return m, fmt.Errorf("parent %s is not found", p)
 			}
+			if err := r.Read(&pid); err != nil {
+				return m, fmt.Errorf("error in scanning the value %s %s", p, err)
+			}
+			parents = append(parents, pid)
 		}
+		stmt = stockStrainWithParentsIns
+		bindVars = getAddableBindParams(ns.Data.Attributes)
+		bindVars["parents"] = parents
+		bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
+		m.StrainProperties.Parents = ns.Data.Attributes.StrainProperties.Parents
+	} else {
+		bindVars = getAddableBindParams(ns.Data.Attributes)
+		stmt = stockStrainIns
 	}
-	bindVars := getAddableBindParams(ns.Data.Attributes)
 	bindVars["@stock_collection"] = ar.stock.Name()
 	bindVars["@stock_key_generator"] = ar.stockKey.Name()
 	bindVars["@stock_properties_collection"] = ar.stockProp.Name()
 	bindVars["@stock_type_collection"] = ar.stockType.Name()
-	bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
-	r, err := ar.database.DoRun(stockStrainIns, bindVars)
+	r, err := ar.database.DoRun(stmt, bindVars)
 	if err != nil {
 		return m, err
 	}
@@ -198,7 +211,7 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, err
 		"updated_by":                   attr.UpdatedBy,
 		"summary":                      attr.Summary,
 		"editable_summary":             attr.EditableSummary,
-		"depositor":                    attr.Depositor,
+		"label":                        attr.Label,
 		"genes":                        attr.Genes,
 		"dbxrefs":                      attr.Dbxrefs,
 		"publications":                 attr.Publications,
@@ -419,15 +432,13 @@ func getAddableBindParams(attr *stock.NewStockAttributes) map[string]interface{}
 	return map[string]interface{}{
 		"summary":          normalizeStrBindParam(attr.Summary),
 		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
-		"depositor":        normalizeStrBindParam(attr.Depositor),
 		"genes":            normalizeSliceBindParam(attr.Genes),
 		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
 		"publications":     normalizeSliceBindParam(attr.Publications),
 		"plasmid":          normalizeStrBindParam(attr.StrainProperties.Plasmid),
-		"parents":          normalizeSliceBindParam(attr.StrainProperties.Parents),
 		"names":            normalizeSliceBindParam(attr.StrainProperties.Names),
 		"systematic_name":  attr.StrainProperties.SystematicName,
-		"descriptor":       attr.StrainProperties.Descriptor,
+		"label":            attr.StrainProperties.Label,
 		"species":          attr.StrainProperties.Species,
 	}
 }
@@ -472,8 +483,8 @@ func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interf
 	if len(attr.StrainProperties.SystematicName) > 0 {
 		bindVars["systematic_name"] = attr.StrainProperties.SystematicName
 	}
-	if len(attr.StrainProperties.Descriptor_) > 0 {
-		bindVars["descriptor"] = attr.StrainProperties.Descriptor_
+	if len(attr.StrainProperties.Label) > 0 {
+		bindVars["label"] = attr.StrainProperties.Label
 	}
 	if len(attr.StrainProperties.Species) > 0 {
 		bindVars["species"] = attr.StrainProperties.Species
