@@ -4,8 +4,8 @@ require (
 	github.com/arangodb/go-driver v0.0.0-20181206080103-b1a864427d13
 	github.com/cenkalti/backoff v2.1.0+incompatible // indirect
 	github.com/dictyBase/apihelpers v0.0.0-20181218160245-dce81474776f
-	github.com/dictyBase/arangomanager v0.0.0-20190103004726-690b3fc199ad
-	github.com/dictyBase/go-genproto v0.0.0-20190102170824-4df4b59b10d4
+	github.com/dictyBase/arangomanager v0.0.0-20190104141643-e04e7326960b
+	github.com/dictyBase/go-genproto v0.0.0-20190104225233-55f0dbd85acb
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/go-playground/locales v0.12.1 // indirect
