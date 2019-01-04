@@ -10,5 +10,6 @@ var fmap = map[string]string{
 	"species":         "species",
 	"systematic_name": "systematic_name",
 	"name":            "names",
+	"stock_type":      "type",
 	// "parent":          "parents",
 }

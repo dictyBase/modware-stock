@@ -290,14 +290,6 @@ func TestListStocks(t *testing.T) {
 	testModelListSort(ls4, t)
 }
 
-// func TestListStrains(t *testing.T) {
-
-// }
-
-// func TestListPlasmids(t *testing.T) {
-
-// }
-
 func TestRemoveStock(t *testing.T) {
 	connP := getConnectParams()
 	collP := getCollectionParams()
