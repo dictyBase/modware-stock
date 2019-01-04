@@ -1,23 +1,27 @@
 module github.com/dictyBase/modware-stock
 
 require (
+	cloud.google.com/go v0.34.0 // indirect
 	github.com/arangodb/go-driver v0.0.0-20181206080103-b1a864427d13
 	github.com/cenkalti/backoff v2.1.0+incompatible // indirect
 	github.com/dictyBase/apihelpers v0.0.0-20181218160245-dce81474776f
-	github.com/dictyBase/arangomanager v0.0.0-20181218130251-d14408fc23ef
-	github.com/dictyBase/go-genproto v0.0.0-20181219024755-b22a716cfdd6
+	github.com/dictyBase/arangomanager v0.0.0-20190104141643-e04e7326960b
+	github.com/dictyBase/go-genproto v0.0.0-20190102170824-4df4b59b10d4
+	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/go-playground/locales v0.12.1 // indirect
 	github.com/go-playground/universal-translator v0.16.0 // indirect
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/gogo/protobuf v1.2.0 // indirect
+	github.com/golang/mock v1.2.0 // indirect
 	github.com/golang/protobuf v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
-	github.com/grpc-ecosystem/grpc-gateway v1.6.2 // indirect
+	github.com/grpc-ecosystem/grpc-gateway v1.6.3 // indirect
 	github.com/jinzhu/now v0.0.0-20181116074157-8ec929ed50c3 // indirect
 	github.com/jmoiron/sqlx v1.2.0 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/kr/pty v1.1.3 // indirect
 	github.com/leodido/go-urn v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
@@ -35,11 +39,15 @@ require (
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.2.0
 	github.com/stretchr/testify v1.2.2
-	golang.org/x/net v0.0.0-20181217023233-e147a9138326 // indirect
-	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f // indirect
-	golang.org/x/sys v0.0.0-20181218192612-074acd46bca6 // indirect
-	google.golang.org/appengine v1.3.0 // indirect
-	google.golang.org/genproto v0.0.0-20181219182458-5a97ab628bfb // indirect
+	golang.org/x/crypto v0.0.0-20190103213133-ff983b9c42bc // indirect
+	golang.org/x/lint v0.0.0-20181217174547-8f45f776aaf1 // indirect
+	golang.org/x/net v0.0.0-20181220203305-927f97764cc3 // indirect
+	golang.org/x/oauth2 v0.0.0-20181203162652-d668ce993890 // indirect
+	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4 // indirect
+	golang.org/x/sys v0.0.0-20190102155601-82a175fd1598 // indirect
+	golang.org/x/tools v0.0.0-20190103205943-8a6051197512 // indirect
+	google.golang.org/appengine v1.4.0 // indirect
+	google.golang.org/genproto v0.0.0-20181221175505-bd9b4fb69e2f // indirect
 	google.golang.org/grpc v1.17.0
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
@@ -47,4 +55,5 @@ require (
 	gopkg.in/mgutz/dat.v2 v2.0.0-20171004160617-d76e4f81c4ef // indirect
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0
+	honnef.co/go/tools v0.0.0-20190104064624-c51f1e51d5a3 // indirect
 )
