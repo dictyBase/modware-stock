@@ -240,7 +240,7 @@ func TestListStocks(t *testing.T) {
 		}
 	}
 	// get first five results
-	ls, err := repo.ListStocks(0, 4)
+	ls, err := repo.ListStocks(0, 4, "")
 	if err != nil {
 		t.Fatalf("error in getting first five stocks %s", err)
 	}
@@ -257,7 +257,7 @@ func TestListStocks(t *testing.T) {
 	ti := toTimestamp(ls[4].CreatedAt)
 
 	// get next five results (5-9)
-	ls2, err := repo.ListStocks(ti, 4)
+	ls2, err := repo.ListStocks(ti, 4, "")
 	if err != nil {
 		t.Fatalf("error in getting stocks 5-9 %s", err)
 	}
@@ -268,7 +268,7 @@ func TestListStocks(t *testing.T) {
 	// convert ninth result to numeric timestamp
 	ti2 := toTimestamp(ls2[4].CreatedAt)
 	// get last five results (9-13)
-	ls3, err := repo.ListStocks(ti2, 4)
+	ls3, err := repo.ListStocks(ti2, 4, "")
 	if err != nil {
 		t.Fatalf("error in getting stocks 9-13 %s", err)
 	}
@@ -278,7 +278,7 @@ func TestListStocks(t *testing.T) {
 	// convert 13th result to numeric timestamp
 	ti3 := toTimestamp(ls3[4].CreatedAt)
 	// get last results
-	ls4, err := repo.ListStocks(ti3, 4)
+	ls4, err := repo.ListStocks(ti3, 4, "")
 	if err != nil {
 		t.Fatalf("error in getting stocks 13-15 %s", err)
 	}

@@ -271,6 +271,7 @@ func (ar *arangorepository) ListStocks(cursor int64, limit int64, filter string)
 				stmt = fmt.Sprintf(
 					strainListFilter,
 					ar.stock.Name(),
+					ar.stockType.Name(),
 					n,
 					limit+1,
 				)
@@ -278,6 +279,7 @@ func (ar *arangorepository) ListStocks(cursor int64, limit int64, filter string)
 				stmt = fmt.Sprintf(
 					plasmidListFilter,
 					ar.stock.Name(),
+					ar.stockType.Name(),
 					n,
 					limit+1,
 				)
@@ -294,15 +296,18 @@ func (ar *arangorepository) ListStocks(cursor int64, limit int64, filter string)
 				stmt = fmt.Sprintf(
 					strainListFilterWithCursor,
 					ar.stock.Name(),
+					ar.stockType.Name(),
 					n,
+					cursor,
 					limit+1,
 				)
 			} else if strings.Contains(filter, "stock_type==plasmid") {
 				stmt = fmt.Sprintf(
 					plasmidListFilterWithCursor,
 					ar.stock.Name(),
-					cursor,
+					ar.stockType.Name(),
 					n,
+					cursor,
 					limit+1,
 				)
 			} else {
