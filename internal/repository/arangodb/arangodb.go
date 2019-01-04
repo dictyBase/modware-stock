@@ -260,70 +260,15 @@ func (ar *arangorepository) ListStocks(p *stock.StockParameters) ([]*model.Stock
 		"@stock_collection": ar.stock.Name(),
 		"limit":             l + 1,
 	}
+	// if filter string exists, call searchStocks function to get proper query statement
 	if len(f) > 0 {
-		s, err := query.ParseFilterString(f)
+		n, err := (*ar).searchStocks(&stock.StockParameters{Cursor: c, Limit: l, Filter: f})
 		if err != nil {
-			fmt.Println("error parsing filter string", err)
+			return om, err
 		}
-		n, err := query.GenAQLFilterStatement(fmap, s, "s")
-		if err != nil {
-			fmt.Println("error generating AQL filter statement", err)
-		}
-		if c == 0 {
-			if strings.Contains(f, "stock_type==strain") {
-				stmt = fmt.Sprintf(
-					strainListFilter,
-					ar.stock.Name(),
-					ar.stockType.Name(),
-					n,
-					l+1,
-				)
-			} else if strings.Contains(f, "stock_type==plasmid") {
-				stmt = fmt.Sprintf(
-					plasmidListFilter,
-					ar.stock.Name(),
-					ar.stockType.Name(),
-					n,
-					l+1,
-				)
-			} else {
-				stmt = fmt.Sprintf(
-					stockListFilter,
-					ar.stock.Name(),
-					n,
-					l+1,
-				)
-			}
-		} else {
-			if strings.Contains(f, "stock_type==strain") {
-				stmt = fmt.Sprintf(
-					strainListFilterWithCursor,
-					ar.stock.Name(),
-					ar.stockType.Name(),
-					n,
-					c,
-					l+1,
-				)
-			} else if strings.Contains(f, "stock_type==plasmid") {
-				stmt = fmt.Sprintf(
-					plasmidListFilterWithCursor,
-					ar.stock.Name(),
-					ar.stockType.Name(),
-					n,
-					c,
-					l+1,
-				)
-			} else {
-				stmt = fmt.Sprintf(
-					stockListFilterWithCursor,
-					ar.stock.Name(),
-					c,
-					n,
-					l+1,
-				)
-			}
-		}
+		stmt = n
 	} else {
+		// otherwise use query statement without filter
 		if c == 0 { // no cursor so return first set of result
 			stmt = stockList
 		} else {
@@ -346,6 +291,77 @@ func (ar *arangorepository) ListStocks(p *stock.StockParameters) ([]*model.Stock
 		om = append(om, m)
 	}
 	return om, nil
+}
+
+// searchStocks is a private function specifically for handling filter queries
+func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, error) {
+	c := p.Cursor
+	l := p.Limit
+	f := p.Filter
+	var stmt string
+	s, err := query.ParseFilterString(f)
+	if err != nil {
+		fmt.Println("error parsing filter string", err)
+	}
+	n, err := query.GenAQLFilterStatement(fmap, s, "s")
+	if err != nil {
+		fmt.Println("error generating AQL filter statement", err)
+	}
+	if c == 0 {
+		if strings.Contains(f, "stock_type==strain") {
+			stmt = fmt.Sprintf(
+				strainListFilter,
+				ar.stock.Name(),
+				ar.stockType.Name(),
+				n,
+				l+1,
+			)
+		} else if strings.Contains(f, "stock_type==plasmid") {
+			stmt = fmt.Sprintf(
+				plasmidListFilter,
+				ar.stock.Name(),
+				ar.stockType.Name(),
+				n,
+				l+1,
+			)
+		} else {
+			stmt = fmt.Sprintf(
+				stockListFilter,
+				ar.stock.Name(),
+				n,
+				l+1,
+			)
+		}
+	} else {
+		if strings.Contains(f, "stock_type==strain") {
+			stmt = fmt.Sprintf(
+				strainListFilterWithCursor,
+				ar.stock.Name(),
+				ar.stockType.Name(),
+				n,
+				c,
+				l+1,
+			)
+		} else if strings.Contains(f, "stock_type==plasmid") {
+			stmt = fmt.Sprintf(
+				plasmidListFilterWithCursor,
+				ar.stock.Name(),
+				ar.stockType.Name(),
+				n,
+				c,
+				l+1,
+			)
+		} else {
+			stmt = fmt.Sprintf(
+				stockListFilterWithCursor,
+				ar.stock.Name(),
+				c,
+				n,
+				l+1,
+			)
+		}
+	}
+	return stmt, nil
 }
 
 // RemoveStock removes a stock
