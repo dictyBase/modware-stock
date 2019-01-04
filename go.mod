@@ -5,7 +5,7 @@ require (
 	github.com/arangodb/go-driver v0.0.0-20181206080103-b1a864427d13
 	github.com/cenkalti/backoff v2.1.0+incompatible // indirect
 	github.com/dictyBase/apihelpers v0.0.0-20181218160245-dce81474776f
-	github.com/dictyBase/arangomanager v0.0.0-20190104141643-e04e7326960b
+	github.com/dictyBase/arangomanager v0.0.0-20190104210223-5609ffeb4eab
 	github.com/dictyBase/go-genproto v0.0.0-20190102170824-4df4b59b10d4
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
@@ -45,7 +45,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20181203162652-d668ce993890 // indirect
 	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4 // indirect
 	golang.org/x/sys v0.0.0-20190102155601-82a175fd1598 // indirect
-	golang.org/x/tools v0.0.0-20190103205943-8a6051197512 // indirect
+	golang.org/x/tools v0.0.0-20190104182027-498d95493402 // indirect
 	google.golang.org/appengine v1.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20181221175505-bd9b4fb69e2f // indirect
 	google.golang.org/grpc v1.17.0

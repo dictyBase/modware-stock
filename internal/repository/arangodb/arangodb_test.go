@@ -52,7 +52,7 @@ func newTestStrain(createdby string) *stock.NewStock {
 				UpdatedBy:       createdby,
 				Summary:         "Radiation-sensitive mutant.",
 				EditableSummary: "Radiation-sensitive mutant.",
-				Depositor:       "Rob Guyer (Reg Deering)",
+				Depositor:       "rg@gmail.com",
 				Dbxrefs:         []string{"5466867", "4536935", "d2578", "d0319", "d2020/1033268", "d2580"},
 				StrainProperties: &stock.StrainProperties{
 					SystematicName: "yS13",
@@ -288,6 +288,24 @@ func TestListStocks(t *testing.T) {
 	testModelListSort(ls2, t)
 	testModelListSort(ls3, t)
 	testModelListSort(ls4, t)
+
+	sf, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "depositor===rg@gmail.com"})
+	if err != nil {
+		t.Fatalf("error in getting list of stocks with depositor rg@gmail.com %s", err)
+	}
+	assert.Equal(len(sf), 10, "should list ten stocks")
+
+	pf, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "depositor===george@costanza.com"})
+	if err != nil {
+		t.Fatalf("error in getting list of stocks with depositor george@costanza.com %s", err)
+	}
+	assert.Equal(len(pf), 5, "should list five stocks")
+
+	// sf, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "stock_type===strain"})
+	// if err != nil {
+	// 	t.Fatalf("error in getting list of strains %s", err)
+	// }
+	// assert.Equal(len(sf), 10, "should list ten strains")
 }
 
 func TestRemoveStock(t *testing.T) {

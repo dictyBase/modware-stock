@@ -335,7 +335,6 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 				n,
 				l+1,
 			)
-			fmt.Println(stmt)
 		}
 	} else {
 		if strings.Contains(f, "stock_type===strain") {

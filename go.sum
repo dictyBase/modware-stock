@@ -17,6 +17,8 @@ github.com/dictyBase/arangomanager v0.0.0-20181218130251-d14408fc23ef h1:SYvSzPe
 github.com/dictyBase/arangomanager v0.0.0-20181218130251-d14408fc23ef/go.mod h1:0H8JGH8tnla3cagGMgyAc2+KuseooHKsv4Byx3jeKO4=
 github.com/dictyBase/arangomanager v0.0.0-20190104141643-e04e7326960b h1:xIjHAF5frOzb0TPEwPDcJgsI764Dmn91dDNL1jHSbFk=
 github.com/dictyBase/arangomanager v0.0.0-20190104141643-e04e7326960b/go.mod h1:0H8JGH8tnla3cagGMgyAc2+KuseooHKsv4Byx3jeKO4=
+github.com/dictyBase/arangomanager v0.0.0-20190104210223-5609ffeb4eab h1:MsHioUNNBVGC6poUNjnYBjTjIYHpjijov38C7BoJPZY=
+github.com/dictyBase/arangomanager v0.0.0-20190104210223-5609ffeb4eab/go.mod h1:0H8JGH8tnla3cagGMgyAc2+KuseooHKsv4Byx3jeKO4=
 github.com/dictyBase/go-genproto v0.0.0-20181219024755-b22a716cfdd6 h1:1LimfelEbrfB6mPKQg0lMCW5Lve6MN9WVgCn4sig1Zs=
 github.com/dictyBase/go-genproto v0.0.0-20181219024755-b22a716cfdd6/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
 github.com/dictyBase/go-genproto v0.0.0-20190102170824-4df4b59b10d4 h1:xX9N/MtXCW50S0Lk94TSOTMB8bQVuo2q+pUBSwfsfwg=
@@ -137,6 +139,7 @@ golang.org/x/text v0.3.0 h1:g61tztE5qeGQ89tm6NTjjM9VPIm088od1l6aSorWRWg=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/tools v0.0.0-20180828015842-6cd1fcedba52/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
 golang.org/x/tools v0.0.0-20190103205943-8a6051197512/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
+golang.org/x/tools v0.0.0-20190104182027-498d95493402/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
 google.golang.org/appengine v1.1.0/go.mod h1:EbEs0AVv82hx2wNQdGPgUI5lhzA/G0D9YwlJXL52JkM=
 google.golang.org/appengine v1.3.0 h1:FBSsiFRMz3LBeXIomRnVzrQwSDj4ibvcRexLG0LZGQk=
 google.golang.org/appengine v1.3.0/go.mod h1:xpcJRLb0r/rnEns0DIKYYv+WjYCduHsrkT7/EB5XEv4=
