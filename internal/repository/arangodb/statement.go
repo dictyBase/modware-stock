@@ -120,9 +120,9 @@ const (
 			IN @@parent_strain_collection RETURN NEW
 	`
 	stockList = `
-		FOR s IN @@stock_collection
+		FOR s IN %s
 			SORT s.created_at DESC
-			LIMIT @limit
+			LIMIT %d
 			RETURN s
 	`
 	stockListFilter = `
@@ -133,10 +133,10 @@ const (
 			RETURN s
 	`
 	stockListWithCursor = `
-		FOR s in @@stock_collection
-			FILTER s.created_at <= DATE_ISO8601(@next_cursor)
+		FOR s in %s
+			FILTER s.created_at <= DATE_ISO8601(%d)
 			SORT s.created_at DESC
-			LIMIT @limit
+			LIMIT %d
 			RETURN s
 	`
 	stockListFilterWithCursor = `
