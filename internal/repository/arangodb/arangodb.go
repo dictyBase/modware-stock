@@ -262,31 +262,58 @@ func (ar *arangorepository) ListStocks(cursor int64, limit int64, filter string)
 		if err != nil {
 			fmt.Println("error parsing filter string", err)
 		}
-		n, err := query.GenAQLFilterStatement(fmap, s)
+		n, err := query.GenAQLFilterStatement(fmap, s, "s")
 		if err != nil {
 			fmt.Println("error generating AQL filter statement", err)
 		}
-		// at this point I have generated a filter line (n) based on given string
-		// need to handle singular item found in array
-		// (i.e. gene==xyz) <- need to look that up in genes field
-		// FOR document IN documents FILTER "xyz" IN document.genes[*] RETURN document
-		// need to check type for strain/plasmid
-		// right now the statements below are for all stocks, doesn't have the strain/plasmid type filter
 		if cursor == 0 {
-			stmt = fmt.Sprintf(
-				stockListFilter,
-				ar.stock.Name(),
-				n,
-				limit+1,
-			)
+			if strings.Contains(filter, "stock_type==strain") {
+				stmt = fmt.Sprintf(
+					strainListFilter,
+					ar.stock.Name(),
+					n,
+					limit+1,
+				)
+			} else if strings.Contains(filter, "stock_type==plasmid") {
+				stmt = fmt.Sprintf(
+					plasmidListFilter,
+					ar.stock.Name(),
+					n,
+					limit+1,
+				)
+			} else {
+				stmt = fmt.Sprintf(
+					stockListFilter,
+					ar.stock.Name(),
+					n,
+					limit+1,
+				)
+			}
 		} else {
-			stmt = fmt.Sprintf(
-				stockListFilterWithCursor,
-				ar.stock.Name(),
-				cursor,
-				n,
-				limit+1,
-			)
+			if strings.Contains(filter, "stock_type==strain") {
+				stmt = fmt.Sprintf(
+					strainListFilterWithCursor,
+					ar.stock.Name(),
+					n,
+					limit+1,
+				)
+			} else if strings.Contains(filter, "stock_type==plasmid") {
+				stmt = fmt.Sprintf(
+					plasmidListFilterWithCursor,
+					ar.stock.Name(),
+					cursor,
+					n,
+					limit+1,
+				)
+			} else {
+				stmt = fmt.Sprintf(
+					stockListFilterWithCursor,
+					ar.stock.Name(),
+					cursor,
+					n,
+					limit+1,
+				)
+			}
 		}
 	} else {
 		if cursor == 0 { // no cursor so return first set of result

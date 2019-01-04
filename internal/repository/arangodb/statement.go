@@ -120,38 +120,58 @@ const (
 			IN @@parent_strain_collection RETURN NEW
 	`
 	stockList = `
-		FOR stock IN @@stock_collection
-			SORT stock.created_at DESC
+		FOR s IN @@stock_collection
+			SORT s.created_at DESC
 			LIMIT @limit
-			RETURN stock
+			RETURN s
 	`
 	stockListFilter = `
-		FOR stock in %s
+		FOR s in %s
 			%s
-			SORT stock.created_at DESC
+			SORT s.created_at DESC
 			LIMIT %d
-			RETURN stock
+			RETURN s
 	`
 	stockListWithCursor = `
-		FOR stock in @@stock_collection
-			FILTER stock.created_at <= DATE_ISO8601(@next_cursor)
-			SORT stock.created_at DESC
+		FOR s in @@stock_collection
+			FILTER s.created_at <= DATE_ISO8601(@next_cursor)
+			SORT s.created_at DESC
 			LIMIT @limit
-			RETURN stock
+			RETURN s
 	`
 	stockListFilterWithCursor = `
-		FOR stock in %s
-			FILTER stock.created_at <= DATE_ISO8601(%d)
+		FOR s in %s
+			FILTER s.created_at <= DATE_ISO8601(%d)
 			%s
-			SORT stock.created_at DESC
+			SORT s.created_at DESC
 			LIMIT %d
-			RETURN stock	
+			RETURN s	
 	`
 	strainList = `
 		FOR s IN @@stock_collection
 			FOR v IN 1..1 OUTBOUND s GRAPH @graph
 				SORT s.created_at DESC
 				LIMIT @limit
+				RETURN MERGE(
+					s,
+					{
+						strain_properties: { 
+							systematic_name: v.systematic_name, 
+							descriptor: v.descriptor, 
+							species: v.species, 
+							plasmid: v.plasmid, 
+							parents: v.parents, 
+							names: v.names
+						} 
+					}
+				)
+	`
+	strainListFilter = `
+		FOR s IN %s
+			FOR v IN 1..1 OUTBOUND s GRAPH %s
+				%s
+				SORT s.created_at DESC
+				LIMIT %d
 				RETURN MERGE(
 					s,
 					{
@@ -186,6 +206,27 @@ const (
 					}
 				)
 	`
+	strainListFilterWithCursor = `
+		FOR s IN %s
+			FOR v IN 1..1 OUTBOUND s GRAPH %s
+				%s
+				FILTER s.created_at <= DATE_ISO8601(%d)
+				SORT s.created_at DESC
+				LIMIT %d
+				RETURN MERGE(
+					s,
+					{
+						strain_properties: { 
+							systematic_name: v.systematic_name, 
+							descriptor: v.descriptor, 
+							species: v.species, 
+							plasmid: v.plasmid, 
+							parents: v.parents, 
+							names: v.names
+						} 
+					}
+				)
+	`
 	plasmidList = `
 		FOR s IN @@stock_collection
 			FOR v IN 1..1 OUTBOUND s GRAPH @graph
@@ -200,6 +241,22 @@ const (
 						} 
 					}
 				)	
+	`
+	plasmidListFilter = `
+		FOR s IN %s
+			FOR v IN 1..1 OUTBOUND s GRAPH %s
+				%s
+				SORT s.created_at DESC
+				LIMIT %d
+				RETURN MERGE(
+					s,
+					{
+						plasmid_properties: { 
+							image_map: v.image_map,
+							sequence: v.sequence
+						} 
+					}
+				)
 	`
 	plasmidListWithCursor = `
 		FOR s IN @@stock_collection
@@ -216,6 +273,23 @@ const (
 						} 
 					}
 				)		
+	`
+	plasmidListFilterWithCursor = `
+			FOR s IN %s
+				FOR v IN 1..1 OUTBOUND s GRAPH %s
+					%s
+					FILTER s.created_at <= DATE_ISO8601(%d)
+					SORT s.created_at DESC
+					LIMIT %d
+					RETURN MERGE(
+						s,
+						{
+							plasmid_properties: { 
+								image_map: v.image_map,
+								sequence: v.sequence
+							} 
+						}
+					)
 	`
 	stockDelQ = `
 		REMOVE @key IN @@stock_collection

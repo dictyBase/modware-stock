@@ -6,9 +6,9 @@ var fmap = map[string]string{
 	"updated_at":      "updated_at",
 	"depositor":       "depositor",
 	"summary":         "summary",
-	"parent":          "parents",
 	"plasmid":         "plasmid",
 	"species":         "species",
 	"systematic_name": "systematic_name",
 	"name":            "names",
+	// "parent":          "parents",
 }
