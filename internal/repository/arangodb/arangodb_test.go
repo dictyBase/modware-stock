@@ -127,7 +127,7 @@ func TestAddStrain(t *testing.T) {
 	assert.Equal(m.Summary, ns.Data.Attributes.Summary, "should match summary")
 	assert.Equal(m.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
 	assert.Equal(m.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
-	assert.Equal(m.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
+	assert.ElementsMatch(m.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
 	assert.Equal(m.StrainProperties.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
 	assert.Equal(m.StrainProperties.Descriptor, ns.Data.Attributes.StrainProperties.Descriptor_, "should match descriptor")
 	assert.Equal(m.StrainProperties.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
@@ -157,7 +157,7 @@ func TestAddPlasmid(t *testing.T) {
 	assert.Equal(m.Summary, ns.Data.Attributes.Summary, "should match summary")
 	assert.Equal(m.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
 	assert.Equal(m.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
-	assert.Equal(m.Publications, ns.Data.Attributes.Publications, "should match publications")
+	assert.ElementsMatch(m.Publications, ns.Data.Attributes.Publications, "should match publications")
 	assert.Equal(m.PlasmidProperties.ImageMap, ns.Data.Attributes.PlasmidProperties.ImageMap, "should match image_map")
 	assert.Equal(m.PlasmidProperties.Sequence, ns.Data.Attributes.PlasmidProperties.Sequence, "should match sequence")
 	assert.Empty(m.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
@@ -187,7 +187,7 @@ func TestGetStock(t *testing.T) {
 	assert.Equal(g.Summary, ns.Data.Attributes.Summary, "should match summary")
 	assert.Equal(g.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
 	assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
-	assert.Equal(g.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
+	assert.ElementsMatch(g.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
 	assert.Equal(g.StrainProperties.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
 	assert.Equal(g.StrainProperties.Descriptor, ns.Data.Attributes.StrainProperties.Descriptor_, "should match descriptor")
 	assert.Equal(g.StrainProperties.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
@@ -301,11 +301,29 @@ func TestListStocks(t *testing.T) {
 	}
 	assert.Equal(len(pf), 5, "should list five stocks")
 
-	// sf, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "stock_type===strain"})
-	// if err != nil {
-	// 	t.Fatalf("error in getting list of strains %s", err)
-	// }
-	// assert.Equal(len(sf), 10, "should list ten strains")
+	a, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 100, Filter: "depositor===george@costanza.com,depositor===rg@gmail.com"})
+	if err != nil {
+		t.Fatalf("error in getting list of stocks with two depositors with OR logic %s", err)
+	}
+	assert.Equal(len(a), 15, "should list all 15 stocks")
+
+	n, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 100, Filter: "depositor===george@costanza.com;depositor===rg@gmail.com"})
+	if err != nil {
+		t.Fatalf("error in getting list of stocks with two depositors with AND logic %s", err)
+	}
+	assert.Equal(len(n), 0, "should list no stocks")
+
+	ss, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "stock_type===strain"})
+	if err != nil {
+		t.Fatalf("error in getting list of strains %s", err)
+	}
+	assert.Equal(len(ss), 10, "should list ten strains")
+
+	ps, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "stock_type===plasmid"})
+	if err != nil {
+		t.Fatalf("error in getting list of plasmids %s", err)
+	}
+	assert.Equal(len(ps), 5, "should list five plasmids")
 }
 
 func TestRemoveStock(t *testing.T) {

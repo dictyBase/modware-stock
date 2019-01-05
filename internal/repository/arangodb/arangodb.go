@@ -128,10 +128,9 @@ func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	var stmt string
 	bindVars := map[string]interface{}{
-		"@stock_collection":      ar.stock.Name(),
-		"@stock_type_collection": ar.stockType.Name(),
-		"id":                     id,
-		"graph":                  ar.stockPropType.Name(),
+		"@stock_collection": ar.stock.Name(),
+		"id":                id,
+		"graph":             ar.stockPropType.Name(),
 	}
 	if id[:3] == "DBS" {
 		stmt = stockGetStrain
@@ -303,13 +302,19 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 	l := p.Limit
 	f := p.Filter
 	var stmt string
-	s, err := query.ParseFilterString(f)
+	se := removeString(f)
+
+	s, err := query.ParseFilterString(se)
 	if err != nil {
 		return "error parsing filter string", err
 	}
 	n, err := query.GenAQLFilterStatement(fmap, s, "s")
 	if err != nil {
 		return "error generating AQL filter statement", err
+	}
+	// if the parsed statement is empty FILTER, just return empty string
+	if n == "FILTER " {
+		n = ""
 	}
 	if c == 0 {
 		if strings.Contains(f, "stock_type===strain") {
@@ -366,6 +371,26 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 		}
 	}
 	return stmt, nil
+}
+
+// removeString checks if filter string contains stock_type field
+// if it does, then it replaces it with an empty string
+// otherwise, it would create issues with the GenAQLFilterStatement function
+func removeString(f string) string {
+	filter := f
+	if strings.Contains(f, "stock_type===strain;") {
+		filter = strings.Replace(f, "stock_type===strain;", "", -1)
+	}
+	if strings.Contains(f, "stock_type===strain") {
+		filter = strings.Replace(f, "stock_type===strain", "", -1)
+	}
+	if strings.Contains(f, "stock_type===plasmid;") {
+		filter = strings.Replace(f, "stock_type===plasmid;", "", -1)
+	}
+	if strings.Contains(f, "stock_type===plasmid") {
+		filter = strings.Replace(f, "stock_type===plasmid", "", -1)
+	}
+	return filter
 }
 
 // RemoveStock removes a stock
