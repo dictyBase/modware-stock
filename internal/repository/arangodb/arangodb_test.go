@@ -324,6 +324,36 @@ func TestListStocks(t *testing.T) {
 		t.Fatalf("error in getting list of plasmids %s", err)
 	}
 	assert.Equal(len(ps), 5, "should list five plasmids")
+
+	cs, err := repo.ListStocks(&stock.StockParameters{Cursor: toTimestamp(ss[4].CreatedAt), Limit: 10, Filter: "stock_type===strain"})
+	if err != nil {
+		t.Fatalf("error in getting list of strains with cursor %s", err)
+	}
+	assert.Equal(len(cs), 6, "should list six strains")
+
+	cp, err := repo.ListStocks(&stock.StockParameters{Cursor: toTimestamp(ps[2].CreatedAt), Limit: 10, Filter: "stock_type===plasmid"})
+	if err != nil {
+		t.Fatalf("error in getting list of plasmids with cursor %s", err)
+	}
+	assert.Equal(len(cp), 3, "should list three plasmids")
+
+	as, err := repo.ListStocks(&stock.StockParameters{Cursor: toTimestamp(a[5].CreatedAt), Limit: 10, Filter: "depositor===george@costanza.com,depositor===rg@gmail.com"})
+	if err != nil {
+		t.Fatalf("error in getting list of stocks with cursor and filter %s", err)
+	}
+	assert.Equal(len(as), 10, "should list ten stocks")
+
+	rg, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "stock_type===strain;depositor===rg@gmail.com"})
+	if err != nil {
+		t.Fatalf("error in getting list of strains %s", err)
+	}
+	assert.Equal(len(rg), 10, "should list ten strains")
+
+	gc, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "stock_type===plasmid;depositor===george@costanza.com"})
+	if err != nil {
+		t.Fatalf("error in getting list of plasmids %s", err)
+	}
+	assert.Equal(len(gc), 5, "should list five plasmids")
 }
 
 func TestRemoveStock(t *testing.T) {
