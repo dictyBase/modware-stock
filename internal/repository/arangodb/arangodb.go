@@ -387,24 +387,27 @@ func getAddableBindParams(attr *stock.NewStockAttributes) map[string]interface{}
 		"publications":     normalizeSliceBindParam(attr.Publications),
 		"plasmid":          normalizeStrBindParam(attr.StrainProperties.Plasmid),
 		"names":            normalizeSliceBindParam(attr.StrainProperties.Names),
+		"depositor":        attr.Depositor,
 		"systematic_name":  attr.StrainProperties.SystematicName,
 		"label":            attr.StrainProperties.Label,
 		"species":          attr.StrainProperties.Species,
+		"created_by":       attr.CreatedBy,
+		"updated_by":       attr.UpdatedBy,
 	}
 }
 
-func normalizeSliceBindParam(s []string) interface{} {
+func normalizeSliceBindParam(s []string) []string {
 	if len(s) > 0 {
 		return s
 	}
-	return "null"
+	return []string{}
 }
 
 func normalizeStrBindParam(str string) string {
 	if len(str) > 0 {
 		return str
 	}
-	return "null"
+	return ""
 }
 
 func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {

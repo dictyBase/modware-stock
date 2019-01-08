@@ -24,6 +24,10 @@ github.com/dictyBase/go-genproto v0.0.0-20190102170824-4df4b59b10d4 h1:xX9N/MtXC
 github.com/dictyBase/go-genproto v0.0.0-20190102170824-4df4b59b10d4/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
 github.com/dictyBase/go-genproto v0.0.0-20190104225233-55f0dbd85acb h1:Nm6oz5ahIgFvt+JEE6Zs+QY2flihqJgOPL0EWG3myXA=
 github.com/dictyBase/go-genproto v0.0.0-20190104225233-55f0dbd85acb/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
+github.com/dictyBase/go-genproto v0.0.0-20190105025342-3fbf64925f9c h1:0QvRy5AmjnpRPJko3uZODoCxgYJwXruTGzaujYWG0Vg=
+github.com/dictyBase/go-genproto v0.0.0-20190105025342-3fbf64925f9c/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
+github.com/dictyBase/go-genproto v0.0.0-20190107190912-a5b40d453b9c h1:47Hm8hPdk0R2pSCUYnOF0O9sE1SmCSfO8PgZmF+WvDc=
+github.com/dictyBase/go-genproto v0.0.0-20190107190912-a5b40d453b9c/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/garyburd/redigo v1.6.0 h1:0VruCpn7yAIIu7pWVClQC8wxCJEcG3nyzpMSHKi1PQc=
