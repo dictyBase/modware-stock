@@ -50,14 +50,17 @@ func newTestStrain(createdby string) *stock.NewStock {
 			Attributes: &stock.NewStockAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
+				Depositor:       createdby,
 				Summary:         "Radiation-sensitive mutant.",
 				EditableSummary: "Radiation-sensitive mutant.",
-				Label:           "Rob Guyer (Reg Deering)",
 				Dbxrefs:         []string{"5466867", "4536935", "d2578", "d0319", "d2020/1033268", "d2580"},
+				Genes:           []string{"DDB_G0348394", "DDB_G098058933"},
+				Publications:    []string{"4849343943", "48394394"},
 				StrainProperties: &stock.StrainProperties{
 					SystematicName: "yS13",
 					Label:          "yS13",
 					Species:        "Dictyostelium discoideum",
+					Plasmid:        "DBP0000027",
 					Names:          []string{"gammaS13", "gammaS-13", "γS-13"},
 				},
 			},
@@ -75,7 +78,6 @@ func newTestParentStrain(createdby string) *stock.NewStock {
 				Depositor:       createdby,
 				Summary:         "Remi-mutant strain",
 				EditableSummary: "Remi-mutant strain.",
-				Label:           "Adam Kuspa",
 				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
 				StrainProperties: &stock.StrainProperties{
 					SystematicName: "AK40107",
@@ -159,6 +161,57 @@ func TestAddStrain(t *testing.T) {
 	assert.ElementsMatch(m.StrainProperties.Names, nsp.Data.Attributes.StrainProperties.Names, "should match names")
 	assert.Empty(m.StrainProperties.Plasmid, "should not have any plasmid")
 	assert.Empty(m.StrainProperties.Parents, "should not have any parent")
+
+	ns := newTestStrain("pennypacker@penny.com")
+	ns.Data.Attributes.StrainProperties.Parents = []string{m.StockID}
+	m2, err := repo.AddStrain(ns)
+	if err != nil {
+		t.Fatalf("error in adding strain: %s", err)
+	}
+	assert.Regexp(regexp.MustCompile(`^\d+$`), m2.Key, "should have a key with numbers")
+	assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), m2.StockID, "should have a stock id")
+	assert.Equal(m2.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
+	assert.Equal(m2.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
+	assert.Equal(m2.Summary, ns.Data.Attributes.Summary, "should match summary")
+	assert.Equal(m2.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
+	assert.Equal(m2.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
+	assert.ElementsMatch(m2.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
+	assert.ElementsMatch(m2.Genes, ns.Data.Attributes.Genes, "should match gene ids")
+	assert.ElementsMatch(
+		m2.Publications,
+		ns.Data.Attributes.Publications,
+		"should match list of publications",
+	)
+	assert.Equal(
+		m2.StrainProperties.SystematicName,
+		ns.Data.Attributes.StrainProperties.SystematicName,
+		"should match systematic_name",
+	)
+	assert.Equal(
+		m2.StrainProperties.Label,
+		ns.Data.Attributes.StrainProperties.Label,
+		"should match descriptor",
+	)
+	assert.Equal(
+		m2.StrainProperties.Species,
+		ns.Data.Attributes.StrainProperties.Species,
+		"should match species",
+	)
+	assert.ElementsMatch(
+		m2.StrainProperties.Names,
+		ns.Data.Attributes.StrainProperties.Names,
+		"should match names",
+	)
+	assert.Equal(
+		m2.StrainProperties.Plasmid,
+		ns.Data.Attributes.StrainProperties.Plasmid,
+		"should match plasmid entry",
+	)
+	assert.ElementsMatch(
+		m2.StrainProperties.Parents,
+		ns.Data.Attributes.StrainProperties.Parents,
+		"should match parent entries",
+	)
 }
 
 func TestAddPlasmid(t *testing.T) {
@@ -175,16 +228,34 @@ func TestAddPlasmid(t *testing.T) {
 		t.Fatalf("error in adding plasmid: %s", err)
 	}
 	assert := assert.New(t)
+	assert.Regexp(regexp.MustCompile(`^\d+$`), m.Key, "should have a key with numbers")
+	assert.Regexp(regexp.MustCompile(`^DBP0\d{6,}$`), m.StockID, "should have a plasmid stock id")
 	assert.Equal(m.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
 	assert.Equal(m.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
 	assert.Equal(m.Summary, ns.Data.Attributes.Summary, "should match summary")
-	assert.Equal(m.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
+	assert.Equal(
+		m.EditableSummary,
+		ns.Data.Attributes.EditableSummary,
+		"should match editable_summary",
+	)
 	assert.Equal(m.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
-	assert.Equal(m.Publications, ns.Data.Attributes.Publications, "should match publications")
-	assert.Equal(m.PlasmidProperties.ImageMap, ns.Data.Attributes.PlasmidProperties.ImageMap, "should match image_map")
-	assert.Equal(m.PlasmidProperties.Sequence, ns.Data.Attributes.PlasmidProperties.Sequence, "should match sequence")
-	assert.Empty(m.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
-	assert.NotEmpty(m.Key, "should not have empty key")
+	assert.Empty(m.Genes, "should have empty genes field")
+	assert.Empty(m.Dbxrefs, "should have empty dbxrefs field")
+	assert.ElementsMatch(
+		m.Publications,
+		ns.Data.Attributes.Publications,
+		"should match publications",
+	)
+	assert.Equal(
+		m.PlasmidProperties.ImageMap,
+		ns.Data.Attributes.PlasmidProperties.ImageMap,
+		"should match image_map",
+	)
+	assert.Equal(
+		m.PlasmidProperties.Sequence,
+		ns.Data.Attributes.PlasmidProperties.Sequence,
+		"should match sequence",
+	)
 }
 
 func TestGetStock(t *testing.T) {
