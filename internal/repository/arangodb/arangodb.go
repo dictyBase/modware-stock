@@ -177,7 +177,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 			parents = append(parents, pid)
 		}
 		stmt = stockStrainWithParentsIns
-		bindVars = getAddableBindParams(ns.Data.Attributes)
+		bindVars = addableStrainBindParams(ns.Data.Attributes)
 		bindVars["parents"] = parents
 		bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
 		sp := &model.StrainProperties{
@@ -185,7 +185,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 		}
 		m.StrainProperties = sp
 	} else {
-		bindVars = getAddableBindParams(ns.Data.Attributes)
+		bindVars = addableStrainBindParams(ns.Data.Attributes)
 		stmt = stockStrainIns
 	}
 	bindVars["@stock_collection"] = ar.stock.Name()
@@ -206,21 +206,11 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	attr := ns.Data.Attributes
-	bindVars := map[string]interface{}{
-		"@stock_collection":            ar.stock.Name(),
-		"@stock_key_generator":         ar.stockKey.Name(),
-		"@stock_type_collection":       ar.stockType.Name(),
-		"@stock_properties_collection": ar.stockProp.Name(),
-		"created_by":                   attr.CreatedBy,
-		"updated_by":                   attr.UpdatedBy,
-		"summary":                      attr.Summary,
-		"editable_summary":             attr.EditableSummary,
-		"genes":                        attr.Genes,
-		"dbxrefs":                      attr.Dbxrefs,
-		"publications":                 attr.Publications,
-		"image_map":                    attr.PlasmidProperties.ImageMap,
-		"sequence":                     attr.PlasmidProperties.Sequence,
-	}
+	bindVars := addablePlasmidBindParams(attr)
+	bindVars["@stock_collection"] = ar.stock.Name()
+	bindVars["@stock_key_generator"] = ar.stockKey.Name()
+	bindVars["@stock_type_collection"] = ar.stockType.Name()
+	bindVars["@stock_properties_collection"] = ar.stockProp.Name()
 	r, err := ar.database.DoRun(stockPlasmidIns, bindVars)
 	if err != nil {
 		return m, err
@@ -431,7 +421,25 @@ func (ar *arangorepository) RemoveStock(id string) error {
 	return nil
 }
 
-func getAddableBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
+func addablePlasmidBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
+	bindVars := map[string]interface{}{
+		"depositor":        attr.Depositor,
+		"created_by":       attr.CreatedBy,
+		"updated_by":       attr.UpdatedBy,
+		"summary":          normalizeStrBindParam(attr.Summary),
+		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
+		"genes":            normalizeSliceBindParam(attr.Genes),
+		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
+		"publications":     normalizeSliceBindParam(attr.Publications),
+	}
+	if attr.PlasmidProperties != nil {
+		bindVars["image_map"] = normalizeStrBindParam(attr.PlasmidProperties.ImageMap)
+		bindVars["sequence"] = normalizeStrBindParam(attr.PlasmidProperties.Sequence)
+	}
+	return bindVars
+}
+
+func addableStrainBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
 	return map[string]interface{}{
 		"summary":          normalizeStrBindParam(attr.Summary),
 		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
