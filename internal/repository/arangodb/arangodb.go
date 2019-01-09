@@ -162,6 +162,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 			"@stock_collection": ar.stock.Name(),
 		}
 		for _, p := range ns.Data.Attributes.StrainProperties.Parents {
+			pVars["id"] = p
 			var pid string
 			r, err := ar.database.GetRow(stockFindQ, pVars)
 			if err != nil {
@@ -179,7 +180,10 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 		bindVars = getAddableBindParams(ns.Data.Attributes)
 		bindVars["parents"] = parents
 		bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
-		m.StrainProperties.Parents = ns.Data.Attributes.StrainProperties.Parents
+		sp := &model.StrainProperties{
+			Parents: ns.Data.Attributes.StrainProperties.Parents,
+		}
+		m.StrainProperties = sp
 	} else {
 		bindVars = getAddableBindParams(ns.Data.Attributes)
 		stmt = stockStrainIns
@@ -211,7 +215,6 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, err
 		"updated_by":                   attr.UpdatedBy,
 		"summary":                      attr.Summary,
 		"editable_summary":             attr.EditableSummary,
-		"label":                        attr.Label,
 		"genes":                        attr.Genes,
 		"dbxrefs":                      attr.Dbxrefs,
 		"publications":                 attr.Publications,
