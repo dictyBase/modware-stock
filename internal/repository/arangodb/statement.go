@@ -1,6 +1,13 @@
 package arangodb
 
 const (
+	stockFindIdQ = `
+		FOR s IN @@stock_collection
+			FOR v IN 1..1 OUTBOUND s GRAPH @graph
+				FILTER s.stock_id == @id
+				LIMIT 1
+				RETURN { key: s._key, propkey: v._key }
+	`
 	stockFindQ = `
 		FOR s IN @@stock_collection
 			FILTER s.stock_id == @id
