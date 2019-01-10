@@ -225,14 +225,18 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, err
 func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	attr := us.Data.Attributes
-	// check if order exists
-	em, err := ar.GetStock(us.Data.Id)
+	// check if stock exists before running any update
+	r, err := ar.database.GetRow(
+		stockFindQ,
+		map[string]interface{}{
+			"@stock_collection": ar.stock.Name(),
+			"id":                us.Data.Id,
+		})
 	if err != nil {
-		return m, err
+		return m, fmt.Errorf("error in searching for id %s %s", us.Data.Id, err)
 	}
-	if em.NotFound {
-		m.NotFound = true
-		return m, nil
+	if r.IsEmpty() {
+		return m, fmt.Errorf("id %s is not found", us.Data.Id)
 	}
 	bindVars := getUpdatableBindParams(attr)
 	var bindParams []string
@@ -422,9 +426,8 @@ func normalizeStrBindParam(str string) string {
 }
 
 func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
-	bindVars := make(map[string]interface{})
-	if len(attr.UpdatedBy) > 0 {
-		bindVars["updated_by"] = attr.UpdatedBy
+	bindVars := map[string]interface{}{
+		"updated_by": attr.UpdatedBy,
 	}
 	if len(attr.Summary) > 0 {
 		bindVars["summary"] = attr.Summary
@@ -444,29 +447,33 @@ func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interf
 	if len(attr.Publications) > 0 {
 		bindVars["publications"] = attr.Publications
 	}
-	if len(attr.StrainProperties.SystematicName) > 0 {
-		bindVars["systematic_name"] = attr.StrainProperties.SystematicName
+	if attr.StrainProperties != nil {
+		if len(attr.StrainProperties.SystematicName) > 0 {
+			bindVars["systematic_name"] = attr.StrainProperties.SystematicName
+		}
+		if len(attr.StrainProperties.Label) > 0 {
+			bindVars["label"] = attr.StrainProperties.Label
+		}
+		if len(attr.StrainProperties.Species) > 0 {
+			bindVars["species"] = attr.StrainProperties.Species
+		}
+		if len(attr.StrainProperties.Plasmid) > 0 {
+			bindVars["plasmid"] = attr.StrainProperties.Plasmid
+		}
+		if len(attr.StrainProperties.Parents) > 0 {
+			bindVars["parents"] = attr.StrainProperties.Parents
+		}
+		if len(attr.StrainProperties.Names) > 0 {
+			bindVars["names"] = attr.StrainProperties.Names
+		}
 	}
-	if len(attr.StrainProperties.Label) > 0 {
-		bindVars["label"] = attr.StrainProperties.Label
-	}
-	if len(attr.StrainProperties.Species) > 0 {
-		bindVars["species"] = attr.StrainProperties.Species
-	}
-	if len(attr.StrainProperties.Plasmid) > 0 {
-		bindVars["plasmid"] = attr.StrainProperties.Plasmid
-	}
-	if len(attr.StrainProperties.Parents) > 0 {
-		bindVars["parents"] = attr.StrainProperties.Parents
-	}
-	if len(attr.StrainProperties.Names) > 0 {
-		bindVars["names"] = attr.StrainProperties.Names
-	}
-	if len(attr.PlasmidProperties.ImageMap) > 0 {
-		bindVars["image_map"] = attr.PlasmidProperties.ImageMap
-	}
-	if len(attr.PlasmidProperties.Sequence) > 0 {
-		bindVars["sequence"] = attr.PlasmidProperties.Sequence
+	if attr.PlasmidProperties != nil {
+		if len(attr.PlasmidProperties.ImageMap) > 0 {
+			bindVars["image_map"] = attr.PlasmidProperties.ImageMap
+		}
+		if len(attr.PlasmidProperties.Sequence) > 0 {
+			bindVars["sequence"] = attr.PlasmidProperties.Sequence
+		}
 	}
 	return bindVars
 }
