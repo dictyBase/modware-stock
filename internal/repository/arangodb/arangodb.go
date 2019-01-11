@@ -226,39 +226,83 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, err
 	return m, nil
 }
 
+// EditStrain updates an existing strain
+func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, error) {
+	m := &model.StockDoc{}
+	dk, err := ar.findStock(us.Data.Id)
+	if err != nil {
+		return m, err
+	}
+	var parents []string
+	if len(us.Data.Attributes.StrainProperties.Parents) > 0 { // in case parents are present
+		pVars := map[string]interface{}{
+			"@stock_collection": ar.stock.Name(),
+		}
+		for _, p := range us.Data.Attributes.StrainProperties.Parents {
+			pVars["id"] = p
+			var pid string
+			r, err := ar.database.GetRow(stockFindQ, pVars)
+			if err != nil {
+				return m, fmt.Errorf("error in searching for parent %s %s", p, err)
+			}
+			if r.IsEmpty() {
+				return m, fmt.Errorf("parent %s is not found", p)
+			}
+			if err := r.Read(&pid); err != nil {
+				return m, fmt.Errorf("error in scanning the value %s %s", p, err)
+			}
+			parents = append(parents, pid)
+		}
+	}
+	var stmt string
+	bindVars := getUpdatableStockBindParams(us.Data.Attributes)
+	bindStVars := getUpdatableStrainBindParams(us.Data.Attributes)
+	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindStVars}...)
+	if len(parents) > 0 {
+		stmt = strainWithParentUpd
+		cmBindVars["parents"] = parents
+		cmBindVars["parent_graph"] = ar.strain2Parent.Name()
+		cmBindVars["@parent_strain_collection"] = ar.parentStrain.Name()
+	} else {
+		stmt = strainUpd
+	}
+	cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
+	cmBindVars["@stock_collection"] = ar.stock.Name()
+	cmBindVars["propkey"] = dk.PropKey
+	cmBindVars["key"] = dk.Key
+	rupd, err := ar.database.DoRun(
+		fmt.Sprintf(
+			stmt,
+			genAQLDocExpression(bindVars),
+			genAQLDocExpression(bindStVars),
+		),
+		cmBindVars,
+	)
+	if err != nil {
+		return m, err
+	}
+	if err := rupd.Read(m); err != nil {
+		return m, err
+	}
+	return m, nil
+}
+
 // EditPlasmid updates an existing plasmid
 func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	attr := us.Data.Attributes
-	// check if stock exists before running any update
-	r, err := ar.database.GetRow(
-		stockFindIdQ,
-		map[string]interface{}{
-			"@stock_collection": ar.stock.Name(),
-			"graph":             ar.stockPropType.Name(),
-			"id":                us.Data.Id,
-		})
+	dk, err := ar.findStock(us.Data.Id)
 	if err != nil {
-		return m, fmt.Errorf("error in searching for id %s %s", us.Data.Id, err)
-	}
-	if r.IsEmpty() {
-		return m, fmt.Errorf("id %s is not found", us.Data.Id)
-	}
-	dk := &dockey{}
-	if err := r.Read(dk); err != nil {
 		return m, err
 	}
-
 	var stmt string
-	cmBindVars := make(map[string]interface{})
-	bindVars := getUpdatableStockBindParams(attr)
-	bindPlvars := getUpdatablePlasmidBindParams(attr)
-	cmBindVars = mergeBindParams([]map[string]interface{}{bindVars, bindPlvars}...)
-	if len(bindPlvars) > 0 { // plasmid with optional attributes
+	bindVars := getUpdatableStockBindParams(us.Data.Attributes)
+	bindPlVars := getUpdatablePlasmidBindParams(us.Data.Attributes)
+	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindPlVars}...)
+	if len(bindPlVars) > 0 { // plasmid with optional attributes
 		stmt = fmt.Sprintf(
 			plasmidUpd,
 			genAQLDocExpression(bindVars),
-			genAQLDocExpression(bindPlvars),
+			genAQLDocExpression(bindPlVars),
 		)
 		cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
 		cmBindVars["propkey"] = dk.PropKey
@@ -462,6 +506,29 @@ func (ar *arangorepository) ClearStocks() error {
 		return err
 	}
 	return nil
+}
+
+// check if stock exists before running any update
+func (ar *arangorepository) findStock(id string) (*dockey, error) {
+	d := &dockey{}
+	r, err := ar.database.GetRow(
+		stockFindIdQ,
+		map[string]interface{}{
+			"@stock_collection": ar.stock.Name(),
+			"graph":             ar.stockPropType.Name(),
+			"id":                id,
+		})
+	if err != nil {
+		return d, fmt.Errorf("error in searching for id %s %s", id, err)
+	}
+	if r.IsEmpty() {
+		return d, fmt.Errorf("id %s is not found", id)
+	}
+	if err := r.Read(d); err != nil {
+		return d, err
+	}
+	return d, nil
+
 }
 
 func addablePlasmidBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
