@@ -34,6 +34,11 @@ type CollectionParams struct {
 	KeyOffset int `validate:"required"`
 }
 
+type dockey struct {
+	Key     string `json:"key"`
+	PropKey string `json:"propkey"`
+}
+
 type arangorepository struct {
 	sess          *manager.Session
 	database      *manager.Database
@@ -227,9 +232,10 @@ func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, e
 	attr := us.Data.Attributes
 	// check if stock exists before running any update
 	r, err := ar.database.GetRow(
-		stockFindQ,
+		stockFindIdQ,
 		map[string]interface{}{
 			"@stock_collection": ar.stock.Name(),
+			"graph":             ar.stockPropType.Name(),
 			"id":                us.Data.Id,
 		})
 	if err != nil {
@@ -238,16 +244,37 @@ func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, e
 	if r.IsEmpty() {
 		return m, fmt.Errorf("id %s is not found", us.Data.Id)
 	}
-	bindVars := getUpdatableBindParams(attr)
+	dk := &dockey{}
+	if err := r.Read(dk); err != nil {
+		return m, err
+	}
+
+	var stmt string
+	cmBindVars := make(map[string]interface{})
+	bindVars := getUpdatableStockBindParams(attr)
 	var bindParams []string
 	for k := range bindVars {
 		bindParams = append(bindParams, fmt.Sprintf("%s: @%s", k, k))
 	}
-	stockUpdQ := fmt.Sprintf(stockUpd, strings.Join(bindParams, ","))
-	bindVars["@stock_collection"] = ar.stock.Name()
-	bindVars["key"] = us.Data.Id
-
-	rupd, err := ar.database.DoRun(stockUpdQ, bindVars)
+	if us.Data.Type == "strain" {
+	} else {
+		bindPlvars := getUpdatablePlasmidBindParams(attr)
+		var bindPlParams []string
+		for k := range bindPlVars {
+			bindPlParams = append(bindPlParams, fmt.Sprintf("%s: @%s", k, k))
+		}
+		stmt = fmt.Sprintf(
+			plasmidUpd,
+			strings.Join(bindParams, ","),
+			strings.Join(bindPlParams, ","),
+		)
+		cmBindVars = mergeBindParams([]map[string]interface{}{bindVars, bindPlvars}...)
+	}
+	cmBindVars["@stock_collection"] = ar.stock.Name()
+	cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
+	cmBindVars["key"] = dk.Key
+	cmBindVars["propkey"] = dk.PropKey
+	rupd, err := ar.database.DoRun(stmt, cmBindVars)
 	if err != nil {
 		return m, err
 	}
@@ -375,6 +402,14 @@ func (ar *arangorepository) RemoveStock(id string) error {
 	return nil
 }
 
+// ClearStocks clears all stocks from the repository datasource
+func (ar *arangorepository) ClearStocks() error {
+	if err := ar.stock.Truncate(context.Background()); err != nil {
+		return err
+	}
+	return nil
+}
+
 func addablePlasmidBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
 	bindVars := map[string]interface{}{
 		"depositor":        attr.Depositor,
@@ -425,7 +460,7 @@ func normalizeStrBindParam(str string) string {
 	return ""
 }
 
-func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
+func getUpdatableStockBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
 	bindVars := map[string]interface{}{
 		"updated_by": attr.UpdatedBy,
 	}
@@ -447,26 +482,26 @@ func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interf
 	if len(attr.Publications) > 0 {
 		bindVars["publications"] = attr.Publications
 	}
-	if attr.StrainProperties != nil {
-		if len(attr.StrainProperties.SystematicName) > 0 {
-			bindVars["systematic_name"] = attr.StrainProperties.SystematicName
-		}
-		if len(attr.StrainProperties.Label) > 0 {
-			bindVars["label"] = attr.StrainProperties.Label
-		}
-		if len(attr.StrainProperties.Species) > 0 {
-			bindVars["species"] = attr.StrainProperties.Species
-		}
-		if len(attr.StrainProperties.Plasmid) > 0 {
-			bindVars["plasmid"] = attr.StrainProperties.Plasmid
-		}
-		if len(attr.StrainProperties.Parents) > 0 {
-			bindVars["parents"] = attr.StrainProperties.Parents
-		}
-		if len(attr.StrainProperties.Names) > 0 {
-			bindVars["names"] = attr.StrainProperties.Names
-		}
+	return bindVars
+}
+
+func getUpdatableStrainBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
+	bindVars := map[string]interface{}{
+		"systematic_name": attr.StrainProperties.SystematicName,
+		"label":           attr.StrainProperties.Label,
+		"species":         attr.StrainProperties.Species,
 	}
+	if len(attr.StrainProperties.Plasmid) > 0 {
+		bindVars["plasmid"] = attr.StrainProperties.Plasmid
+	}
+	if len(attr.StrainProperties.Names) > 0 {
+		bindVars["names"] = attr.StrainProperties.Names
+	}
+	return bindVars
+}
+
+func getUpdatablePlasmidBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
+	bindVars := make(map[string]interface{})
 	if attr.PlasmidProperties != nil {
 		if len(attr.PlasmidProperties.ImageMap) > 0 {
 			bindVars["image_map"] = attr.PlasmidProperties.ImageMap
@@ -478,10 +513,12 @@ func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interf
 	return bindVars
 }
 
-// ClearStocks clears all stocks from the repository datasource
-func (ar *arangorepository) ClearStocks() error {
-	if err := ar.stock.Truncate(context.Background()); err != nil {
-		return err
+func mergeBindParams(bm ...map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	for _, m := range bm {
+		for k, v := range m {
+			result[k] = v
+		}
 	}
-	return nil
+	return result
 }

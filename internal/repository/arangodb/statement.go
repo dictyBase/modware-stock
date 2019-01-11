@@ -162,6 +162,23 @@ const (
 			WITH { %s }
 			IN @@stock_collection RETURN NEW
 	`
+	plasmidUpd = `
+		LET s = (
+			UPDATE { _key: @key } WITH { %s }
+			IN @@stock_collection RETURN NEW
+		)
+		LET p = (
+			UPDATE { _key: @propkey } WITH { %s }
+			IN @stock_properties_collection
+			RETURN {
+				plasmid_properties: {
+					image_map: NEW.image_map,
+					sequence: NEW.sequence
+				}
+			}
+		)
+		RETURN MERGE(s[0],p[0])
+	`
 	parentUpd = `
 		UPDATE { _key: @key }
 			WITH { _to: @parent }
