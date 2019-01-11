@@ -160,6 +160,51 @@ const (
 			WITH { %s }
 			IN @@stock_collection RETURN NEW
 	`
+	strainUpd = `
+		LET s = (
+			UPDATE { _key: @key } WITH { %s }
+			IN @@stock_collection RETURN NEW
+		)
+		LET p = (
+			UPDATE { _key: @propkey } WITH { %s }
+			IN @@stock_properties_collection
+			RETURN {
+				strain_properties: {
+					systematic_name: NEW.systematic_name,
+					label: NEW.label,
+					species: NEW.species,
+					plasmid: NEW.plasmid,
+					names: NEW.names
+				}
+			}
+		)
+		RETURN MERGE(s[0],p[0])
+	`
+	strainWithParentUpd = `
+		LET s = (
+			UPDATE { _key: @key } WITH { %s }
+			IN @@stock_collection RETURN NEW
+		)
+		LET p = (
+			UPDATE { _key: @propkey } WITH { %s }
+			IN @@stock_properties_collection
+			RETURN {
+				strain_properties: {
+					systematic_name: NEW.systematic_name,
+					label: NEW.label,
+					species: NEW.species,
+					plasmid: NEW.plasmid,
+					names: NEW.names
+				}
+			}
+		)
+		FOR p in @parents
+			FOR v,e IN 1..1 OUTBOUND p GRAPH @parent_graph
+				REMOVE e IN @@stock_collection
+		FOR p in @parents
+			INSERT { _from: p, _to: s[0]._id } INTO @@parent_strain_collection
+		RETURN MERGE(s[0],p[0])
+	`
 	plasmidUpd = `
 		LET s = (
 			UPDATE { _key: @key } WITH { %s }
@@ -167,7 +212,7 @@ const (
 		)
 		LET p = (
 			UPDATE { _key: @propkey } WITH { %s }
-			IN @stock_properties_collection
+			IN @@stock_properties_collection
 			RETURN {
 				plasmid_properties: {
 					image_map: NEW.image_map,
