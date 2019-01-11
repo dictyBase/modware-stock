@@ -226,6 +226,60 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, err
 	return m, nil
 }
 
+// EditPlasmid updates an existing plasmid
+func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc, error) {
+	m := &model.StockDoc{}
+	attr := us.Data.Attributes
+	// check if stock exists before running any update
+	r, err := ar.database.GetRow(
+		stockFindIdQ,
+		map[string]interface{}{
+			"@stock_collection": ar.stock.Name(),
+			"graph":             ar.stockPropType.Name(),
+			"id":                us.Data.Id,
+		})
+	if err != nil {
+		return m, fmt.Errorf("error in searching for id %s %s", us.Data.Id, err)
+	}
+	if r.IsEmpty() {
+		return m, fmt.Errorf("id %s is not found", us.Data.Id)
+	}
+	dk := &dockey{}
+	if err := r.Read(dk); err != nil {
+		return m, err
+	}
+
+	var stmt string
+	cmBindVars := make(map[string]interface{})
+	bindVars := getUpdatableStockBindParams(attr)
+	bindPlvars := getUpdatablePlasmidBindParams(attr)
+	cmBindVars = mergeBindParams([]map[string]interface{}{bindVars, bindPlvars}...)
+	if len(bindPlvars) > 0 { // plasmid with optional attributes
+		stmt = fmt.Sprintf(
+			plasmidUpd,
+			genAQLDocExpression(bindVars),
+			genAQLDocExpression(bindPlvars),
+		)
+		cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
+		cmBindVars["propkey"] = dk.PropKey
+	} else {
+		stmt = fmt.Sprintf(
+			stockUpd,
+			genAQLDocExpression(bindVars),
+		)
+	}
+	cmBindVars["@stock_collection"] = ar.stock.Name()
+	cmBindVars["key"] = dk.Key
+	rupd, err := ar.database.DoRun(stmt, cmBindVars)
+	if err != nil {
+		return m, err
+	}
+	if err := rupd.Read(m); err != nil {
+		return m, err
+	}
+	return m, nil
+}
+
 // EditStock updates an existing stock
 func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
@@ -258,7 +312,7 @@ func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, e
 	}
 	if us.Data.Type == "strain" {
 	} else {
-		bindPlvars := getUpdatablePlasmidBindParams(attr)
+		bindPlVars := getUpdatablePlasmidBindParams(attr)
 		var bindPlParams []string
 		for k := range bindPlVars {
 			bindPlParams = append(bindPlParams, fmt.Sprintf("%s: @%s", k, k))
@@ -268,7 +322,7 @@ func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, e
 			strings.Join(bindParams, ","),
 			strings.Join(bindPlParams, ","),
 		)
-		cmBindVars = mergeBindParams([]map[string]interface{}{bindVars, bindPlvars}...)
+		cmBindVars = mergeBindParams([]map[string]interface{}{bindVars, bindPlVars}...)
 	}
 	cmBindVars["@stock_collection"] = ar.stock.Name()
 	cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
@@ -571,4 +625,12 @@ func mergeBindParams(bm ...map[string]interface{}) map[string]interface{} {
 		}
 	}
 	return result
+}
+
+func genAQLDocExpression(bindVars map[string]interface{}) string {
+	var bindParams []string
+	for k := range bindVars {
+		bindParams = append(bindParams, fmt.Sprintf("%s: @%s", k, k))
+	}
+	return strings.Join(bindParams, ",")
 }
