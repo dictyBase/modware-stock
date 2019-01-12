@@ -10,6 +10,7 @@ import (
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
+	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 	validator "gopkg.in/go-playground/validator.v9"
 )
 
@@ -138,9 +139,9 @@ func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 		"graph":                  ar.stockPropType.Name(),
 	}
 	if id[:3] == "DBS" {
-		stmt = stockGetStrain
+		stmt = statement.StockGetStrain
 	} else {
-		stmt = stockGetPlasmid
+		stmt = statement.StockGetPlasmid
 	}
 	r, err := ar.database.GetRow(stmt, bindVars)
 	if err != nil {
@@ -181,7 +182,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 			}
 			parents = append(parents, pid)
 		}
-		stmt = stockStrainWithParentsIns
+		stmt = statement.StockStrainWithParentsIns
 		bindVars = addableStrainBindParams(ns.Data.Attributes)
 		bindVars["parents"] = parents
 		bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
@@ -191,7 +192,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 		m.StrainProperties = sp
 	} else {
 		bindVars = addableStrainBindParams(ns.Data.Attributes)
-		stmt = stockStrainIns
+		stmt = statement.StockStrainIns
 	}
 	bindVars["@stock_collection"] = ar.stock.Name()
 	bindVars["@stock_key_generator"] = ar.stockKey.Name()
@@ -216,7 +217,7 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, err
 	bindVars["@stock_key_generator"] = ar.stockKey.Name()
 	bindVars["@stock_type_collection"] = ar.stockType.Name()
 	bindVars["@stock_properties_collection"] = ar.stockProp.Name()
-	r, err := ar.database.DoRun(stockPlasmidIns, bindVars)
+	r, err := ar.database.DoRun(statement.StockPlasmidIns, bindVars)
 	if err != nil {
 		return m, err
 	}
@@ -241,7 +242,7 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 		for _, p := range us.Data.Attributes.StrainProperties.Parents {
 			pVars["id"] = p
 			var pid string
-			r, err := ar.database.GetRow(stockFindQ, pVars)
+			r, err := ar.database.GetRow(statement.StockFindQ, pVars)
 			if err != nil {
 				return m, fmt.Errorf("error in searching for parent %s %s", p, err)
 			}
@@ -259,12 +260,12 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 	bindStVars := getUpdatableStrainBindParams(us.Data.Attributes)
 	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindStVars}...)
 	if len(parents) > 0 {
-		stmt = strainWithParentUpd
+		stmt = statement.StrainWithParentUpd
 		cmBindVars["parents"] = parents
 		cmBindVars["parent_graph"] = ar.strain2Parent.Name()
 		cmBindVars["@parent_strain_collection"] = ar.parentStrain.Name()
 	} else {
-		stmt = strainUpd
+		stmt = statement.StrainUpd
 	}
 	cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
 	cmBindVars["@stock_collection"] = ar.stock.Name()
@@ -300,7 +301,7 @@ func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc,
 	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindPlVars}...)
 	if len(bindPlVars) > 0 { // plasmid with optional attributes
 		stmt = fmt.Sprintf(
-			plasmidUpd,
+			statement.PlasmidUpd,
 			genAQLDocExpression(bindVars),
 			genAQLDocExpression(bindPlVars),
 		)
@@ -308,7 +309,7 @@ func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc,
 		cmBindVars["propkey"] = dk.PropKey
 	} else {
 		stmt = fmt.Sprintf(
-			stockUpd,
+			statement.StockUpd,
 			genAQLDocExpression(bindVars),
 		)
 	}
@@ -391,10 +392,10 @@ func (ar *arangorepository) ListStocks(cursor int64, limit int64) ([]*model.Stoc
 		"limit":             limit + 1,
 	}
 	if cursor == 0 { // no cursor so return first set of result
-		stmt = stockList
+		stmt = statement.StockList
 	} else {
 		bindVars["next_cursor"] = cursor
-		stmt = stockListWithCursor
+		stmt = statement.StockListWithCursor
 	}
 	rs, err := ar.database.SearchRows(stmt, bindVars)
 	if err != nil {
@@ -423,10 +424,10 @@ func (ar *arangorepository) ListStrains(cursor int64, limit int64) ([]*model.Sto
 		"graph":             "stockprop_type",
 	}
 	if cursor == 0 { // no cursor so return first set of result
-		stmt = strainList
+		stmt = statement.StrainList
 	} else {
 		bindVars["next_cursor"] = cursor
-		stmt = strainListWithCursor
+		stmt = statement.StrainListWithCursor
 	}
 	rs, err := ar.database.SearchRows(stmt, bindVars)
 	if err != nil {
@@ -455,10 +456,10 @@ func (ar *arangorepository) ListPlasmids(cursor int64, limit int64) ([]*model.St
 		"graph":             "stockprop_type",
 	}
 	if cursor == 0 { // no cursor so return first set of result
-		stmt = plasmidList
+		stmt = statement.PlasmidList
 	} else {
 		bindVars["next_cursor"] = cursor
-		stmt = plasmidListWithCursor
+		stmt = statement.PlasmidListWithCursor
 	}
 	rs, err := ar.database.SearchRows(stmt, bindVars)
 	if err != nil {
@@ -512,7 +513,7 @@ func (ar *arangorepository) ClearStocks() error {
 func (ar *arangorepository) findStock(id string) (*dockey, error) {
 	d := &dockey{}
 	r, err := ar.database.GetRow(
-		stockFindIdQ,
+		statement.StockFindIdQ,
 		map[string]interface{}{
 			"@stock_collection": ar.stock.Name(),
 			"graph":             ar.stockPropType.Name(),
