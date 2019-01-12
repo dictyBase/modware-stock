@@ -530,23 +530,19 @@ func removeString(f string) string {
 
 // RemoveStock removes a stock
 func (ar *arangorepository) RemoveStock(id string) error {
-	m := &model.StockDoc{}
-	_, err := ar.stock.ReadDocument(context.Background(), id, m)
+	found, err := ar.stock.DocumentExists(context.Background(), id)
 	if err != nil {
-		if driver.IsNotFound(err) {
-			return fmt.Errorf("stock record with id %s does not exist %s", id, err)
-		}
-		return err
+		return fmt.Errorf("error in finding document with id %s %s", id, err)
 	}
-	bindVars := map[string]interface{}{
-		"@stock_collection": ar.stock.Name(),
-		"key":               id,
+	if !found {
+		return fmt.Errorf("document not found %s", id)
 	}
-	err = ar.database.Do(
-		stockDelQ, bindVars,
+	_, err = ar.stock.RemoveDocument(
+		driver.WithSilent(context.Background()),
+		id,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("error in removing document with id %s %s", id, err)
 	}
 	return nil
 }
