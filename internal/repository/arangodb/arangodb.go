@@ -325,64 +325,6 @@ func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc,
 	return m, nil
 }
 
-// EditStock updates an existing stock
-func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, error) {
-	m := &model.StockDoc{}
-	attr := us.Data.Attributes
-	// check if stock exists before running any update
-	r, err := ar.database.GetRow(
-		stockFindIdQ,
-		map[string]interface{}{
-			"@stock_collection": ar.stock.Name(),
-			"graph":             ar.stockPropType.Name(),
-			"id":                us.Data.Id,
-		})
-	if err != nil {
-		return m, fmt.Errorf("error in searching for id %s %s", us.Data.Id, err)
-	}
-	if r.IsEmpty() {
-		return m, fmt.Errorf("id %s is not found", us.Data.Id)
-	}
-	dk := &dockey{}
-	if err := r.Read(dk); err != nil {
-		return m, err
-	}
-
-	var stmt string
-	cmBindVars := make(map[string]interface{})
-	bindVars := getUpdatableStockBindParams(attr)
-	var bindParams []string
-	for k := range bindVars {
-		bindParams = append(bindParams, fmt.Sprintf("%s: @%s", k, k))
-	}
-	if us.Data.Type == "strain" {
-	} else {
-		bindPlVars := getUpdatablePlasmidBindParams(attr)
-		var bindPlParams []string
-		for k := range bindPlVars {
-			bindPlParams = append(bindPlParams, fmt.Sprintf("%s: @%s", k, k))
-		}
-		stmt = fmt.Sprintf(
-			plasmidUpd,
-			strings.Join(bindParams, ","),
-			strings.Join(bindPlParams, ","),
-		)
-		cmBindVars = mergeBindParams([]map[string]interface{}{bindVars, bindPlVars}...)
-	}
-	cmBindVars["@stock_collection"] = ar.stock.Name()
-	cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
-	cmBindVars["key"] = dk.Key
-	cmBindVars["propkey"] = dk.PropKey
-	rupd, err := ar.database.DoRun(stmt, cmBindVars)
-	if err != nil {
-		return m, err
-	}
-	if err := rupd.Read(m); err != nil {
-		return m, err
-	}
-	return m, nil
-}
-
 // ListStocks provides a list of all stocks
 func (ar *arangorepository) ListStocks(cursor int64, limit int64) ([]*model.StockDoc, error) {
 	var om []*model.StockDoc
