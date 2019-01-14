@@ -170,7 +170,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 		for _, p := range ns.Data.Attributes.StrainProperties.Parents {
 			pVars["id"] = p
 			var pid string
-			r, err := ar.database.GetRow(stockFindQ, pVars)
+			r, err := ar.database.GetRow(statement.StockFindQ, pVars)
 			if err != nil {
 				return m, fmt.Errorf("error in searching for parent %s %s", p, err)
 			}
@@ -480,6 +480,8 @@ func addablePlasmidBindParams(attr *stock.NewStockAttributes) map[string]interfa
 		"genes":            normalizeSliceBindParam(attr.Genes),
 		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
 		"publications":     normalizeSliceBindParam(attr.Publications),
+		"image_map":        "",
+		"sequence":         "",
 	}
 	if attr.PlasmidProperties != nil {
 		bindVars["image_map"] = normalizeStrBindParam(attr.PlasmidProperties.ImageMap)
