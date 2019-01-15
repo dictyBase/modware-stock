@@ -598,10 +598,15 @@ func getUpdatableStockBindParams(attr *stock.StockUpdateAttributes) map[string]i
 }
 
 func getUpdatableStrainBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
-	bindVars := map[string]interface{}{
-		"systematic_name": attr.StrainProperties.SystematicName,
-		"label":           attr.StrainProperties.Label,
-		"species":         attr.StrainProperties.Species,
+	bindVars := make(map[string]interface{})
+	if len(attr.StrainProperties.SystematicName) > 0 {
+		bindVars["systematic_name"] = attr.StrainProperties.SystematicName
+	}
+	if len(attr.StrainProperties.Label) > 0 {
+		bindVars["label"] = attr.StrainProperties.Label
+	}
+	if len(attr.StrainProperties.Species) > 0 {
+		bindVars["species"] = attr.StrainProperties.Species
 	}
 	if len(attr.StrainProperties.Plasmid) > 0 {
 		bindVars["plasmid"] = attr.StrainProperties.Plasmid
