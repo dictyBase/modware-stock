@@ -43,6 +43,28 @@ func getCollectionParams() *CollectionParams {
 	}
 }
 
+func newUpdatableTestStrain(createdby string) *stock.NewStock {
+	return &stock.NewStock{
+		Data: &stock.NewStock_Data{
+			Type: "strain",
+			Attributes: &stock.NewStockAttributes{
+				CreatedBy:       createdby,
+				UpdatedBy:       createdby,
+				Depositor:       createdby,
+				Summary:         "Radiation-sensitive mutant.",
+				EditableSummary: "Radiation-sensitive mutant.",
+				Genes:           []string{"DDB_G0348394", "DDB_G098058933"},
+				Publications:    []string{"48428304983", "83943", "839434936743"},
+				StrainProperties: &stock.StrainProperties{
+					SystematicName: "yS13",
+					Label:          "yS13",
+					Species:        "Dictyostelium discoideum",
+				},
+			},
+		},
+	}
+}
+
 func newTestStrain(createdby string) *stock.NewStock {
 	return &stock.NewStock{
 		Data: &stock.NewStock_Data{
@@ -162,6 +184,93 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	dbh.Drop()
 	os.Exit(code)
+}
+
+func TestEditStrain(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer repo.ClearStocks()
+	ns := newUpdatableTestStrain("todd@gagg.com")
+	m, err := repo.AddStrain(ns)
+	if err != nil {
+		t.Fatalf("error in adding strain: %s", err)
+	}
+	us := &stock.StockUpdate{
+		Data: &stock.StockUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   m.StockID,
+			Attributes: &stock.StockUpdateAttributes{
+				UpdatedBy:       "kirby@snes.org",
+				Summary:         "updated strain",
+				EditableSummary: "updated strain",
+				Genes:           []string{"DDB_G120987", "DDB_G45098234"},
+				Dbxrefs:         []string{"FGBD9493483", "4536935", "d2578", "d0319"},
+				StrainProperties: &stock.StrainUpdateProperties{
+					Label:   "Ax3-pspD/lacZ",
+					Plasmid: "DBP0398713",
+					Names:   []string{"SP87", "AX3-PL3/gal", "AX3PL31"},
+				},
+			},
+		},
+	}
+	um, err := repo.EditStrain(us)
+	if err != nil {
+		t.Fatalf("error in updating strain id %s: %s", m.StockID, err)
+	}
+	assert := assert.New(t)
+	assert.Equal(um.StockID, m.StockID, "should match the stock id")
+	assert.Equal(um.UpdatedBy, us.Data.Attributes.UpdatedBy, "should match updatedby")
+	assert.Equal(um.Depositor, m.Depositor, "depositor name should not be updated")
+	assert.Equal(um.Summary, us.Data.Attributes.Summary, "should have updated summary")
+	assert.Equal(
+		um.EditableSummary,
+		us.Data.Attributes.EditableSummary,
+		"should have updated editable summary",
+	)
+	assert.ElementsMatch(
+		um.Genes,
+		us.Data.Attributes.Genes,
+		"should match updated list of genes",
+	)
+	assert.ElementsMatch(
+		um.Dbxrefs,
+		us.Data.Attributes.Dbxrefs,
+		"should match updated list of dbxrefs",
+	)
+	assert.ElementsMatch(
+		um.Publications,
+		m.Publications,
+		"publications list should remains unchanged",
+	)
+	assert.Equal(
+		um.StrainProperties.SystematicName,
+		m.StrainProperties.SystematicName,
+		"systematic name should remains unchanged",
+	)
+	assert.Equal(
+		um.StrainProperties.Species,
+		m.StrainProperties.Species,
+		"species name should remains unchanged",
+	)
+	assert.Equal(
+		um.StrainProperties.Label,
+		us.Data.Attributes.StrainProperties.Label,
+		"should have updated strain descriptor",
+	)
+	assert.Equal(
+		um.StrainProperties.Plasmid,
+		us.Data.Attributes.StrainProperties.Plasmid,
+		"should have updated plasmid name",
+	)
+	assert.ElementsMatch(
+		um.StrainProperties.Names,
+		us.Data.Attributes.StrainProperties.Names,
+		"should updated list of strain names",
+	)
 }
 
 func TestAddStrain(t *testing.T) {
