@@ -90,6 +90,39 @@ func newTestParentStrain(createdby string) *stock.NewStock {
 	}
 }
 
+func newUpdatableTestPlasmid(createdby string) *stock.NewStock {
+	return &stock.NewStock{
+		Data: &stock.NewStock_Data{
+			Type: "plasmid",
+			Attributes: &stock.NewStockAttributes{
+				CreatedBy:       createdby,
+				UpdatedBy:       createdby,
+				Depositor:       createdby,
+				Summary:         "update this plasmid",
+				EditableSummary: "update this plasmid",
+				Publications:    []string{"1348970", "48493483"},
+				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
+			},
+		},
+	}
+}
+
+func newTestPlasmidWithProp(createdby string) *stock.NewStock {
+	return &stock.NewStock{
+		Data: &stock.NewStock_Data{
+			Type: "plasmid",
+			Attributes: &stock.NewStockAttributes{
+				CreatedBy:       createdby,
+				UpdatedBy:       createdby,
+				Depositor:       createdby,
+				Summary:         "this is a test plasmid",
+				EditableSummary: "this is a test plasmid",
+				Publications:    []string{"1348970"},
+			},
+		},
+	}
+}
+
 func newTestPlasmid(createdby string) *stock.NewStock {
 	return &stock.NewStock{
 		Data: &stock.NewStock_Data{
@@ -97,9 +130,9 @@ func newTestPlasmid(createdby string) *stock.NewStock {
 			Attributes: &stock.NewStockAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
+				Depositor:       createdby,
 				Summary:         "this is a test plasmid",
 				EditableSummary: "this is a test plasmid",
-				Depositor:       "george@costanza.com",
 				Publications:    []string{"1348970"},
 				PlasmidProperties: &stock.PlasmidProperties{
 					ImageMap: "http://dictybase.org/data/plasmid/images/87.jpg",
@@ -214,6 +247,40 @@ func TestAddStrain(t *testing.T) {
 	)
 }
 
+func TestAddPlasmidWithoutProp(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer repo.ClearStocks()
+	ns := newTestPlasmidWithProp("george@costanza.com")
+	m, err := repo.AddPlasmid(ns)
+	if err != nil {
+		t.Fatalf("error in adding plasmid: %s", err)
+	}
+	assert := assert.New(t)
+	assert.Regexp(regexp.MustCompile(`^\d+$`), m.Key, "should have a key with numbers")
+	assert.Regexp(regexp.MustCompile(`^DBP0\d{6,}$`), m.StockID, "should have a plasmid stock id")
+	assert.Equal(m.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
+	assert.Equal(m.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
+	assert.Equal(m.Summary, ns.Data.Attributes.Summary, "should match summary")
+	assert.Equal(
+		m.EditableSummary,
+		ns.Data.Attributes.EditableSummary,
+		"should match editable_summary",
+	)
+	assert.Equal(m.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
+	assert.Empty(m.Genes, "should have empty genes field")
+	assert.Empty(m.Dbxrefs, "should have empty dbxrefs field")
+	assert.ElementsMatch(
+		m.Publications,
+		ns.Data.Attributes.Publications,
+		"should match publications",
+	)
+}
+
 func TestAddPlasmid(t *testing.T) {
 	connP := getConnectParams()
 	collP := getCollectionParams()
@@ -255,6 +322,97 @@ func TestAddPlasmid(t *testing.T) {
 		m.PlasmidProperties.Sequence,
 		ns.Data.Attributes.PlasmidProperties.Sequence,
 		"should match sequence",
+	)
+}
+
+func TestEditPlasmid(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer repo.ClearStocks()
+	ns := newUpdatableTestPlasmid("art@vandeley.org")
+	m, err := repo.AddPlasmid(ns)
+	if err != nil {
+		t.Fatalf("error in adding plasmid: %s", err)
+	}
+	us := &stock.StockUpdate{
+		Data: &stock.StockUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   m.StockID,
+			Attributes: &stock.StockUpdateAttributes{
+				UpdatedBy:       "varnes@seinfeld.org",
+				Summary:         "updated plasmid",
+				EditableSummary: "updated plasmid",
+				Publications:    []string{"8394839", "583989343", "853983948"},
+				Genes:           []string{"DDB_G0270724", "DDB_G027489343"},
+				PlasmidProperties: &stock.PlasmidProperties{
+					ImageMap: "http://dictybase.org/data/plasmid/images/87.jpg",
+				},
+			},
+		},
+	}
+	um, err := repo.EditPlasmid(us)
+	if err != nil {
+		t.Fatalf("error in updating plasmid %s", err)
+	}
+	assert := assert.New(t)
+	assert.Equal(um.StockID, m.StockID, "should match the stock id")
+	assert.Equal(um.UpdatedBy, us.Data.Attributes.UpdatedBy, "should match updatedby")
+	assert.Equal(um.Depositor, ns.Data.Attributes.Depositor, "depositor name should not be updated")
+	assert.Equal(um.Summary, us.Data.Attributes.Summary, "should have updated summary")
+	assert.Equal(
+		um.EditableSummary,
+		us.Data.Attributes.EditableSummary,
+		"should have updated editable summary",
+	)
+	assert.ElementsMatch(
+		um.Publications,
+		us.Data.Attributes.Publications,
+		"should match updated list of publications",
+	)
+	assert.ElementsMatch(
+		um.Dbxrefs,
+		ns.Data.Attributes.Dbxrefs,
+		"dbxrefs should remain unchanged",
+	)
+	us2 := &stock.StockUpdate{
+		Data: &stock.StockUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   um.StockID,
+			Attributes: &stock.StockUpdateAttributes{
+				UpdatedBy: "puddy@seinfeld.org",
+				Genes:     []string{"DDB_G0270851", "DDB_G02748", "DDB_G7392222"},
+				PlasmidProperties: &stock.PlasmidProperties{
+					Sequence: "atgctagagaagacttt",
+				},
+			},
+		},
+	}
+	um2, err := repo.EditPlasmid(us2)
+	if err != nil {
+		t.Fatalf("error in re updating the plasmid %s", err)
+	}
+	assert.Equal(um2.StockID, um.StockID, "should match the previous stock id")
+	assert.Equal(um2.UpdatedBy, us2.Data.Attributes.UpdatedBy, "should have updated the updatedby field")
+	assert.ElementsMatch(um2.Genes, us2.Data.Attributes.Genes, "should have the genes list")
+	assert.ElementsMatch(um2.Publications, um.Publications, "publications list should remain the same")
+	assert.ElementsMatch(
+		um2.Dbxrefs,
+		um.Dbxrefs,
+		"dbxrefs list should remain the same",
+	)
+	assert.Equal(
+		um2.PlasmidProperties.ImageMap,
+		um.PlasmidProperties.ImageMap,
+		"image map should remain the same",
+	)
+	assert.Equal(
+		um2.PlasmidProperties.Sequence,
+		us2.Data.Attributes.PlasmidProperties.Sequence,
+		"sequence plasmid property should have been updated",
 	)
 }
 
