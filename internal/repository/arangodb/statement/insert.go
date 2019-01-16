@@ -18,6 +18,7 @@ const (
 				dbxrefs: @dbxrefs,
 				publications: @publications,
 				stock_id: CONCAT("DBS0", kg[0]._key)
+				_key: CONCAT("DBS0", kg[0]._key)
 			} INTO @@stock_collection RETURN NEW
 		)
 		LET o = (
@@ -54,6 +55,7 @@ const (
 				dbxrefs: @dbxrefs,
 				publications: @publications,
 				stock_id: CONCAT("DBS0", kg[0]._key)
+				_key: CONCAT("DBS0", kg[0]._key)
 			} INTO @@stock_collection RETURN NEW
 		)
 		LET o = (
@@ -92,6 +94,7 @@ const (
 				dbxrefs: @dbxrefs,
 				publications: @publications,
 				stock_id: CONCAT("DBP0", kg[0]._key)
+				_key: CONCAT("DBP0", kg[0]._key)
 			} INTO @@stock_collection RETURN NEW
 		)
 		LET o = (
