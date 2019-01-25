@@ -271,6 +271,71 @@ func TestEditStrain(t *testing.T) {
 		us.Data.Attributes.StrainProperties.Names,
 		"should updated list of strain names",
 	)
+
+	// test by adding parent strain
+	pm, err := repo.AddStrain(newTestParentStrain("tim@watley.org"))
+	if err != nil {
+		t.Fatalf("error in adding parent strain %s", err)
+	}
+	pm2, err := repo.AddStrain(newTestParentStrain("jackie@chiles.org"))
+	if err != nil {
+		t.Fatalf("error in adding parent strain %s", err)
+	}
+	us2 := &stock.StockUpdate{
+		Data: &stock.StockUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   um.StockID,
+			Attributes: &stock.StockUpdateAttributes{
+				UpdatedBy: "mario@snes.org",
+				StrainProperties: &stock.StrainUpdateProperties{
+					Parents: []string{pm.StockID, pm2.StockID},
+				},
+			},
+		},
+	}
+	um2, err := repo.EditStrain(us2)
+	if err != nil {
+		t.Fatalf("error in updating strain id %s: %s", um.StockID, err)
+	}
+	assert.Equal(um2.StockID, um.StockID, "should match their id")
+	assert.Equal(um2.Depositor, m.Depositor, "depositor name should not be updated")
+	assert.Equal(um2.CreatedBy, m.CreatedBy, "created by should not be updated")
+	assert.Equal(um2.Summary, um.Summary, "summary should not be updated")
+	assert.ElementsMatch(
+		um2.Publications,
+		m.Publications,
+		"publications list should remains unchanged",
+	)
+	assert.ElementsMatch(
+		um2.Genes,
+		um.Genes,
+		"genes list should not be updated",
+	)
+	assert.ElementsMatch(
+		um2.Dbxrefs,
+		um.Dbxrefs,
+		"dbxrefs list should not be updated",
+	)
+	assert.Equal(
+		um2.StrainProperties.Label,
+		um.StrainProperties.Label,
+		"strain descriptor should not be updated",
+	)
+	assert.ElementsMatch(
+		um2.StrainProperties.Names,
+		um.StrainProperties.Names,
+		"strain names should not be updated",
+	)
+	assert.Equal(
+		um2.StrainProperties.Plasmid,
+		um.StrainProperties.Plasmid,
+		"plasmid should not be updated",
+	)
+	assert.ElementsMatch(
+		um2.StrainProperties.Parents,
+		us2.Data.Attributes.StrainProperties.Parents,
+		"should have updated list of parents",
+	)
 }
 
 func TestAddStrain(t *testing.T) {
@@ -305,7 +370,7 @@ func TestAddStrain(t *testing.T) {
 	assert.Empty(m.StrainProperties.Parents, "should not have any parent")
 
 	ns := newTestStrain("pennypacker@penny.com")
-	ns.Data.Attributes.StrainProperties.Parents = []string{m.StockID}
+	ns.Data.Attributes.StrainProperties.Parent = m.StockID
 	m2, err := repo.AddStrain(ns)
 	if err != nil {
 		t.Fatalf("error in adding strain: %s", err)
@@ -349,10 +414,10 @@ func TestAddStrain(t *testing.T) {
 		ns.Data.Attributes.StrainProperties.Plasmid,
 		"should match plasmid entry",
 	)
-	assert.ElementsMatch(
-		m2.StrainProperties.Parents,
-		ns.Data.Attributes.StrainProperties.Parents,
-		"should match parent entries",
+	assert.Equal(
+		m2.StrainProperties.Parent,
+		ns.Data.Attributes.StrainProperties.Parent,
+		"should match parent entry",
 	)
 }
 

@@ -31,7 +31,7 @@ type StrainProperties struct {
 	Label          string   `json:"label"`
 	Species        string   `json:"species"`
 	Plasmid        string   `json:"plasmid,omitempty"`
-	Parents        []string `json:"parents,omitempty"`
+	Parent         string   `json:"parent,omitempty"`
 	Names          []string `json:"names,omitempty"`
 }
 

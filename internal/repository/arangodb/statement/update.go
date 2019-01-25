@@ -31,7 +31,7 @@ const (
 			UPDATE { _key: @key } WITH { %s }
 			IN @@stock_collection RETURN NEW
 		)
-		LET p = (
+		LET prop = (
 			UPDATE { _key: @propkey } WITH { %s }
 			IN @@stock_properties_collection
 			RETURN {
@@ -44,10 +44,16 @@ const (
 				}
 			}
 		)
-		FOR p in @parents
-			FOR v,e IN 1..1 INBOUND s[0] GRAPH @parent_graph
-				UPDATE e WITH { _from: p } IN @parent_strain_collection
-		RETURN MERGE(s[0],p[0])
+		LENGTH(@pkey) > 0 ?
+				UPDATE @pkey
+					WITH { _from: CONCAT(@parent_edge,'/',@parent) }
+					IN @@parent_strain_collection
+				: INSERT {
+						_from: CONCAT(@parent_edge,'/',@parent),
+						_to: CONCAT(@parent_edge,'/',@key)
+					} INTO @@parent_strain_collection
+
+		RETURN MERGE(s[0],prop[0])
 	`
 	PlasmidUpd = `
 		LET s = (
