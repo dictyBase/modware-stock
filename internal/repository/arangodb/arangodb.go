@@ -40,6 +40,11 @@ type dockey struct {
 	PropKey string `json:"propkey"`
 }
 
+type relKey struct {
+	ParentKey string `json:"parent_key"`
+	ChildKey  string `json:"child_key"`
+}
+
 type arangorepository struct {
 	sess          *manager.Session
 	database      *manager.Database
@@ -162,34 +167,28 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 	m := &model.StockDoc{}
 	var stmt string
 	var bindVars map[string]interface{}
-	if len(ns.Data.Attributes.StrainProperties.Parents) > 0 { // in case parents are present
-		var parents []string
+	if len(ns.Data.Attributes.StrainProperties.Parent) > 0 { // in case parent is present
+		parent := ns.Data.Attributes.StrainProperties.Parent
 		pVars := map[string]interface{}{
 			"@stock_collection": ar.stock.Name(),
+			"id":                parent,
 		}
-		for _, p := range ns.Data.Attributes.StrainProperties.Parents {
-			pVars["id"] = p
-			var pid string
-			r, err := ar.database.GetRow(statement.StockFindQ, pVars)
-			if err != nil {
-				return m, fmt.Errorf("error in searching for parent %s %s", p, err)
-			}
-			if r.IsEmpty() {
-				return m, fmt.Errorf("parent %s is not found", p)
-			}
-			if err := r.Read(&pid); err != nil {
-				return m, fmt.Errorf("error in scanning the value %s %s", p, err)
-			}
-			parents = append(parents, pid)
+		r, err := ar.database.GetRow(statement.StockFindQ, pVars)
+		if err != nil {
+			return m, fmt.Errorf("error in searching for parent %s %s", parent, err)
+		}
+		if r.IsEmpty() {
+			return m, fmt.Errorf("parent %s is not found", p)
+		}
+		var pid string
+		if err := r.Read(&pid); err != nil {
+			return m, fmt.Errorf("error in scanning the value %s %s", p, err)
 		}
 		stmt = statement.StockStrainWithParentsIns
 		bindVars = addableStrainBindParams(ns.Data.Attributes)
-		bindVars["parents"] = parents
+		bindVars["pid"] = pid
 		bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
-		sp := &model.StrainProperties{
-			Parents: ns.Data.Attributes.StrainProperties.Parents,
-		}
-		m.StrainProperties = sp
+		m.StrainProperties = &model.StrainProperties{Parent: p}
 	} else {
 		bindVars = addableStrainBindParams(ns.Data.Attributes)
 		stmt = statement.StockStrainIns
@@ -234,35 +233,33 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 	if err != nil {
 		return m, err
 	}
-	var parents []string
-	if len(us.Data.Attributes.StrainProperties.Parents) > 0 { // in case parents are present
-		pVars := map[string]interface{}{
-			"@stock_collection": ar.stock.Name(),
-		}
-		for _, p := range us.Data.Attributes.StrainProperties.Parents {
-			pVars["id"] = p
-			var pid string
-			r, err := ar.database.GetRow(statement.StockFindQ, pVars)
-			if err != nil {
-				return m, fmt.Errorf("error in searching for parent %s %s", p, err)
-			}
-			if r.IsEmpty() {
-				return m, fmt.Errorf("parent %s is not found", p)
-			}
-			if err := r.Read(&pid); err != nil {
-				return m, fmt.Errorf("error in scanning the value %s %s", p, err)
-			}
-			parents = append(parents, pid)
-		}
-	}
-	var stmt string
 	bindVars := getUpdatableStockBindParams(us.Data.Attributes)
 	bindStVars := getUpdatableStrainBindParams(us.Data.Attributes)
 	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindStVars}...)
-	if len(parents) > 0 {
+	var stmt string
+	pcount := len(us.Data.Attributes.StrainProperties.Parent)
+	if len(pcount) > 0 { // in case parent is present
+		// retrieve all keys for existing parent-child edges
+		r, err := ar.database.GetRow(
+			statement.StrainGetParentRel,
+			map[string]interface{}{
+				"parent_graph": ar.strain2Parent.Name(),
+				"strain_key":   dk.Key,
+			})
+		if err != nil {
+			return m, fmt.Errorf("error in parent relation query %s", err)
+		}
+		var pKey string
+		if !r.IsEmpty() {
+			if err := r.Read(&pkey); err != nil {
+				return m, fmt.Errorf("error in reading parent relation key %s", err)
+			}
+		}
 		stmt = statement.StrainWithParentUpd
-		cmBindVars["parents"] = parents
+		cmBindVars["pkey"] = pKey
+		cmBindVars["parent"] = us.Data.Attributes.StrainProperties.Parent
 		cmBindVars["parent_graph"] = ar.strain2Parent.Name()
+		cmBindVars["parent_edge"] = ar.parentStrain.Name()
 		cmBindVars["@parent_strain_collection"] = ar.parentStrain.Name()
 	} else {
 		stmt = statement.StrainUpd
@@ -271,16 +268,17 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 	cmBindVars["@stock_collection"] = ar.stock.Name()
 	cmBindVars["propkey"] = dk.PropKey
 	cmBindVars["key"] = dk.Key
+	q := fmt.Sprintf(
+		stmt,
+		genAQLDocExpression(bindVars),
+		genAQLDocExpression(bindStVars),
+	)
 	rupd, err := ar.database.DoRun(
-		fmt.Sprintf(
-			stmt,
-			genAQLDocExpression(bindVars),
-			genAQLDocExpression(bindStVars),
-		),
+		q,
 		cmBindVars,
 	)
 	if err != nil {
-		return m, err
+		return m, fmt.Errorf("error in editing strain %s %s %s", us.Data.Id, err, q)
 	}
 	if err := rupd.Read(m); err != nil {
 		return m, err

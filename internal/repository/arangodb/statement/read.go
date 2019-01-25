@@ -63,6 +63,10 @@ const (
 			LIMIT @limit
 			RETURN stock
 	`
+	StrainGetParentRel = `
+		FOR v,e IN 1..1 INBOUND @strain_key GRAPH @parent_graph
+			RETURN e._key
+	`
 	StrainList = `
 		FOR s IN @@stock_collection
 			FOR v IN 1..1 OUTBOUND s GRAPH @graph

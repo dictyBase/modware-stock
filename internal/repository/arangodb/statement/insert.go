@@ -68,8 +68,7 @@ const (
 			} INTO @@stock_properties_collection RETURN NEW
 		)
 		INSERT { _from: n[0]._id, _to: o[0]._id, type: 'strain' } INTO @@stock_type_collection
-		FOR p IN @parents
-			INSERT { _from: p, _to: n[0]._id } INTO @@parent_strain_collection
+		INSERT { _from: @pid, _to: n[0]._id } INTO @@parent_strain_collection
 		RETURN MERGE(
 			n[0],
 			{

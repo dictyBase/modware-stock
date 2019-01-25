@@ -30,6 +30,8 @@ github.com/dictyBase/go-genproto v0.0.0-20190107190912-a5b40d453b9c h1:47Hm8hPdk
 github.com/dictyBase/go-genproto v0.0.0-20190107190912-a5b40d453b9c/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
 github.com/dictyBase/go-genproto v0.0.0-20190108210140-245692b4c03c h1:dFXZ9QkRfXoTGxP/N0CjDdLMC01OaP7PHtjl0aF2uEM=
 github.com/dictyBase/go-genproto v0.0.0-20190108210140-245692b4c03c/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
+github.com/dictyBase/go-genproto v0.0.0-20190124152616-b3a18d697160 h1:j48IYplOcLQsKMbLZcrrVaX6Oo4F5moT46QcaqyO09E=
+github.com/dictyBase/go-genproto v0.0.0-20190124152616-b3a18d697160/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/garyburd/redigo v1.6.0 h1:0VruCpn7yAIIu7pWVClQC8wxCJEcG3nyzpMSHKi1PQc=
