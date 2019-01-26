@@ -73,6 +73,22 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 	ar.database = db
 	stockc, err := db.FindOrCreateCollection(
 		collP.Stock,
+		&driver.CreateCollectionOptions{},
+	)
+	if err != nil {
+		return ar, err
+	}
+	ar.stock = stockc
+	spropc, err := db.FindOrCreateCollection(
+		collP.StockProp,
+		&driver.CreateCollectionOptions{},
+	)
+	if err != nil {
+		return ar, err
+	}
+	ar.stockProp = spropc
+	stockkeyc, err := db.FindOrCreateCollection(
+		collP.StockKeyGenerator,
 		&driver.CreateCollectionOptions{
 			KeyOptions: &driver.CollectionKeyOptions{
 				Increment: 1,
@@ -82,23 +98,19 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 	if err != nil {
 		return ar, err
 	}
-	ar.stock = stockc
-	spropc, err := db.FindOrCreateCollection(collP.StockProp, &driver.CreateCollectionOptions{})
-	if err != nil {
-		return ar, err
-	}
-	ar.stockProp = spropc
-	stockkeyc, err := db.FindOrCreateCollection(collP.StockKeyGenerator, &driver.CreateCollectionOptions{})
-	if err != nil {
-		return ar, err
-	}
 	ar.stockKey = stockkeyc
-	stypec, err := db.FindOrCreateCollection(collP.StockType, &driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge})
+	stypec, err := db.FindOrCreateCollection(
+		collP.StockType,
+		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
+	)
 	if err != nil {
 		return ar, err
 	}
 	ar.stockType = stypec
-	parentc, err := db.FindOrCreateCollection(collP.ParentStrain, &driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge})
+	parentc, err := db.FindOrCreateCollection(
+		collP.ParentStrain,
+		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
+	)
 	if err != nil {
 		return ar, err
 	}
@@ -239,7 +251,12 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 	var stmt string
 	pcount := len(us.Data.Attributes.StrainProperties.Parent)
 	if len(pcount) > 0 { // in case parent is present
-		// retrieve all keys for existing parent-child edges
+		// parent -> relation -> child
+		//   obj  ->  pred    -> sub
+		// 1. Have to make sure the parent is present
+		// 2. Have figure out if child(sub) has an existing relation
+		//    a) If relation exist get and update the relation(pred)
+		//    b) If not create the new relation(pred)
 		r, err := ar.database.GetRow(
 			statement.StrainGetParentRel,
 			map[string]interface{}{
