@@ -241,9 +241,21 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, err
 // EditStrain updates an existing strain
 func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	dk, err := ar.findStock(us.Data.Id)
+	r, err := ar.database.GetRow(
+		statement.StockFindIdQ,
+		map[string]interface{}{
+			"stock_collection": ar.stock.Name(),
+			"stock_id":         us.Data.Id,
+		})
 	if err != nil {
-		return m, err
+		return m, fmt.Errorf("error in finding strain id %s %s", us.Data.Id, err)
+	}
+	if r.IsEmpty() {
+		return m, fmt.Errorf("strain id %s is absent in database", us.Data.Id)
+	}
+	var propKey string
+	if err := r.Read(&propkey); err != nil {
+		return m, fmt.Errorf("error in reading using strain id %s %s", us.Data.Id, err)
 	}
 	bindVars := getUpdatableStockBindParams(us.Data.Attributes)
 	bindStVars := getUpdatableStrainBindParams(us.Data.Attributes)
@@ -251,17 +263,25 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 	var stmt string
 	pcount := len(us.Data.Attributes.StrainProperties.Parent)
 	if len(pcount) > 0 { // in case parent is present
+		parent := us.Data.Attributes.StrainProperties.Parent
 		// parent -> relation -> child
 		//   obj  ->  pred    -> sub
 		// 1. Have to make sure the parent is present
 		// 2. Have figure out if child(sub) has an existing relation
 		//    a) If relation exist get and update the relation(pred)
 		//    b) If not create the new relation(pred)
+		ok, err := ar.stock.DocumentExists(context.Background(), parent)
+		if err != nil {
+			return m, fmt.Errorf("error in checking for parent id %s %s", parent, err)
+		}
+		if !ok {
+			return m, fmt.Errorf("parent id %s does not exist in database", parent)
+		}
 		r, err := ar.database.GetRow(
 			statement.StrainGetParentRel,
 			map[string]interface{}{
 				"parent_graph": ar.strain2Parent.Name(),
-				"strain_key":   dk.Key,
+				"strain_key":   us.Data.Id,
 			})
 		if err != nil {
 			return m, fmt.Errorf("error in parent relation query %s", err)
@@ -283,8 +303,8 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 	}
 	cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
 	cmBindVars["@stock_collection"] = ar.stock.Name()
-	cmBindVars["propkey"] = dk.PropKey
-	cmBindVars["key"] = dk.Key
+	cmBindVars["propkey"] = propKey
+	cmBindVars["key"] = us.Data.Id
 	q := fmt.Sprintf(
 		stmt,
 		genAQLDocExpression(bindVars),
