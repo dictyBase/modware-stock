@@ -2,11 +2,9 @@ package statement
 
 const (
 	StockFindIdQ = `
-		FOR s IN @@stock_collection
-			FOR v IN 1..1 OUTBOUND s GRAPH @graph
-				FILTER s.stock_id == @id
-				LIMIT 1
-				RETURN { key: s._key, propkey: v._key }
+		FOR v IN 1..1 OUTBOUND
+			CONCAT(@stock_collection,"/",@stock_id) GRAPH @graph
+			RETURN { propkey: v._key }
 	`
 	StockFindQ = `
 		FOR s IN @@stock_collection
