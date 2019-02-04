@@ -7,7 +7,8 @@ import (
 
 // StockRepository is an interface for accessing stock information
 type StockRepository interface {
-	GetStock(id string) (*model.StockDoc, error)
+	GetStrain(id string) (*model.StockDoc, error)
+	GetPlasmid(id string) (*model.StockDoc, error)
 	AddStrain(ns *stock.NewStock) (*model.StockDoc, error)
 	AddPlasmid(ns *stock.NewStock) (*model.StockDoc, error)
 	EditPlasmid(us *stock.StockUpdate) (*model.StockDoc, error)
