@@ -348,8 +348,8 @@ func TestAddStrain(t *testing.T) {
 		t.Fatalf("error in adding strain: %s", err)
 	}
 	assert := assert.New(t)
-	assert.Regexp(regexp.MustCompile(`^\d+$`), m.Key, "should have a key with numbers")
 	assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), m.StockID, "should have a stock id")
+	assert.Equal(m.Key, m.StockID, "should have identical key and stock ID")
 	assert.Equal(m.CreatedBy, nsp.Data.Attributes.CreatedBy, "should match created_by id")
 	assert.Equal(m.UpdatedBy, nsp.Data.Attributes.UpdatedBy, "should match updated_by id")
 	assert.Equal(m.Summary, nsp.Data.Attributes.Summary, "should match summary")
@@ -371,8 +371,8 @@ func TestAddStrain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in adding strain: %s", err)
 	}
-	assert.Regexp(regexp.MustCompile(`^\d+$`), m2.Key, "should have a key with numbers")
 	assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), m2.StockID, "should have a stock id")
+	assert.Equal(m2.Key, m2.StockID, "should have identical key and stock ID")
 	assert.Equal(m2.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
 	assert.Equal(m2.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
 	assert.Equal(m2.Summary, ns.Data.Attributes.Summary, "should match summary")
@@ -431,8 +431,8 @@ func TestAddPlasmidWithoutProp(t *testing.T) {
 		t.Fatalf("error in adding plasmid: %s", err)
 	}
 	assert := assert.New(t)
-	assert.Regexp(regexp.MustCompile(`^\d+$`), m.Key, "should have a key with numbers")
 	assert.Regexp(regexp.MustCompile(`^DBP0\d{6,}$`), m.StockID, "should have a plasmid stock id")
+	assert.Equal(m.Key, m.StockID, "should have identical key and stock ID")
 	assert.Equal(m.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
 	assert.Equal(m.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
 	assert.Equal(m.Summary, ns.Data.Attributes.Summary, "should match summary")
@@ -465,8 +465,8 @@ func TestAddPlasmid(t *testing.T) {
 		t.Fatalf("error in adding plasmid: %s", err)
 	}
 	assert := assert.New(t)
-	assert.Regexp(regexp.MustCompile(`^\d+$`), m.Key, "should have a key with numbers")
 	assert.Regexp(regexp.MustCompile(`^DBP0\d{6,}$`), m.StockID, "should have a plasmid stock id")
+	assert.Equal(m.Key, m.StockID, "should have identical key and stock ID")
 	assert.Equal(m.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
 	assert.Equal(m.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
 	assert.Equal(m.Summary, ns.Data.Attributes.Summary, "should match summary")
