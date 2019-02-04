@@ -1,7 +1,6 @@
 package arangodb
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -614,9 +613,9 @@ func TestGetStock(t *testing.T) {
 	assert.Equal(g.StrainProperties.Label, ns.Data.Attributes.StrainProperties.Label, "should match descriptor")
 	assert.Equal(g.StrainProperties.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
 	assert.Equal(g.StrainProperties.Parent, ns.Data.Attributes.StrainProperties.Parent, "should match parent")
-	assert.Equal(g.StrainProperties.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
-	assert.Empty(g.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
-	assert.Empty(g.StrainProperties.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should have empty plasmid field")
+	assert.ElementsMatch(g.StrainProperties.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
+	assert.ElementsMatch(g.Genes, ns.Data.Attributes.Genes, "should match genes")
+	assert.Equal(g.StrainProperties.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should match plasmid")
 	assert.Equal(len(g.Dbxrefs), 6, "should match length of six dbxrefs")
 	assert.NotEmpty(g.Key, "should not have empty key")
 	assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
@@ -632,93 +631,6 @@ func TestGetStock(t *testing.T) {
 	}
 	assert.True(ne.NotFound, "entry should not exist")
 }
-
-// func TestEditStock(t *testing.T) {
-
-// }
-
-func TestListStocks(t *testing.T) {
-	connP := getConnectParams()
-	collP := getCollectionParams()
-	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
-	defer repo.ClearStocks()
-	// add 10 new test strains
-	for i := 1; i <= 10; i++ {
-		ns := newTestStrain(fmt.Sprintf("%s@kramericaindustries.com", RandString(10)))
-		_, err := repo.AddStrain(ns)
-		if err != nil {
-			t.Fatalf("error in adding strain %s", err)
-		}
-	}
-	// add 5 new test plasmids
-	for i := 1; i <= 5; i++ {
-		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
-		_, err := repo.AddPlasmid(np)
-		if err != nil {
-			t.Fatalf("error in adding plasmid %s", err)
-		}
-	}
-	// get first five results
-	ls, err := repo.ListStocks(0, 4)
-	if err != nil {
-		t.Fatalf("error in getting first five stocks %s", err)
-	}
-	assert := assert.New(t)
-	assert.Equal(len(ls), 5, "should match the provided limit number + 1")
-
-	for _, stock := range ls {
-		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
-		assert.NotEmpty(stock.Key, "should not have empty key")
-	}
-	assert.NotEqual(ls[0].CreatedBy, ls[1].CreatedBy, "should have different created_by")
-	// convert fifth result to numeric timestamp in milliseconds
-	// so we can use this as cursor
-	ti := toTimestamp(ls[4].CreatedAt)
-
-	// get next five results (5-9)
-	ls2, err := repo.ListStocks(ti, 4)
-	if err != nil {
-		t.Fatalf("error in getting stocks 5-9 %s", err)
-	}
-	assert.Equal(len(ls2), 5, "should match the provided limit number + 1")
-	assert.Equal(ls2[0], ls[4], "last item from first five results and first item from next five results should be the same")
-	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different consumers")
-
-	// convert ninth result to numeric timestamp
-	ti2 := toTimestamp(ls2[4].CreatedAt)
-	// get last five results (9-13)
-	ls3, err := repo.ListStocks(ti2, 4)
-	if err != nil {
-		t.Fatalf("error in getting stocks 9-13 %s", err)
-	}
-	assert.Equal(len(ls3), 5, "should match the provided limit number + 1")
-	assert.Equal(ls3[0].CreatedBy, ls2[4].CreatedBy, "last item from previous five results and first item from next five results should be the same")
-
-	// convert 13th result to numeric timestamp
-	ti3 := toTimestamp(ls3[4].CreatedAt)
-	// get last results
-	ls4, err := repo.ListStocks(ti3, 4)
-	if err != nil {
-		t.Fatalf("error in getting stocks 13-15 %s", err)
-	}
-	assert.Equal(len(ls4), 3, "should only bring last three results")
-	assert.Equal(ls3[4].CreatedBy, ls4[0].CreatedBy, "last item from previous five results and first item from next three results should be the same")
-	testModelListSort(ls, t)
-	testModelListSort(ls2, t)
-	testModelListSort(ls3, t)
-	testModelListSort(ls4, t)
-}
-
-// func TestListStrains(t *testing.T) {
-
-// }
-
-// func TestListPlasmids(t *testing.T) {
-
-// }
 
 func TestRemoveStock(t *testing.T) {
 	connP := getConnectParams()

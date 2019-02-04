@@ -245,6 +245,7 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 		statement.StockFindIdQ,
 		map[string]interface{}{
 			"stock_collection": ar.stock.Name(),
+			"graph":            ar.stockPropType.Name(),
 			"stock_id":         us.Data.Id,
 		})
 	if err != nil {
@@ -490,7 +491,7 @@ func (ar *arangorepository) findStock(id string) (*dockey, error) {
 		map[string]interface{}{
 			"@stock_collection": ar.stock.Name(),
 			"graph":             ar.stockPropType.Name(),
-			"id":                id,
+			"stock_id":          id,
 		})
 	if err != nil {
 		return d, fmt.Errorf("error in searching for id %s %s", id, err)
