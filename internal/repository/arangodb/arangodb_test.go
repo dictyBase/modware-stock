@@ -277,10 +277,6 @@ func TestEditStrain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in adding parent strain %s", err)
 	}
-	pm2, err := repo.AddStrain(newTestParentStrain("jackie@chiles.org"))
-	if err != nil {
-		t.Fatalf("error in adding parent strain %s", err)
-	}
 	us2 := &stock.StockUpdate{
 		Data: &stock.StockUpdate_Data{
 			Type: ns.Data.Type,
@@ -288,7 +284,7 @@ func TestEditStrain(t *testing.T) {
 			Attributes: &stock.StockUpdateAttributes{
 				UpdatedBy: "mario@snes.org",
 				StrainProperties: &stock.StrainUpdateProperties{
-					Parents: []string{pm.StockID, pm2.StockID},
+					Parent: pm.StockID,
 				},
 			},
 		},
@@ -331,10 +327,10 @@ func TestEditStrain(t *testing.T) {
 		um.StrainProperties.Plasmid,
 		"plasmid should not be updated",
 	)
-	assert.ElementsMatch(
-		um2.StrainProperties.Parents,
-		us2.Data.Attributes.StrainProperties.Parents,
-		"should have updated list of parents",
+	assert.Equal(
+		um2.StrainProperties.Parent,
+		us2.Data.Attributes.StrainProperties.Parent,
+		"should have updated parent",
 	)
 }
 
@@ -367,7 +363,7 @@ func TestAddStrain(t *testing.T) {
 	assert.Equal(m.StrainProperties.Species, nsp.Data.Attributes.StrainProperties.Species, "should match species")
 	assert.ElementsMatch(m.StrainProperties.Names, nsp.Data.Attributes.StrainProperties.Names, "should match names")
 	assert.Empty(m.StrainProperties.Plasmid, "should not have any plasmid")
-	assert.Empty(m.StrainProperties.Parents, "should not have any parent")
+	assert.Empty(m.StrainProperties.Parent, "should not have any parent")
 
 	ns := newTestStrain("pennypacker@penny.com")
 	ns.Data.Attributes.StrainProperties.Parent = m.StockID
@@ -617,7 +613,7 @@ func TestGetStock(t *testing.T) {
 	assert.Equal(g.StrainProperties.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
 	assert.Equal(g.StrainProperties.Label, ns.Data.Attributes.StrainProperties.Label, "should match descriptor")
 	assert.Equal(g.StrainProperties.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
-	assert.Equal(g.StrainProperties.Parents, ns.Data.Attributes.StrainProperties.Parents, "should match parents")
+	assert.Equal(g.StrainProperties.Parent, ns.Data.Attributes.StrainProperties.Parent, "should match parent")
 	assert.Equal(g.StrainProperties.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
 	assert.Empty(g.Genes, ns.Data.Attributes.Genes, "should have empty genes field")
 	assert.Empty(g.StrainProperties.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should have empty plasmid field")

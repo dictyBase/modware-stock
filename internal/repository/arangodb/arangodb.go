@@ -180,14 +180,14 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 	var stmt string
 	var bindVars map[string]interface{}
 	if len(ns.Data.Attributes.StrainProperties.Parent) > 0 { // in case parent is present
-		parent := ns.Data.Attributes.StrainProperties.Parent
+		p := ns.Data.Attributes.StrainProperties.Parent
 		pVars := map[string]interface{}{
 			"@stock_collection": ar.stock.Name(),
-			"id":                parent,
+			"id":                p,
 		}
 		r, err := ar.database.GetRow(statement.StockFindQ, pVars)
 		if err != nil {
-			return m, fmt.Errorf("error in searching for parent %s %s", parent, err)
+			return m, fmt.Errorf("error in searching for parent %s %s", p, err)
 		}
 		if r.IsEmpty() {
 			return m, fmt.Errorf("parent %s is not found", p)
@@ -254,7 +254,7 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 		return m, fmt.Errorf("strain id %s is absent in database", us.Data.Id)
 	}
 	var propKey string
-	if err := r.Read(&propkey); err != nil {
+	if err := r.Read(&propKey); err != nil {
 		return m, fmt.Errorf("error in reading using strain id %s %s", us.Data.Id, err)
 	}
 	bindVars := getUpdatableStockBindParams(us.Data.Attributes)
@@ -262,7 +262,7 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindStVars}...)
 	var stmt string
 	pcount := len(us.Data.Attributes.StrainProperties.Parent)
-	if len(pcount) > 0 { // in case parent is present
+	if pcount > 0 { // in case parent is present
 		parent := us.Data.Attributes.StrainProperties.Parent
 		// parent -> relation -> child
 		//   obj  ->  pred    -> sub
@@ -288,7 +288,7 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 		}
 		var pKey string
 		if !r.IsEmpty() {
-			if err := r.Read(&pkey); err != nil {
+			if err := r.Read(&pKey); err != nil {
 				return m, fmt.Errorf("error in reading parent relation key %s", err)
 			}
 		}
@@ -502,7 +502,6 @@ func (ar *arangorepository) findStock(id string) (*dockey, error) {
 		return d, err
 	}
 	return d, nil
-
 }
 
 func addablePlasmidBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
