@@ -129,7 +129,7 @@ func newUpdatableTestPlasmid(createdby string) *stock.NewStock {
 	}
 }
 
-func newTestPlasmidWithProp(createdby string) *stock.NewStock {
+func newTestPlasmidWithoutProp(createdby string) *stock.NewStock {
 	return &stock.NewStock{
 		Data: &stock.NewStock_Data{
 			Type: "plasmid",
@@ -425,7 +425,7 @@ func TestAddPlasmidWithoutProp(t *testing.T) {
 		t.Fatalf("error in connecting to stock repository %s", err)
 	}
 	defer repo.ClearStocks()
-	ns := newTestPlasmidWithProp("george@costanza.com")
+	ns := newTestPlasmidWithoutProp("george@costanza.com")
 	m, err := repo.AddPlasmid(ns)
 	if err != nil {
 		t.Fatalf("error in adding plasmid: %s", err)
@@ -586,7 +586,7 @@ func TestEditPlasmid(t *testing.T) {
 	)
 }
 
-func TestGetStock(t *testing.T) {
+func TestGetStrain(t *testing.T) {
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
@@ -599,7 +599,7 @@ func TestGetStock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in adding strain %s", err)
 	}
-	g, err := repo.GetStock(m.StockID)
+	g, err := repo.GetStrain(m.StockID)
 	if err != nil {
 		t.Fatalf("error in getting stock %s with ID %s", m.StockID, err)
 	}
@@ -622,11 +622,51 @@ func TestGetStock(t *testing.T) {
 	assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
 	assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
 
-	ne, err := repo.GetStock("DBS01")
+	ne, err := repo.GetStrain("DBS01")
 	if err != nil {
 		t.Fatalf(
 			"error in fetching stock %s with ID %s",
 			"DBS01",
+			err,
+		)
+	}
+	assert.True(ne.NotFound, "entry should not exist")
+}
+
+func TestGetPlasmid(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer repo.ClearStocks()
+	ns := newTestPlasmid("george@costanza.com")
+	m, err := repo.AddPlasmid(ns)
+	if err != nil {
+		t.Fatalf("error in adding strain %s", err)
+	}
+	g, err := repo.GetPlasmid(m.StockID)
+	if err != nil {
+		t.Fatalf("error in getting stock %s with ID %s", m.StockID, err)
+	}
+	assert := assert.New(t)
+	assert.Equal(g.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
+	assert.Equal(g.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
+	assert.Equal(g.Summary, ns.Data.Attributes.Summary, "should match summary")
+	assert.Equal(g.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
+	assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
+	assert.Equal(g.PlasmidProperties.ImageMap, ns.Data.Attributes.PlasmidProperties.ImageMap, "should match image_map")
+	assert.Equal(g.PlasmidProperties.Sequence, ns.Data.Attributes.PlasmidProperties.Sequence, "should match sequence")
+	assert.NotEmpty(g.Key, "should not have empty key")
+	assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
+	assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
+
+	ne, err := repo.GetPlasmid("DBP01")
+	if err != nil {
+		t.Fatalf(
+			"error in fetching stock %s with ID %s",
+			"DBP01",
 			err,
 		)
 	}
@@ -797,7 +837,7 @@ func TestRemoveStock(t *testing.T) {
 			m.Key,
 			err)
 	}
-	ne, err := repo.GetStock(m.Key)
+	ne, err := repo.GetStrain(m.Key)
 	if err != nil {
 		t.Fatalf(
 			"error in fetching stock %s with ID %s",
