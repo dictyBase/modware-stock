@@ -145,22 +145,39 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 	return ar, nil
 }
 
-// GetStock retrieves biological stock from database
-func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
+// GetStrain retrieves a strain from the database
+func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	var stmt string
 	bindVars := map[string]interface{}{
 		"@stock_collection":      ar.stock.Name(),
 		"@stock_type_collection": ar.stockType.Name(),
 		"id":                     id,
 		"graph":                  ar.stockPropType.Name(),
 	}
-	if id[:3] == "DBS" {
-		stmt = statement.StockGetStrain
-	} else {
-		stmt = statement.StockGetPlasmid
+	r, err := ar.database.GetRow(statement.StockGetStrain, bindVars)
+	if err != nil {
+		return m, err
 	}
-	r, err := ar.database.GetRow(stmt, bindVars)
+	if r.IsEmpty() {
+		m.NotFound = true
+		return m, nil
+	}
+	if err := r.Read(m); err != nil {
+		return m, err
+	}
+	return m, nil
+}
+
+// GetPlasmid retrieves a plasmid from the database
+func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
+	m := &model.StockDoc{}
+	bindVars := map[string]interface{}{
+		"@stock_collection":      ar.stock.Name(),
+		"@stock_type_collection": ar.stockType.Name(),
+		"id":                     id,
+		"graph":                  ar.stockPropType.Name(),
+	}
+	r, err := ar.database.GetRow(statement.StockGetPlasmid, bindVars)
 	if err != nil {
 		return m, err
 	}
@@ -244,9 +261,9 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 	r, err := ar.database.GetRow(
 		statement.StockFindIdQ,
 		map[string]interface{}{
-			"stock_collection": ar.stock.Name(),
-			"graph":            ar.stockPropType.Name(),
-			"stock_id":         us.Data.Id,
+			"@stock_collection": ar.stock.Name(),
+			"graph":             ar.stockPropType.Name(),
+			"stock_id":          us.Data.Id,
 		})
 	if err != nil {
 		return m, fmt.Errorf("error in finding strain id %s %s", us.Data.Id, err)
