@@ -10,6 +10,7 @@ import (
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
+	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 	validator "gopkg.in/go-playground/validator.v9"
 )
 
@@ -61,6 +62,22 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 	ar.database = db
 	stockc, err := db.FindOrCreateCollection(
 		collP.Stock,
+		&driver.CreateCollectionOptions{},
+	)
+	if err != nil {
+		return ar, err
+	}
+	ar.stock = stockc
+	spropc, err := db.FindOrCreateCollection(
+		collP.StockProp,
+		&driver.CreateCollectionOptions{},
+	)
+	if err != nil {
+		return ar, err
+	}
+	ar.stockProp = spropc
+	stockkeyc, err := db.FindOrCreateCollection(
+		collP.StockKeyGenerator,
 		&driver.CreateCollectionOptions{
 			KeyOptions: &driver.CollectionKeyOptions{
 				Increment: 1,
@@ -70,23 +87,19 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 	if err != nil {
 		return ar, err
 	}
-	ar.stock = stockc
-	spropc, err := db.FindOrCreateCollection(collP.StockProp, &driver.CreateCollectionOptions{})
-	if err != nil {
-		return ar, err
-	}
-	ar.stockProp = spropc
-	stockkeyc, err := db.FindOrCreateCollection(collP.StockKeyGenerator, &driver.CreateCollectionOptions{})
-	if err != nil {
-		return ar, err
-	}
 	ar.stockKey = stockkeyc
-	stypec, err := db.FindOrCreateCollection(collP.StockType, &driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge})
+	stypec, err := db.FindOrCreateCollection(
+		collP.StockType,
+		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
+	)
 	if err != nil {
 		return ar, err
 	}
 	ar.stockType = stypec
-	parentc, err := db.FindOrCreateCollection(collP.ParentStrain, &driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge})
+	parentc, err := db.FindOrCreateCollection(
+		collP.ParentStrain,
+		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
+	)
 	if err != nil {
 		return ar, err
 	}
@@ -122,22 +135,37 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 	return ar, nil
 }
 
-// GetStock retrieves biological stock from database
-func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
+// GetStrain retrieves a strain from the database
+func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	var stmt string
 	bindVars := map[string]interface{}{
-		"@stock_collection":      ar.stock.Name(),
-		"@stock_type_collection": ar.stockType.Name(),
-		"id":                     id,
-		"graph":                  ar.stockPropType.Name(),
+		"@stock_collection": ar.stock.Name(),
+		"id":                id,
+		"graph":             ar.stockPropType.Name(),
 	}
-	if id[:3] == "DBS" {
-		stmt = stockGetStrain
-	} else {
-		stmt = stockGetPlasmid
+	r, err := ar.database.GetRow(statement.StockGetStrain, bindVars)
+	if err != nil {
+		return m, err
 	}
-	r, err := ar.database.GetRow(stmt, bindVars)
+	if r.IsEmpty() {
+		m.NotFound = true
+		return m, nil
+	}
+	if err := r.Read(m); err != nil {
+		return m, err
+	}
+	return m, nil
+}
+
+// GetPlasmid retrieves a plasmid from the database
+func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
+	m := &model.StockDoc{}
+	bindVars := map[string]interface{}{
+		"@stock_collection": ar.stock.Name(),
+		"id":                id,
+		"graph":             ar.stockPropType.Name(),
+	}
+	r, err := ar.database.GetRow(statement.StockGetPlasmid, bindVars)
 	if err != nil {
 		return m, err
 	}
@@ -154,29 +182,39 @@ func (ar *arangorepository) GetStock(id string) (*model.StockDoc, error) {
 // AddStrain creates a new strain stock
 func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	attr := ns.Data.Attributes
-	bindVars := map[string]interface{}{
-		"@stock_collection":            ar.stock.Name(),
-		"@stock_key_generator":         ar.stockKey.Name(),
-		"@stock_properties_collection": ar.stockProp.Name(),
-		"@stock_type_collection":       ar.stockType.Name(),
-		"@parent_strain_collection":    ar.parentStrain.Name(),
-		"created_by":                   attr.CreatedBy,
-		"updated_by":                   attr.UpdatedBy,
-		"summary":                      attr.Summary,
-		"editable_summary":             attr.EditableSummary,
-		"depositor":                    attr.Depositor,
-		"genes":                        attr.Genes,
-		"dbxrefs":                      attr.Dbxrefs,
-		"publications":                 attr.Publications,
-		"systematic_name":              attr.StrainProperties.SystematicName,
-		"descriptor":                   attr.StrainProperties.Descriptor_,
-		"species":                      attr.StrainProperties.Species,
-		"plasmid":                      attr.StrainProperties.Plasmid,
-		"parents":                      attr.StrainProperties.Parents,
-		"names":                        attr.StrainProperties.Names,
+	var stmt string
+	var bindVars map[string]interface{}
+	if len(ns.Data.Attributes.StrainProperties.Parent) > 0 { // in case parent is present
+		p := ns.Data.Attributes.StrainProperties.Parent
+		pVars := map[string]interface{}{
+			"@stock_collection": ar.stock.Name(),
+			"id":                p,
+		}
+		r, err := ar.database.GetRow(statement.StockFindQ, pVars)
+		if err != nil {
+			return m, fmt.Errorf("error in searching for parent %s %s", p, err)
+		}
+		if r.IsEmpty() {
+			return m, fmt.Errorf("parent %s is not found", p)
+		}
+		var pid string
+		if err := r.Read(&pid); err != nil {
+			return m, fmt.Errorf("error in scanning the value %s %s", p, err)
+		}
+		stmt = statement.StockStrainWithParentsIns
+		bindVars = addableStrainBindParams(ns.Data.Attributes)
+		bindVars["pid"] = pid
+		bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
+		m.StrainProperties = &model.StrainProperties{Parent: p}
+	} else {
+		bindVars = addableStrainBindParams(ns.Data.Attributes)
+		stmt = statement.StockStrainIns
 	}
-	r, err := ar.database.DoRun(stockStrainIns, bindVars)
+	bindVars["@stock_collection"] = ar.stock.Name()
+	bindVars["@stock_key_generator"] = ar.stockKey.Name()
+	bindVars["@stock_properties_collection"] = ar.stockProp.Name()
+	bindVars["@stock_type_collection"] = ar.stockType.Name()
+	r, err := ar.database.DoRun(stmt, bindVars)
 	if err != nil {
 		return m, err
 	}
@@ -190,23 +228,12 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	attr := ns.Data.Attributes
-	bindVars := map[string]interface{}{
-		"@stock_collection":            ar.stock.Name(),
-		"@stock_key_generator":         ar.stockKey.Name(),
-		"@stock_type_collection":       ar.stockType.Name(),
-		"@stock_properties_collection": ar.stockProp.Name(),
-		"created_by":                   attr.CreatedBy,
-		"updated_by":                   attr.UpdatedBy,
-		"summary":                      attr.Summary,
-		"editable_summary":             attr.EditableSummary,
-		"depositor":                    attr.Depositor,
-		"genes":                        attr.Genes,
-		"dbxrefs":                      attr.Dbxrefs,
-		"publications":                 attr.Publications,
-		"image_map":                    attr.PlasmidProperties.ImageMap,
-		"sequence":                     attr.PlasmidProperties.Sequence,
-	}
-	r, err := ar.database.DoRun(stockPlasmidIns, bindVars)
+	bindVars := addablePlasmidBindParams(attr)
+	bindVars["@stock_collection"] = ar.stock.Name()
+	bindVars["@stock_key_generator"] = ar.stockKey.Name()
+	bindVars["@stock_type_collection"] = ar.stockType.Name()
+	bindVars["@stock_properties_collection"] = ar.stockProp.Name()
+	r, err := ar.database.DoRun(statement.StockPlasmidIns, bindVars)
 	if err != nil {
 		return m, err
 	}
@@ -216,29 +243,136 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, err
 	return m, nil
 }
 
-// EditStock updates an existing stock
-func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, error) {
+// EditStrain updates an existing strain
+func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	attr := us.Data.Attributes
-	// check if order exists
-	em, err := ar.GetStock(us.Data.Id)
+	r, err := ar.database.GetRow(
+		statement.StockFindIdQ,
+		map[string]interface{}{
+			"stock_collection": ar.stock.Name(),
+			"graph":            ar.stockPropType.Name(),
+			"stock_id":         us.Data.Id,
+		})
 	if err != nil {
+		return m, fmt.Errorf("error in finding strain id %s %s", us.Data.Id, err)
+	}
+	if r.IsEmpty() {
+		return m, fmt.Errorf("strain id %s is absent in database", us.Data.Id)
+	}
+	var propKey string
+	if err := r.Read(&propKey); err != nil {
+		return m, fmt.Errorf("error in reading using strain id %s %s", us.Data.Id, err)
+	}
+	bindVars := getUpdatableStockBindParams(us.Data.Attributes)
+	bindStVars := getUpdatableStrainBindParams(us.Data.Attributes)
+	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindStVars}...)
+	var stmt string
+	parent := us.Data.Attributes.StrainProperties.Parent
+	if len(parent) > 0 { // in case parent is present
+		// parent -> relation -> child
+		//   obj  ->  pred    -> sub
+		// 1. Have to make sure the parent is present
+		// 2. Have to figure out if child(sub) has an existing relation
+		//    a) If relation exists, get and update the relation(pred)
+		//    b) If not, create the new relation(pred)
+		ok, err := ar.stock.DocumentExists(context.Background(), parent)
+		if err != nil {
+			return m, fmt.Errorf("error in checking for parent id %s %s", parent, err)
+		}
+		if !ok {
+			return m, fmt.Errorf("parent id %s does not exist in database", parent)
+		}
+		r, err := ar.database.GetRow(
+			statement.StrainGetParentRel,
+			map[string]interface{}{
+				"parent_graph": ar.strain2Parent.Name(),
+				"strain_key":   us.Data.Id,
+			})
+		if err != nil {
+			return m, fmt.Errorf("error in parent relation query %s", err)
+		}
+		var pKey string
+		if !r.IsEmpty() {
+			if err := r.Read(&pKey); err != nil {
+				return m, fmt.Errorf("error in reading parent relation key %s", err)
+			}
+		}
+		if len(pKey) > 0 {
+			stmt = statement.StrainWithExistingParentUpd
+			cmBindVars["pkey"] = pKey
+		} else {
+			stmt = statement.StrainWithNewParentUpd
+		}
+		cmBindVars["parent"] = us.Data.Attributes.StrainProperties.Parent
+		cmBindVars["stock_collection"] = ar.stock.Name()
+		cmBindVars["@parent_strain_collection"] = ar.parentStrain.Name()
+		m.StrainProperties = &model.StrainProperties{Parent: parent}
+	} else {
+		stmt = statement.StrainUpd
+	}
+	cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
+	cmBindVars["@stock_collection"] = ar.stock.Name()
+	cmBindVars["propkey"] = propKey
+	cmBindVars["key"] = us.Data.Id
+	q := fmt.Sprintf(
+		stmt,
+		genAQLDocExpression(bindVars),
+		genAQLDocExpression(bindStVars),
+	)
+	rupd, err := ar.database.DoRun(
+		q,
+		cmBindVars,
+	)
+	if err != nil {
+		return m, fmt.Errorf("error in editing strain %s %s %s", us.Data.Id, err, q)
+	}
+	if err := rupd.Read(m); err != nil {
 		return m, err
 	}
-	if em.NotFound {
-		m.NotFound = true
-		return m, nil
-	}
-	bindVars := getUpdatableBindParams(attr)
-	var bindParams []string
-	for k := range bindVars {
-		bindParams = append(bindParams, fmt.Sprintf("%s: @%s", k, k))
-	}
-	stockUpdQ := fmt.Sprintf(stockUpd, strings.Join(bindParams, ","))
-	bindVars["@stock_collection"] = ar.stock.Name()
-	bindVars["key"] = us.Data.Id
+	return m, nil
+}
 
-	rupd, err := ar.database.DoRun(stockUpdQ, bindVars)
+// EditPlasmid updates an existing plasmid
+func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc, error) {
+	m := &model.StockDoc{}
+	r, err := ar.database.GetRow(
+		statement.StockFindIdQ,
+		map[string]interface{}{
+			"stock_collection": ar.stock.Name(),
+			"graph":            ar.stockPropType.Name(),
+			"stock_id":         us.Data.Id,
+		})
+	if err != nil {
+		return m, fmt.Errorf("error in finding plasmid id %s %s", us.Data.Id, err)
+	}
+	if r.IsEmpty() {
+		return m, fmt.Errorf("plasmid id %s is absent in database", us.Data.Id)
+	}
+	var propKey string
+	if err := r.Read(&propKey); err != nil {
+		return m, fmt.Errorf("error in reading using plasmid id %s %s", us.Data.Id, err)
+	}
+	var stmt string
+	bindVars := getUpdatableStockBindParams(us.Data.Attributes)
+	bindPlVars := getUpdatablePlasmidBindParams(us.Data.Attributes)
+	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindPlVars}...)
+	if len(bindPlVars) > 0 { // plasmid with optional attributes
+		stmt = fmt.Sprintf(
+			statement.PlasmidUpd,
+			genAQLDocExpression(bindVars),
+			genAQLDocExpression(bindPlVars),
+		)
+		cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
+		cmBindVars["propkey"] = propKey
+	} else {
+		stmt = fmt.Sprintf(
+			statement.StockUpd,
+			genAQLDocExpression(bindVars),
+		)
+	}
+	cmBindVars["@stock_collection"] = ar.stock.Name()
+	cmBindVars["key"] = us.Data.Id
+	rupd, err := ar.database.DoRun(stmt, cmBindVars)
 	if err != nil {
 		return m, err
 	}
@@ -248,128 +382,88 @@ func (ar *arangorepository) EditStock(us *stock.StockUpdate) (*model.StockDoc, e
 	return m, nil
 }
 
-// ListStocks provides a list of all stocks
-func (ar *arangorepository) ListStocks(cursor int64, limit int64) ([]*model.StockDoc, error) {
-	var om []*model.StockDoc
-	var stmt string
-	bindVars := map[string]interface{}{
-		"@stock_collection": ar.stock.Name(),
-		"limit":             limit + 1,
-	}
-	if cursor == 0 { // no cursor so return first set of result
-		stmt = stockList
-	} else {
-		bindVars["next_cursor"] = cursor
-		stmt = stockListWithCursor
-	}
-	rs, err := ar.database.SearchRows(stmt, bindVars)
-	if err != nil {
-		return om, err
-	}
-	if rs.IsEmpty() {
-		return om, nil
-	}
-	for rs.Scan() {
-		m := &model.StockDoc{}
-		if err := rs.Read(m); err != nil {
-			return om, err
-		}
-		om = append(om, m)
-	}
-	return om, nil
-}
-
-// ListStrains provides a list of all strains
-func (ar *arangorepository) ListStrains(cursor int64, limit int64) ([]*model.StockDoc, error) {
-	var om []*model.StockDoc
-	var stmt string
-	bindVars := map[string]interface{}{
-		"@stock_collection": ar.stock.Name(),
-		"limit":             limit + 1,
-		"graph":             "stockprop_type",
-	}
-	if cursor == 0 { // no cursor so return first set of result
-		stmt = strainList
-	} else {
-		bindVars["next_cursor"] = cursor
-		stmt = strainListWithCursor
-	}
-	rs, err := ar.database.SearchRows(stmt, bindVars)
-	if err != nil {
-		return om, err
-	}
-	if rs.IsEmpty() {
-		return om, nil
-	}
-	for rs.Scan() {
-		m := &model.StockDoc{}
-		if err := rs.Read(m); err != nil {
-			return om, err
-		}
-		om = append(om, m)
-	}
-	return om, nil
-}
-
-// ListPlasmids provides a list of all plasmids
-func (ar *arangorepository) ListPlasmids(cursor int64, limit int64) ([]*model.StockDoc, error) {
-	var om []*model.StockDoc
-	var stmt string
-	bindVars := map[string]interface{}{
-		"@stock_collection": ar.stock.Name(),
-		"limit":             limit + 1,
-		"graph":             "stockprop_type",
-	}
-	if cursor == 0 { // no cursor so return first set of result
-		stmt = plasmidList
-	} else {
-		bindVars["next_cursor"] = cursor
-		stmt = plasmidListWithCursor
-	}
-	rs, err := ar.database.SearchRows(stmt, bindVars)
-	if err != nil {
-		return om, err
-	}
-	if rs.IsEmpty() {
-		return om, nil
-	}
-	for rs.Scan() {
-		m := &model.StockDoc{}
-		if err := rs.Read(m); err != nil {
-			return om, err
-		}
-		om = append(om, m)
-	}
-	return om, nil
-}
-
 // RemoveStock removes a stock
 func (ar *arangorepository) RemoveStock(id string) error {
-	m := &model.StockDoc{}
-	_, err := ar.stock.ReadDocument(context.Background(), id, m)
+	found, err := ar.stock.DocumentExists(context.Background(), id)
 	if err != nil {
-		if driver.IsNotFound(err) {
-			return fmt.Errorf("stock record with id %s does not exist %s", id, err)
-		}
-		return err
+		return fmt.Errorf("error in finding document with id %s %s", id, err)
 	}
-	bindVars := map[string]interface{}{
-		"@stock_collection": ar.stock.Name(),
-		"key":               id,
+	if !found {
+		return fmt.Errorf("document not found %s", id)
 	}
-	err = ar.database.Do(
-		stockDelQ, bindVars,
+	_, err = ar.stock.RemoveDocument(
+		driver.WithSilent(context.Background()),
+		id,
 	)
 	if err != nil {
+		return fmt.Errorf("error in removing document with id %s %s", id, err)
+	}
+	return nil
+}
+
+// ClearStocks clears all stocks from the repository datasource
+func (ar *arangorepository) ClearStocks() error {
+	if err := ar.stock.Truncate(context.Background()); err != nil {
 		return err
 	}
 	return nil
 }
 
-func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
-	bindVars := make(map[string]interface{})
-	if len(attr.UpdatedBy) > 0 {
-		bindVars["updated_by"] = attr.UpdatedBy
+func addablePlasmidBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
+	bindVars := map[string]interface{}{
+		"depositor":        attr.Depositor,
+		"created_by":       attr.CreatedBy,
+		"updated_by":       attr.UpdatedBy,
+		"summary":          normalizeStrBindParam(attr.Summary),
+		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
+		"genes":            normalizeSliceBindParam(attr.Genes),
+		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
+		"publications":     normalizeSliceBindParam(attr.Publications),
+		"image_map":        "",
+		"sequence":         "",
+	}
+	if attr.PlasmidProperties != nil {
+		bindVars["image_map"] = normalizeStrBindParam(attr.PlasmidProperties.ImageMap)
+		bindVars["sequence"] = normalizeStrBindParam(attr.PlasmidProperties.Sequence)
+	}
+	return bindVars
+}
+
+func addableStrainBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
+	return map[string]interface{}{
+		"summary":          normalizeStrBindParam(attr.Summary),
+		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
+		"genes":            normalizeSliceBindParam(attr.Genes),
+		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
+		"publications":     normalizeSliceBindParam(attr.Publications),
+		"plasmid":          normalizeStrBindParam(attr.StrainProperties.Plasmid),
+		"names":            normalizeSliceBindParam(attr.StrainProperties.Names),
+		"depositor":        attr.Depositor,
+		"systematic_name":  attr.StrainProperties.SystematicName,
+		"label":            attr.StrainProperties.Label,
+		"species":          attr.StrainProperties.Species,
+		"created_by":       attr.CreatedBy,
+		"updated_by":       attr.UpdatedBy,
+	}
+}
+
+func normalizeSliceBindParam(s []string) []string {
+	if len(s) > 0 {
+		return s
+	}
+	return []string{}
+}
+
+func normalizeStrBindParam(str string) string {
+	if len(str) > 0 {
+		return str
+	}
+	return ""
+}
+
+func getUpdatableStockBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
+	bindVars := map[string]interface{}{
+		"updated_by": attr.UpdatedBy,
 	}
 	if len(attr.Summary) > 0 {
 		bindVars["summary"] = attr.Summary
@@ -389,11 +483,16 @@ func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interf
 	if len(attr.Publications) > 0 {
 		bindVars["publications"] = attr.Publications
 	}
+	return bindVars
+}
+
+func getUpdatableStrainBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
+	bindVars := make(map[string]interface{})
 	if len(attr.StrainProperties.SystematicName) > 0 {
 		bindVars["systematic_name"] = attr.StrainProperties.SystematicName
 	}
-	if len(attr.StrainProperties.Descriptor_) > 0 {
-		bindVars["descriptor"] = attr.StrainProperties.Descriptor_
+	if len(attr.StrainProperties.Label) > 0 {
+		bindVars["label"] = attr.StrainProperties.Label
 	}
 	if len(attr.StrainProperties.Species) > 0 {
 		bindVars["species"] = attr.StrainProperties.Species
@@ -401,25 +500,39 @@ func getUpdatableBindParams(attr *stock.StockUpdateAttributes) map[string]interf
 	if len(attr.StrainProperties.Plasmid) > 0 {
 		bindVars["plasmid"] = attr.StrainProperties.Plasmid
 	}
-	if len(attr.StrainProperties.Parents) > 0 {
-		bindVars["parents"] = attr.StrainProperties.Parents
-	}
 	if len(attr.StrainProperties.Names) > 0 {
 		bindVars["names"] = attr.StrainProperties.Names
-	}
-	if len(attr.PlasmidProperties.ImageMap) > 0 {
-		bindVars["image_map"] = attr.PlasmidProperties.ImageMap
-	}
-	if len(attr.PlasmidProperties.Sequence) > 0 {
-		bindVars["sequence"] = attr.PlasmidProperties.Sequence
 	}
 	return bindVars
 }
 
-// ClearStocks clears all stocks from the repository datasource
-func (ar *arangorepository) ClearStocks() error {
-	if err := ar.stock.Truncate(context.Background()); err != nil {
-		return err
+func getUpdatablePlasmidBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
+	bindVars := make(map[string]interface{})
+	if attr.PlasmidProperties != nil {
+		if len(attr.PlasmidProperties.ImageMap) > 0 {
+			bindVars["image_map"] = attr.PlasmidProperties.ImageMap
+		}
+		if len(attr.PlasmidProperties.Sequence) > 0 {
+			bindVars["sequence"] = attr.PlasmidProperties.Sequence
+		}
 	}
-	return nil
+	return bindVars
+}
+
+func mergeBindParams(bm ...map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	for _, m := range bm {
+		for k, v := range m {
+			result[k] = v
+		}
+	}
+	return result
+}
+
+func genAQLDocExpression(bindVars map[string]interface{}) string {
+	var bindParams []string
+	for k := range bindVars {
+		bindParams = append(bindParams, fmt.Sprintf("%s: @%s", k, k))
+	}
+	return strings.Join(bindParams, ",")
 }
