@@ -192,7 +192,12 @@ func TestEditStrain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in connecting to stock repository %s", err)
 	}
-	defer repo.ClearStocks()
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
 	ns := newUpdatableTestStrain("todd@gagg.com")
 	m, err := repo.AddStrain(ns)
 	if err != nil {
@@ -340,7 +345,12 @@ func TestAddStrain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in connecting to stock repository %s", err)
 	}
-	defer repo.ClearStocks()
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
 	nsp := newTestParentStrain("todd@gagg.com")
 	m, err := repo.AddStrain(nsp)
 	if err != nil {
@@ -423,7 +433,12 @@ func TestAddPlasmidWithoutProp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in connecting to stock repository %s", err)
 	}
-	defer repo.ClearStocks()
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
 	ns := newTestPlasmidWithoutProp("george@costanza.com")
 	m, err := repo.AddPlasmid(ns)
 	if err != nil {
@@ -457,7 +472,12 @@ func TestAddPlasmid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in connecting to stock repository %s", err)
 	}
-	defer repo.ClearStocks()
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
 	ns := newTestPlasmid("george@costanza.com")
 	m, err := repo.AddPlasmid(ns)
 	if err != nil {
@@ -501,7 +521,12 @@ func TestEditPlasmid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in connecting to stock repository %s", err)
 	}
-	defer repo.ClearStocks()
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
 	ns := newUpdatableTestPlasmid("art@vandeley.org")
 	m, err := repo.AddPlasmid(ns)
 	if err != nil {
@@ -592,7 +617,12 @@ func TestGetStrain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in connecting to stock repository %s", err)
 	}
-	defer repo.ClearStocks()
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
 	ns := newTestStrain("george@costanza.com")
 	m, err := repo.AddStrain(ns)
 	if err != nil {
@@ -639,7 +669,12 @@ func TestGetPlasmid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in connecting to stock repository %s", err)
 	}
-	defer repo.ClearStocks()
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
 	ns := newTestPlasmid("george@costanza.com")
 	m, err := repo.AddPlasmid(ns)
 	if err != nil {
@@ -679,7 +714,12 @@ func TestRemoveStock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in connecting to stock repository %s", err)
 	}
-	defer repo.ClearStocks()
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
 	ns := newTestStrain("george@costanza.com")
 	m, err := repo.AddStrain(ns)
 	if err != nil {
