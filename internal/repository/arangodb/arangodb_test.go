@@ -708,11 +708,9 @@ func TestGetPlasmid(t *testing.T) {
 	assert.True(ne.NotFound, "entry should not exist")
 }
 
-// func TestEditStock(t *testing.T) {
-
-// }
-
 func TestListStocks(t *testing.T) {
+	// NOTE: These tests need to be updated to match the new functions!
+
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)

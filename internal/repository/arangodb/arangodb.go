@@ -401,13 +401,13 @@ func (ar *arangorepository) ListStocks(p *stock.StockParameters) ([]*model.Stock
 		// otherwise use query statement without filter
 		if c == 0 { // no cursor so return first set of result
 			stmt = fmt.Sprintf(
-				stockList,
+				statement.StockList,
 				ar.stock.Name(),
 				l+1,
 			)
 		} else {
 			stmt = fmt.Sprintf(
-				stockListWithCursor,
+				statement.StockListWithCursor,
 				ar.stock.Name(),
 				c,
 				l+1,
@@ -454,7 +454,7 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 	if c == 0 {
 		if strings.Contains(f, "stock_type===strain") {
 			stmt = fmt.Sprintf(
-				strainListFilter,
+				statement.StrainListFilter,
 				ar.stock.Name(),
 				ar.stockPropType.Name(),
 				n,
@@ -462,7 +462,7 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 			)
 		} else if strings.Contains(f, "stock_type===plasmid") {
 			stmt = fmt.Sprintf(
-				plasmidListFilter,
+				statement.PlasmidListFilter,
 				ar.stock.Name(),
 				ar.stockPropType.Name(),
 				n,
@@ -470,7 +470,7 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 			)
 		} else {
 			stmt = fmt.Sprintf(
-				stockListFilter,
+				statement.StockListFilter,
 				ar.stock.Name(),
 				n,
 				l+1,
@@ -479,7 +479,7 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 	} else {
 		if strings.Contains(f, "stock_type===strain") {
 			stmt = fmt.Sprintf(
-				strainListFilterWithCursor,
+				statement.StrainListFilterWithCursor,
 				ar.stock.Name(),
 				ar.stockPropType.Name(),
 				n,
@@ -488,7 +488,7 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 			)
 		} else if strings.Contains(f, "stock_type===plasmid") {
 			stmt = fmt.Sprintf(
-				plasmidListFilterWithCursor,
+				statement.PlasmidListFilterWithCursor,
 				ar.stock.Name(),
 				ar.stockPropType.Name(),
 				n,
@@ -497,7 +497,7 @@ func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, erro
 			)
 		} else {
 			stmt = fmt.Sprintf(
-				stockListFilterWithCursor,
+				statement.StockListFilterWithCursor,
 				ar.stock.Name(),
 				c,
 				n,
