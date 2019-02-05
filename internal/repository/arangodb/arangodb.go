@@ -267,15 +267,14 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 	bindStVars := getUpdatableStrainBindParams(us.Data.Attributes)
 	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindStVars}...)
 	var stmt string
-	pcount := len(us.Data.Attributes.StrainProperties.Parent)
-	if pcount > 0 { // in case parent is present
-		parent := us.Data.Attributes.StrainProperties.Parent
+	parent := us.Data.Attributes.StrainProperties.Parent
+	if len(parent) > 0 { // in case parent is present
 		// parent -> relation -> child
 		//   obj  ->  pred    -> sub
 		// 1. Have to make sure the parent is present
-		// 2. Have figure out if child(sub) has an existing relation
-		//    a) If relation exist get and update the relation(pred)
-		//    b) If not create the new relation(pred)
+		// 2. Have to figure out if child(sub) has an existing relation
+		//    a) If relation exists, get and update the relation(pred)
+		//    b) If not, create the new relation(pred)
 		ok, err := ar.stock.DocumentExists(context.Background(), parent)
 		if err != nil {
 			return m, fmt.Errorf("error in checking for parent id %s %s", parent, err)
@@ -307,6 +306,7 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 		cmBindVars["parent"] = us.Data.Attributes.StrainProperties.Parent
 		cmBindVars["stock_collection"] = ar.stock.Name()
 		cmBindVars["@parent_strain_collection"] = ar.parentStrain.Name()
+		m.StrainProperties = &model.StrainProperties{Parent: parent}
 	} else {
 		stmt = statement.StrainUpd
 	}
