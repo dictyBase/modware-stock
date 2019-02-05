@@ -3,8 +3,8 @@ package statement
 const (
 	StockFindIdQ = `
 		FOR v IN 1..1 OUTBOUND
-			CONCAT(@@stock_collection,"/",@stock_id) GRAPH @graph
-			RETURN { propkey: v._key }
+			CONCAT(@stock_collection,"/",@stock_id) GRAPH @graph
+			RETURN v._key
 	`
 	StockFindQ = `
 		FOR s IN @@stock_collection

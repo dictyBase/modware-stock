@@ -36,16 +36,6 @@ type CollectionParams struct {
 	KeyOffset int `validate:"required"`
 }
 
-type dockey struct {
-	Key     string `json:"key"`
-	PropKey string `json:"propkey"`
-}
-
-type relKey struct {
-	ParentKey string `json:"parent_key"`
-	ChildKey  string `json:"child_key"`
-}
-
 type arangorepository struct {
 	sess          *manager.Session
 	database      *manager.Database
@@ -260,9 +250,9 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 	r, err := ar.database.GetRow(
 		statement.StockFindIdQ,
 		map[string]interface{}{
-			"@stock_collection": ar.stock.Name(),
-			"graph":             ar.stockPropType.Name(),
-			"stock_id":          us.Data.Id,
+			"stock_collection": ar.stock.Name(),
+			"graph":            ar.stockPropType.Name(),
+			"stock_id":         us.Data.Id,
 		})
 	if err != nil {
 		return m, fmt.Errorf("error in finding strain id %s %s", us.Data.Id, err)
@@ -309,11 +299,14 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 				return m, fmt.Errorf("error in reading parent relation key %s", err)
 			}
 		}
-		stmt = statement.StrainWithParentUpd
-		cmBindVars["pkey"] = pKey
+		if len(pKey) > 0 {
+			stmt = statement.StrainWithExistingParentUpd
+			cmBindVars["pkey"] = pKey
+		} else {
+			stmt = statement.StrainWithNewParentUpd
+		}
 		cmBindVars["parent"] = us.Data.Attributes.StrainProperties.Parent
-		cmBindVars["parent_graph"] = ar.strain2Parent.Name()
-		cmBindVars["parent_edge"] = ar.parentStrain.Name()
+		cmBindVars["stock_collection"] = ar.stock.Name()
 		cmBindVars["@parent_strain_collection"] = ar.parentStrain.Name()
 	} else {
 		stmt = statement.StrainUpd
@@ -343,9 +336,22 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 // EditPlasmid updates an existing plasmid
 func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	dk, err := ar.findStock(us.Data.Id)
+	r, err := ar.database.GetRow(
+		statement.StockFindIdQ,
+		map[string]interface{}{
+			"stock_collection": ar.stock.Name(),
+			"graph":            ar.stockPropType.Name(),
+			"stock_id":         us.Data.Id,
+		})
 	if err != nil {
-		return m, err
+		return m, fmt.Errorf("error in finding plasmid id %s %s", us.Data.Id, err)
+	}
+	if r.IsEmpty() {
+		return m, fmt.Errorf("plasmid id %s is absent in database", us.Data.Id)
+	}
+	var propKey string
+	if err := r.Read(&propKey); err != nil {
+		return m, fmt.Errorf("error in reading using plasmid id %s %s", us.Data.Id, err)
 	}
 	var stmt string
 	bindVars := getUpdatableStockBindParams(us.Data.Attributes)
@@ -358,7 +364,7 @@ func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc,
 			genAQLDocExpression(bindPlVars),
 		)
 		cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
-		cmBindVars["propkey"] = dk.PropKey
+		cmBindVars["propkey"] = propKey
 	} else {
 		stmt = fmt.Sprintf(
 			statement.StockUpd,
@@ -366,7 +372,7 @@ func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc,
 		)
 	}
 	cmBindVars["@stock_collection"] = ar.stock.Name()
-	cmBindVars["key"] = dk.Key
+	cmBindVars["key"] = us.Data.Id
 	rupd, err := ar.database.DoRun(stmt, cmBindVars)
 	if err != nil {
 		return m, err
@@ -547,28 +553,6 @@ func (ar *arangorepository) ClearStocks() error {
 		return err
 	}
 	return nil
-}
-
-// check if stock exists before running any update
-func (ar *arangorepository) findStock(id string) (*dockey, error) {
-	d := &dockey{}
-	r, err := ar.database.GetRow(
-		statement.StockFindIdQ,
-		map[string]interface{}{
-			"@stock_collection": ar.stock.Name(),
-			"graph":             ar.stockPropType.Name(),
-			"stock_id":          id,
-		})
-	if err != nil {
-		return d, fmt.Errorf("error in searching for id %s %s", id, err)
-	}
-	if r.IsEmpty() {
-		return d, fmt.Errorf("id %s is not found", id)
-	}
-	if err := r.Read(d); err != nil {
-		return d, err
-	}
-	return d, nil
 }
 
 func addablePlasmidBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
