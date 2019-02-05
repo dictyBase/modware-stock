@@ -172,10 +172,9 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	bindVars := map[string]interface{}{
-		"@stock_collection":      ar.stock.Name(),
-		"@stock_type_collection": ar.stockType.Name(),
-		"id":                     id,
-		"graph":                  ar.stockPropType.Name(),
+		"@stock_collection": ar.stock.Name(),
+		"id":                id,
+		"graph":             ar.stockPropType.Name(),
 	}
 	r, err := ar.database.GetRow(statement.StockGetPlasmid, bindVars)
 	if err != nil {
