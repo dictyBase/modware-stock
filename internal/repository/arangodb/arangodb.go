@@ -416,12 +416,19 @@ func (ar *arangorepository) ListStocks(p *stock.StockParameters) ([]*model.Stock
 	}
 	rs, err := ar.database.Search(stmt)
 	if err != nil {
-		return m, err
+		return om, err
 	}
-	if err := rupd.Read(m); err != nil {
-		return m, err
+	if rs.IsEmpty() {
+		return om, nil
 	}
-	return m, nil
+	for rs.Scan() {
+		m := &model.StockDoc{}
+		if err := rs.Read(m); err != nil {
+			return om, err
+		}
+		om = append(om, m)
+	}
+	return om, nil
 }
 
 // searchStocks is a private function specifically for handling filter queries
@@ -545,6 +552,7 @@ func (ar *arangorepository) ClearStocks() error {
 	if err := ar.stock.Truncate(context.Background()); err != nil {
 		return err
 	}
+	return nil
 }
 
 func addablePlasmidBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
