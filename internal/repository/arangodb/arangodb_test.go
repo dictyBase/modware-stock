@@ -186,16 +186,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-/**
-Assumptions for testing:
-1) Strains always have a StrainProperties field
-2) Parent may or may not exist
-   - if node exists (ID must exist), check if existing connection to node
-	 handles both assumptions
-	 - if no, create a connection
-	 - if yes, update connection
-*/
-
 func TestEditStrain(t *testing.T) {
 	connP := getConnectParams()
 	collP := getCollectionParams()
@@ -568,7 +558,7 @@ func TestEditPlasmid(t *testing.T) {
 			t.Fatalf("error in clearing stocks %s", err)
 		}
 	}()
-	ns := newUpdatableTestPlasmid("art@vandeley.org")
+	ns := newUpdatableTestPlasmid("art@vandelay.org")
 	m, err := repo.AddPlasmid(ns)
 	if err != nil {
 		t.Fatalf("error in adding plasmid: %s", err)
@@ -613,6 +603,7 @@ func TestEditPlasmid(t *testing.T) {
 		ns.Data.Attributes.Dbxrefs,
 		"dbxrefs should remain unchanged",
 	)
+	assert.Equal(um.PlasmidProperties.ImageMap, us.Data.Attributes.PlasmidProperties.ImageMap, "should match image map")
 	us2 := &stock.StockUpdate{
 		Data: &stock.StockUpdate_Data{
 			Type: ns.Data.Type,
@@ -628,7 +619,7 @@ func TestEditPlasmid(t *testing.T) {
 	}
 	um2, err := repo.EditPlasmid(us2)
 	if err != nil {
-		t.Fatalf("error in re updating the plasmid %s", err)
+		t.Fatalf("error in reupdating the plasmid %s", err)
 	}
 	assert.Equal(um2.StockID, um.StockID, "should match the previous stock id")
 	assert.Equal(um2.UpdatedBy, us2.Data.Attributes.UpdatedBy, "should have updated the updatedby field")
@@ -674,21 +665,21 @@ func TestGetStrain(t *testing.T) {
 		t.Fatalf("error in getting stock %s with ID %s", m.StockID, err)
 	}
 	assert := assert.New(t)
+	assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), g.StockID, "should have a strain stock id")
 	assert.Equal(g.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
 	assert.Equal(g.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
 	assert.Equal(g.Summary, ns.Data.Attributes.Summary, "should match summary")
 	assert.Equal(g.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
 	assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
 	assert.ElementsMatch(g.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
+	assert.ElementsMatch(g.StrainProperties.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
+	assert.ElementsMatch(g.Genes, ns.Data.Attributes.Genes, "should match genes")
 	assert.Equal(g.StrainProperties.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
 	assert.Equal(g.StrainProperties.Label, ns.Data.Attributes.StrainProperties.Label, "should match descriptor")
 	assert.Equal(g.StrainProperties.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
-	assert.Equal(g.StrainProperties.Parent, ns.Data.Attributes.StrainProperties.Parent, "should match parent")
-	assert.ElementsMatch(g.StrainProperties.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
-	assert.ElementsMatch(g.Genes, ns.Data.Attributes.Genes, "should match genes")
 	assert.Equal(g.StrainProperties.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should match plasmid")
+	assert.Empty(g.StrainProperties.Parent, "should not have parent")
 	assert.Equal(len(g.Dbxrefs), 6, "should match length of six dbxrefs")
-	assert.NotEmpty(g.Key, "should not have empty key")
 	assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
 	assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
 
@@ -726,14 +717,14 @@ func TestGetPlasmid(t *testing.T) {
 		t.Fatalf("error in getting stock %s with ID %s", m.StockID, err)
 	}
 	assert := assert.New(t)
+	assert.Regexp(regexp.MustCompile(`^DBP0\d{6,}$`), g.StockID, "should have a plasmid stock id")
 	assert.Equal(g.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
 	assert.Equal(g.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
+	assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
 	assert.Equal(g.Summary, ns.Data.Attributes.Summary, "should match summary")
 	assert.Equal(g.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
-	assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
 	assert.Equal(g.PlasmidProperties.ImageMap, ns.Data.Attributes.PlasmidProperties.ImageMap, "should match image_map")
 	assert.Equal(g.PlasmidProperties.Sequence, ns.Data.Attributes.PlasmidProperties.Sequence, "should match sequence")
-	assert.NotEmpty(g.Key, "should not have empty key")
 	assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
 	assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
 
