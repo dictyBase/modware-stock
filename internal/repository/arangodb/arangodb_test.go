@@ -1,7 +1,7 @@
 package arangodb
 
 import (
-  "fmt"
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -715,7 +715,12 @@ func TestListStocks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in connecting to stock repository %s", err)
 	}
-	defer repo.ClearStocks()
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
 	// add 10 new test strains
 	for i := 1; i <= 10; i++ {
 		ns := newTestStrain(fmt.Sprintf("%s@kramericaindustries.com", RandString(10)))
