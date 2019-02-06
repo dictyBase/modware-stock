@@ -7,6 +7,7 @@ import (
 
 	driver "github.com/arangodb/go-driver"
 	manager "github.com/dictyBase/arangomanager"
+	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
@@ -380,6 +381,151 @@ func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc,
 		return m, err
 	}
 	return m, nil
+}
+
+// ListStocks provides a list of all stocks
+func (ar *arangorepository) ListStocks(p *stock.StockParameters) ([]*model.StockDoc, error) {
+	var om []*model.StockDoc
+	var stmt string
+	c := p.Cursor
+	l := p.Limit
+	f := p.Filter
+	// if filter string exists, call searchStocks function to get proper query statement
+	if len(f) > 0 {
+		n, err := (*ar).searchStocks(&stock.StockParameters{Cursor: c, Limit: l, Filter: f})
+		if err != nil {
+			return om, err
+		}
+		stmt = n
+	} else {
+		// otherwise use query statement without filter
+		if c == 0 { // no cursor so return first set of result
+			stmt = fmt.Sprintf(
+				statement.StockList,
+				ar.stock.Name(),
+				l+1,
+			)
+		} else {
+			stmt = fmt.Sprintf(
+				statement.StockListWithCursor,
+				ar.stock.Name(),
+				c,
+				l+1,
+			)
+		}
+	}
+	rs, err := ar.database.Search(stmt)
+	if err != nil {
+		return om, err
+	}
+	if rs.IsEmpty() {
+		return om, nil
+	}
+	for rs.Scan() {
+		m := &model.StockDoc{}
+		if err := rs.Read(m); err != nil {
+			return om, err
+		}
+		om = append(om, m)
+	}
+	return om, nil
+}
+
+// searchStocks is a private function specifically for handling filter queries
+func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, error) {
+	c := p.Cursor
+	l := p.Limit
+	f := p.Filter
+	var stmt string
+	se := removeString(f)
+
+	s, err := query.ParseFilterString(se)
+	if err != nil {
+		return "error parsing filter string", err
+	}
+	n, err := query.GenAQLFilterStatement(fmap, s, "s")
+	if err != nil {
+		return "error generating AQL filter statement", err
+	}
+	// if the parsed statement is empty FILTER, just return empty string
+	if n == "FILTER " {
+		n = ""
+	}
+	if c == 0 {
+		if strings.Contains(f, "stock_type===strain") {
+			stmt = fmt.Sprintf(
+				statement.StrainListFilter,
+				ar.stock.Name(),
+				ar.stockPropType.Name(),
+				n,
+				l+1,
+			)
+		} else if strings.Contains(f, "stock_type===plasmid") {
+			stmt = fmt.Sprintf(
+				statement.PlasmidListFilter,
+				ar.stock.Name(),
+				ar.stockPropType.Name(),
+				n,
+				l+1,
+			)
+		} else {
+			stmt = fmt.Sprintf(
+				statement.StockListFilter,
+				ar.stock.Name(),
+				n,
+				l+1,
+			)
+		}
+	} else {
+		if strings.Contains(f, "stock_type===strain") {
+			stmt = fmt.Sprintf(
+				statement.StrainListFilterWithCursor,
+				ar.stock.Name(),
+				ar.stockPropType.Name(),
+				n,
+				c,
+				l+1,
+			)
+		} else if strings.Contains(f, "stock_type===plasmid") {
+			stmt = fmt.Sprintf(
+				statement.PlasmidListFilterWithCursor,
+				ar.stock.Name(),
+				ar.stockPropType.Name(),
+				n,
+				c,
+				l+1,
+			)
+		} else {
+			stmt = fmt.Sprintf(
+				statement.StockListFilterWithCursor,
+				ar.stock.Name(),
+				c,
+				n,
+				l+1,
+			)
+		}
+	}
+	return stmt, nil
+}
+
+// removeString checks if filter string contains stock_type field
+// if it does, then it replaces it with an empty string
+// otherwise, it would create issues with the GenAQLFilterStatement function
+func removeString(f string) string {
+	filter := f
+	if strings.Contains(f, "stock_type===strain;") {
+		filter = strings.Replace(f, "stock_type===strain;", "", -1)
+	}
+	if strings.Contains(f, "stock_type===strain") {
+		filter = strings.Replace(f, "stock_type===strain", "", -1)
+	}
+	if strings.Contains(f, "stock_type===plasmid;") {
+		filter = strings.Replace(f, "stock_type===plasmid;", "", -1)
+	}
+	if strings.Contains(f, "stock_type===plasmid") {
+		filter = strings.Replace(f, "stock_type===plasmid", "", -1)
+	}
+	return filter
 }
 
 // RemoveStock removes a stock

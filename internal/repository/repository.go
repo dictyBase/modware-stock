@@ -13,6 +13,7 @@ type StockRepository interface {
 	AddPlasmid(ns *stock.NewStock) (*model.StockDoc, error)
 	EditPlasmid(us *stock.StockUpdate) (*model.StockDoc, error)
 	EditStrain(us *stock.StockUpdate) (*model.StockDoc, error)
+	ListStocks(s *stock.StockParameters) ([]*model.StockDoc, error)
 	RemoveStock(id string) error
 	ClearStocks() error
 }
