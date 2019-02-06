@@ -1,7 +1,7 @@
 package arangodb
 
 import (
-	"fmt"
+  "fmt"
 	"log"
 	"math/rand"
 	"os"
