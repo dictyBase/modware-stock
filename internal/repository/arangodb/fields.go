@@ -11,5 +11,5 @@ var fmap = map[string]string{
 	"systematic_name": "systematic_name",
 	"name":            "names",
 	"stock_type":      "type",
-	// "parent":          "parents",
+	"parent":          "parent",
 }

@@ -390,9 +390,9 @@ func (ar *arangorepository) ListStocks(p *stock.StockParameters) ([]*model.Stock
 	c := p.Cursor
 	l := p.Limit
 	f := p.Filter
-	// if filter string exists, call searchStocks function to get proper query statement
+	// if filter string exists, call getFilterStatement function to get proper query statement
 	if len(f) > 0 {
-		n, err := (*ar).searchStocks(&stock.StockParameters{Cursor: c, Limit: l, Filter: f})
+		n, err := (*ar).getFilterStatement(&stock.StockParameters{Cursor: c, Limit: l, Filter: f})
 		if err != nil {
 			return om, err
 		}
@@ -431,8 +431,8 @@ func (ar *arangorepository) ListStocks(p *stock.StockParameters) ([]*model.Stock
 	return om, nil
 }
 
-// searchStocks is a private function specifically for handling filter queries
-func (ar *arangorepository) searchStocks(p *stock.StockParameters) (string, error) {
+// getFilterStatement is a private function specifically for handling filter queries
+func (ar *arangorepository) getFilterStatement(p *stock.StockParameters) (string, error) {
 	c := p.Cursor
 	l := p.Limit
 	f := p.Filter

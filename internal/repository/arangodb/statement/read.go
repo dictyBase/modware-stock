@@ -91,7 +91,7 @@ const (
 							descriptor: v.descriptor, 
 							species: v.species, 
 							plasmid: v.plasmid, 
-							parents: v.parents, 
+							parent: v.parent, 
 							names: v.names
 						} 
 					}
@@ -112,7 +112,7 @@ const (
 							descriptor: v.descriptor, 
 							species: v.species, 
 							plasmid: v.plasmid, 
-							parents: v.parents, 
+							parent: v.parent, 
 							names: v.names
 						} 
 					}
@@ -132,7 +132,7 @@ const (
 							descriptor: v.descriptor, 
 							species: v.species, 
 							plasmid: v.plasmid, 
-							parents: v.parents, 
+							parent: v.parent, 
 							names: v.names
 						} 
 					}
@@ -154,7 +154,7 @@ const (
 							descriptor: v.descriptor, 
 							species: v.species, 
 							plasmid: v.plasmid, 
-							parents: v.parents, 
+							parent: v.parent, 
 							names: v.names
 						} 
 					}
