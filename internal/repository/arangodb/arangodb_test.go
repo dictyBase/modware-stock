@@ -503,6 +503,7 @@ func TestAddPlasmidWithoutProp(t *testing.T) {
 		ns.Data.Attributes.Publications,
 		"should match publications",
 	)
+	assert.Empty(m.PlasmidProperties, "should have empty plasmid properties field")
 }
 
 func TestAddPlasmid(t *testing.T) {
