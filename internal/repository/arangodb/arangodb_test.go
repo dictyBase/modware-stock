@@ -72,7 +72,7 @@ func newTestStrain(createdby string) *stock.NewStock {
 			Attributes: &stock.NewStockAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
-				Depositor:       createdby,
+				Depositor:       "rg@gmail.com",
 				Summary:         "Radiation-sensitive mutant.",
 				EditableSummary: "Radiation-sensitive mutant.",
 				Dbxrefs:         []string{"5466867", "4536935", "d2578", "d0319", "d2020/1033268", "d2580"},
@@ -152,7 +152,7 @@ func newTestPlasmid(createdby string) *stock.NewStock {
 			Attributes: &stock.NewStockAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
-				Depositor:       createdby,
+				Depositor:       "george@costanza.com",
 				Summary:         "this is a test plasmid",
 				EditableSummary: "this is a test plasmid",
 				Publications:    []string{"1348970"},
@@ -709,8 +709,6 @@ func TestGetPlasmid(t *testing.T) {
 }
 
 func TestListStocks(t *testing.T) {
-	// NOTE: These tests need to be updated to match the new functions!
-
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
