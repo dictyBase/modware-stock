@@ -186,6 +186,16 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+/**
+Assumptions for testing:
+1) Strains always have a StrainProperties field
+2) Parent may or may not exist
+   - if node exists (ID must exist), check if existing connection to node
+	 handles both assumptions
+	 - if no, create a connection
+	 - if yes, update connection
+*/
+
 func TestEditStrain(t *testing.T) {
 	connP := getConnectParams()
 	collP := getCollectionParams()
@@ -249,17 +259,17 @@ func TestEditStrain(t *testing.T) {
 	assert.ElementsMatch(
 		um.Publications,
 		m.Publications,
-		"publications list should remains unchanged",
+		"publications list should remain unchanged",
 	)
 	assert.Equal(
 		um.StrainProperties.SystematicName,
 		m.StrainProperties.SystematicName,
-		"systematic name should remains unchanged",
+		"systematic name should remain unchanged",
 	)
 	assert.Equal(
 		um.StrainProperties.Species,
 		m.StrainProperties.Species,
-		"species name should remains unchanged",
+		"species name should remain unchanged",
 	)
 	assert.Equal(
 		um.StrainProperties.Label,
@@ -274,7 +284,7 @@ func TestEditStrain(t *testing.T) {
 	assert.ElementsMatch(
 		um.StrainProperties.Names,
 		us.Data.Attributes.StrainProperties.Names,
-		"should updated list of strain names",
+		"should have updated list of strain names",
 	)
 
 	// test by adding parent strain
@@ -337,6 +347,35 @@ func TestEditStrain(t *testing.T) {
 		us2.Data.Attributes.StrainProperties.Parent,
 		"should have updated parent",
 	)
+
+	// add another new strain, let's make this one a parent
+	// so we can test updating parent if one already exists
+	pu, err := repo.AddStrain(newUpdatableTestStrain("castle@vania.org"))
+	if err != nil {
+		t.Fatalf("error in adding strain: %s", err)
+	}
+	us3 := &stock.StockUpdate{
+		Data: &stock.StockUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   um.StockID,
+			Attributes: &stock.StockUpdateAttributes{
+				UpdatedBy: "mario@snes.org",
+				StrainProperties: &stock.StrainUpdateProperties{
+					Parent: pu.StockID,
+				},
+			},
+		},
+	}
+	um3, err := repo.EditStrain(us3)
+	if err != nil {
+		t.Fatalf("error in updating strain id %s: %s", um.StockID, err)
+	}
+	assert.Equal(
+		um3.StrainProperties.Parent,
+		us3.Data.Attributes.StrainProperties.Parent,
+		"should have updated parent",
+	)
+	assert.Equal(um.StockID, um3.StockID, "should have same stock ID")
 }
 
 func TestAddStrain(t *testing.T) {
