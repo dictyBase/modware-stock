@@ -141,16 +141,27 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	bindVars := map[string]interface{}{
 		"@stock_collection": ar.stock.Name(),
+		"stock_collection":  ar.stock.Name(),
 		"id":                id,
-		"graph":             ar.stockPropType.Name(),
+		"parent_graph":      ar.strain2Parent.Name(),
+		"prop_graph":        ar.stockPropType.Name(),
+	}
+	g, err := ar.database.GetRow(
+		statement.StockFindQ,
+		map[string]interface{}{
+			"@stock_collection": ar.stock.Name(),
+			"id":                id,
+		})
+	if err != nil {
+		return m, fmt.Errorf("error in finding strain id %s %s", id, err)
+	}
+	if g.IsEmpty() {
+		m.NotFound = true
+		return m, nil
 	}
 	r, err := ar.database.GetRow(statement.StockGetStrain, bindVars)
 	if err != nil {
-		return m, err
-	}
-	if r.IsEmpty() {
-		m.NotFound = true
-		return m, nil
+		return m, fmt.Errorf("error in finding strain id %s %s", id, err)
 	}
 	if err := r.Read(m); err != nil {
 		return m, err

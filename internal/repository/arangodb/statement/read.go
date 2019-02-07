@@ -13,23 +13,45 @@ const (
 			RETURN s._id
 	`
 	StockGetStrain = `
-		FOR s IN @@stock_collection
-			FOR v, e IN 1..1 OUTBOUND s GRAPH @graph
+		LET a = (
+			FOR v,e IN 1..1 INBOUND CONCAT(@stock_collection,"/",@id) GRAPH @parent_graph
+				RETURN v.stock_id
+		)
+		
+		LET b = (
+			FOR v, e IN 1..1 OUTBOUND CONCAT(@stock_collection,"/",@id) GRAPH @prop_graph
 				FILTER e.type == 'strain'
-				FILTER s.stock_id == @id
-				RETURN MERGE(
-					s,
-					{
-						strain_properties: {
+				FOR s IN @@stock_collection
+					FILTER s.stock_id == @id
+					LIMIT 1
+					RETURN MERGE(
+						s,
+						{
+							strain_properties: {
 							systematic_name: v.systematic_name,
 							label: v.label,
 							species: v.species,
 							plasmid: v.plasmid,
-							parent: v.parent,
 							names: v.names
 						}
 					}
 				)
+		)
+		
+		RETURN LENGTH(a) > 0 ? (MERGE(
+			b[0],
+			{
+				strain_properties: {
+						parent: a[0],
+						systematic_name: b[0].strain_properties.systematic_name,
+						label: b[0].strain_properties.label,
+						species: b[0].strain_properties.species,
+						plasmid: b[0].strain_properties.plasmid,
+						names: b[0].strain_properties.names
+					}
+				}
+			)
+		) : (b[0])
 	`
 	StockGetPlasmid = `
 		FOR s IN @@stock_collection

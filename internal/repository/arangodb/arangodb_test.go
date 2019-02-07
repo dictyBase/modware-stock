@@ -683,6 +683,18 @@ func TestGetStrain(t *testing.T) {
 	assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
 	assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
 
+	ns2 := newTestStrain("dead@cells.com")
+	ns2.Data.Attributes.StrainProperties.Parent = m.StockID
+	m2, err := repo.AddStrain(ns2)
+	if err != nil {
+		t.Fatalf("error in adding strain %s", err)
+	}
+	g2, err := repo.GetStrain(m2.StockID)
+	if err != nil {
+		t.Fatalf("error in getting stock %s with ID %s", m2.StockID, err)
+	}
+	assert.Equal(g2.StrainProperties.Parent, m.StockID, "should match parent")
+
 	ne, err := repo.GetStrain("DBS01")
 	if err != nil {
 		t.Fatalf(
