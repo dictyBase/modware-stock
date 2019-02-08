@@ -838,28 +838,91 @@ func TestListStrains(t *testing.T) {
 	assert.Equal(len(as), 5, "should list ten strains")
 }
 
-// func TestListPlasmids(t *testing.T) {
-// 	connP := getConnectParams()
-// 	collP := getCollectionParams()
-// 	repo, err := NewStockRepo(connP, collP)
-// 	if err != nil {
-// 		t.Fatalf("error in connecting to stock repository %s", err)
-// 	}
-// 	defer func() {
-// 		err := repo.ClearStocks()
-// 		if err != nil {
-// 			t.Fatalf("error in clearing stocks %s", err)
-// 		}
-// 	}()
-// 	// add five new test plasmids
-// 	for i := 1; i <= 5; i++ {
-// 		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
-// 		_, err := repo.AddPlasmid(np)
-// 		if err != nil {
-// 			t.Fatalf("error in adding plasmid %s", err)
-// 		}
-// 	}
-// }
+func TestListPlasmids(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
+	// add ten new test plasmids
+	for i := 1; i <= 10; i++ {
+		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
+		_, err := repo.AddPlasmid(np)
+		if err != nil {
+			t.Fatalf("error in adding plasmid %s", err)
+		}
+	}
+	// get first five results
+	ls, err := repo.ListPlasmids(&stock.StockParameters{Cursor: 0, Limit: 4})
+	if err != nil {
+		t.Fatalf("error in getting first five plasmids %s", err)
+	}
+	assert := assert.New(t)
+	assert.Equal(len(ls), 5, "should match the provided limit number + 1")
+
+	for _, stock := range ls {
+		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
+		assert.NotEmpty(stock.Key, "should not have empty key")
+	}
+	assert.NotEqual(ls[0].CreatedBy, ls[1].CreatedBy, "should have different created_by")
+	// convert fifth result to numeric timestamp in milliseconds
+	// so we can use this as cursor
+	ti := toTimestamp(ls[4].CreatedAt)
+
+	// get next five results (5-9)
+	ls2, err := repo.ListPlasmids(&stock.StockParameters{Cursor: ti, Limit: 4})
+	if err != nil {
+		t.Fatalf("error in getting plasmids 5-9 %s", err)
+	}
+	assert.Equal(len(ls2), 5, "should match the provided limit number + 1")
+	assert.Equal(ls2[0], ls[4], "last item from first five results and first item from next five results should be the same")
+	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different consumers")
+
+	// convert ninth result to numeric timestamp
+	ti2 := toTimestamp(ls2[4].CreatedAt)
+	// get last results (9-10)
+	ls3, err := repo.ListPlasmids(&stock.StockParameters{Cursor: ti2, Limit: 4})
+	if err != nil {
+		t.Fatalf("error in getting plasmids 9-10 %s", err)
+	}
+	assert.Equal(len(ls3), 2, "should retrieve the last two results")
+	assert.Equal(ls3[0].CreatedBy, ls2[4].CreatedBy, "last item from previous five results and first item from next five results should be the same")
+
+	testModelListSort(ls, t)
+	testModelListSort(ls2, t)
+	testModelListSort(ls3, t)
+
+	sf, err := repo.ListPlasmids(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com")})
+	if err != nil {
+		t.Fatalf("error in getting list of plasmids with depositor george@costanza.com %s", err)
+	}
+	assert.Equal(len(sf), 10, "should list ten plasmids")
+
+	n, err := repo.ListPlasmids(&stock.StockParameters{Cursor: 0, Limit: 100, Filter: convertFilterToQuery("depositor===george@costanza.com;depositor===rg@gmail.com")})
+	if err != nil {
+		t.Fatalf("error in getting list of plasmids with two depositors with AND logic %s", err)
+	}
+	assert.Equal(len(n), 0, "should list no plasmids")
+
+	cs, err := repo.ListPlasmids(&stock.StockParameters{Cursor: toTimestamp(sf[4].CreatedAt), Limit: 10})
+	if err != nil {
+		t.Fatalf("error in getting list of plasmids with cursor %s", err)
+	}
+	assert.Equal(len(cs), 6, "should list six plasmids")
+
+	as, err := repo.ListPlasmids(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com,depositor===rg@gmail.com")})
+	if err != nil {
+		t.Fatalf("error in getting list of plasmids with cursor and filter %s", err)
+	}
+	assert.Equal(len(as), 5, "should list ten plasmids")
+}
 
 func TestRemoveStock(t *testing.T) {
 	connP := getConnectParams()
