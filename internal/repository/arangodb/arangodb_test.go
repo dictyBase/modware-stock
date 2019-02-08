@@ -11,6 +11,7 @@ import (
 
 	driver "github.com/arangodb/go-driver"
 	manager "github.com/dictyBase/arangomanager"
+	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
@@ -812,31 +813,25 @@ func TestListStrains(t *testing.T) {
 	testModelListSort(ls2, t)
 	testModelListSort(ls3, t)
 
-	sf, err := repo.ListStrains(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "stock_type===strain;depositor===george@costanza.com"})
+	sf, err := repo.ListStrains(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com")})
 	if err != nil {
 		t.Fatalf("error in getting list of stocks with depositor george@costanza.com %s", err)
 	}
 	assert.Equal(len(sf), 10, "should list ten stocks")
 
-	n, err := repo.ListStrains(&stock.StockParameters{Cursor: 0, Limit: 100, Filter: "stock_type===strain;depositor===george@costanza.com;depositor===rg@gmail.com"})
+	n, err := repo.ListStrains(&stock.StockParameters{Cursor: 0, Limit: 100, Filter: convertFilterToQuery("depositor===george@costanza.com;depositor===rg@gmail.com")})
 	if err != nil {
 		t.Fatalf("error in getting list of stocks with two depositors with AND logic %s", err)
 	}
 	assert.Equal(len(n), 0, "should list no stocks")
 
-	ss, err := repo.ListStrains(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "stock_type===strain"})
-	if err != nil {
-		t.Fatalf("error in getting list of strains %s", err)
-	}
-	assert.Equal(len(ss), 10, "should list ten strains")
-
-	cs, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(ss[4].CreatedAt), Limit: 10, Filter: "stock_type===strain"})
+	cs, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[4].CreatedAt), Limit: 10})
 	if err != nil {
 		t.Fatalf("error in getting list of strains with cursor %s", err)
 	}
 	assert.Equal(len(cs), 6, "should list six strains")
 
-	as, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(ss[5].CreatedAt), Limit: 10, Filter: "stock_type===strain;depositor===george@costanza.com,depositor===rg@gmail.com"})
+	as, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com,depositor===rg@gmail.com")})
 	if err != nil {
 		t.Fatalf("error in getting list of stocks with cursor and filter %s", err)
 	}
@@ -942,4 +937,20 @@ func RandString(length int) string {
 
 func toTimestamp(t time.Time) int64 {
 	return t.UnixNano() / 1000000
+}
+
+func convertFilterToQuery(s string) string {
+	// parse filter logic
+	// this needs to be done here since it is implemented in the service, not repository
+	p, err := query.ParseFilterString(s)
+	if err != nil {
+		log.Printf("error parsing filter string %s", err)
+		return s
+	}
+	str, err := query.GenAQLFilterStatement(FMap, p, "s")
+	if err != nil {
+		log.Printf("error generating AQL filter statement %s", err)
+		return s
+	}
+	return str
 }

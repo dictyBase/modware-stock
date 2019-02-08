@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
+
 	"github.com/dictyBase/apihelpers/aphgrpc"
 	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
@@ -12,20 +14,6 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/golang/protobuf/ptypes/empty"
 )
-
-// mapping of filters to database fields
-var fmap = map[string]string{
-	"created_at":      "created_at",
-	"updated_at":      "updated_at",
-	"depositor":       "depositor",
-	"summary":         "summary",
-	"plasmid":         "plasmid",
-	"species":         "species",
-	"systematic_name": "systematic_name",
-	"name":            "names",
-	"stock_type":      "type",
-	"parent":          "parent",
-}
 
 // StockService is the container for managing stock service
 // definition
@@ -273,7 +261,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		if err != nil {
 			return sc, fmt.Errorf("error parsing filter string: %s", err)
 		}
-		str, err := query.GenAQLFilterStatement(fmap, p, "s")
+		str, err := query.GenAQLFilterStatement(arangodb.FMap, p, "s")
 		if err != nil {
 			return sc, fmt.Errorf("error generating AQL filter statement: %s", err)
 		}
@@ -387,7 +375,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 		if err != nil {
 			return sc, fmt.Errorf("error parsing filter string: %s", err)
 		}
-		str, err := query.GenAQLFilterStatement(fmap, p, "s")
+		str, err := query.GenAQLFilterStatement(arangodb.FMap, p, "s")
 		if err != nil {
 			return sc, fmt.Errorf("error generating AQL filter statement: %s", err)
 		}
