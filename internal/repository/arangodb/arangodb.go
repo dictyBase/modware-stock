@@ -7,7 +7,6 @@ import (
 
 	driver "github.com/arangodb/go-driver"
 	manager "github.com/dictyBase/arangomanager"
-	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
@@ -403,11 +402,24 @@ func (ar *arangorepository) ListStrains(p *stock.StockParameters) ([]*model.Stoc
 	f := p.Filter
 	// if filter string exists, call getFilterStatement function to get proper query statement
 	if len(f) > 0 {
-		n, err := (*ar).getFilterStatement(&stock.StockParameters{Cursor: c, Limit: l, Filter: f})
-		if err != nil {
-			return om, err
+		if c == 0 {
+			stmt = fmt.Sprintf(
+				statement.StrainListFilter,
+				ar.stock.Name(),
+				ar.stockPropType.Name(),
+				f,
+				l+1,
+			)
+		} else {
+			stmt = fmt.Sprintf(
+				statement.StrainListFilterWithCursor,
+				ar.stock.Name(),
+				ar.stockPropType.Name(),
+				f,
+				c,
+				l+1,
+			)
 		}
-		stmt = n
 	} else {
 		// otherwise use query statement without filter
 		if c == 0 { // no cursor so return first set of result
@@ -453,11 +465,24 @@ func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.Sto
 	f := p.Filter
 	// if filter string exists, call getFilterStatement function to get proper query statement
 	if len(f) > 0 {
-		n, err := (*ar).getFilterStatement(&stock.StockParameters{Cursor: c, Limit: l, Filter: f})
-		if err != nil {
-			return om, err
+		if c == 0 {
+			stmt = fmt.Sprintf(
+				statement.PlasmidListFilter,
+				ar.stock.Name(),
+				ar.stockPropType.Name(),
+				f,
+				l+1,
+			)
+		} else {
+			stmt = fmt.Sprintf(
+				statement.PlasmidListFilterWithCursor,
+				ar.stock.Name(),
+				ar.stockPropType.Name(),
+				f,
+				c,
+				l+1,
+			)
 		}
-		stmt = n
 	} else {
 		// otherwise use query statement without filter
 		if c == 0 { // no cursor so return first set of result
@@ -492,90 +517,6 @@ func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.Sto
 		om = append(om, m)
 	}
 	return om, nil
-}
-
-// getFilterStatement is a private function specifically for handling filter queries
-func (ar *arangorepository) getFilterStatement(p *stock.StockParameters) (string, error) {
-	c := p.Cursor
-	l := p.Limit
-	f := p.Filter
-	var stmt string
-	se := removeString(f)
-
-	s, err := query.ParseFilterString(se)
-	if err != nil {
-		return "error parsing filter string", err
-	}
-	n, err := query.GenAQLFilterStatement(fmap, s, "s")
-	if err != nil {
-		return "error generating AQL filter statement", err
-	}
-	// if the parsed statement is empty FILTER, just return empty string
-	if n == "FILTER " {
-		n = ""
-	}
-	if c == 0 {
-		if strings.Contains(f, "stock_type===strain") {
-			stmt = fmt.Sprintf(
-				statement.StrainListFilter,
-				ar.stock.Name(),
-				ar.stockPropType.Name(),
-				n,
-				l+1,
-			)
-		}
-		if strings.Contains(f, "stock_type===plasmid") {
-			stmt = fmt.Sprintf(
-				statement.PlasmidListFilter,
-				ar.stock.Name(),
-				ar.stockPropType.Name(),
-				n,
-				l+1,
-			)
-		}
-	} else {
-		if strings.Contains(f, "stock_type===strain") {
-			stmt = fmt.Sprintf(
-				statement.StrainListFilterWithCursor,
-				ar.stock.Name(),
-				ar.stockPropType.Name(),
-				n,
-				c,
-				l+1,
-			)
-		}
-		if strings.Contains(f, "stock_type===plasmid") {
-			stmt = fmt.Sprintf(
-				statement.PlasmidListFilterWithCursor,
-				ar.stock.Name(),
-				ar.stockPropType.Name(),
-				n,
-				c,
-				l+1,
-			)
-		}
-	}
-	return stmt, nil
-}
-
-// removeString checks if filter string contains stock_type field
-// if it does, then it replaces it with an empty string
-// this is necessary since we are already filtering by stock type in our AQL statements
-func removeString(f string) string {
-	filter := f
-	if strings.Contains(f, "stock_type===strain;") {
-		filter = strings.Replace(f, "stock_type===strain;", "", -1)
-	}
-	if strings.Contains(f, "stock_type===strain") {
-		filter = strings.Replace(f, "stock_type===strain", "", -1)
-	}
-	if strings.Contains(f, "stock_type===plasmid;") {
-		filter = strings.Replace(f, "stock_type===plasmid;", "", -1)
-	}
-	if strings.Contains(f, "stock_type===plasmid") {
-		filter = strings.Replace(f, "stock_type===plasmid", "", -1)
-	}
-	return filter
 }
 
 // RemoveStock removes a stock

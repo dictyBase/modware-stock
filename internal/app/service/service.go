@@ -6,11 +6,26 @@ import (
 	"strconv"
 
 	"github.com/dictyBase/apihelpers/aphgrpc"
+	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/message"
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/golang/protobuf/ptypes/empty"
 )
+
+// mapping of filters to database fields
+var fmap = map[string]string{
+	"created_at":      "created_at",
+	"updated_at":      "updated_at",
+	"depositor":       "depositor",
+	"summary":         "summary",
+	"plasmid":         "plasmid",
+	"species":         "species",
+	"systematic_name": "systematic_name",
+	"name":            "names",
+	"stock_type":      "type",
+	"parent":          "parent",
+}
 
 // StockService is the container for managing stock service
 // definition
@@ -45,41 +60,67 @@ func (s *StockService) GetStock(ctx context.Context, r *stock.StockId) (*stock.S
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
-	// m, err := s.repo.GetStock(r.Id)
-	// if err != nil {
-	// 	return st, aphgrpc.HandleGetError(ctx, err)
-	// }
-	// if m.NotFound {
-	// 	return st, aphgrpc.HandleNotFoundError(ctx, err)
-	// }
-	// st.Data = &stock.Stock_Data{
-	// 	Type: s.GetResourceName(),
-	// 	Id:   m.Key, // need to make sure this is DBS/DBP ID
-	// 	Attributes: &stock.StockAttributes{
-	// 		CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-	// 		UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-	// 		CreatedBy:       m.CreatedBy,
-	// 		UpdatedBy:       m.UpdatedBy,
-	// 		Summary:         m.Summary,
-	// 		EditableSummary: m.EditableSummary,
-	// 		Depositor:       m.Depositor,
-	// 		Genes:           m.Genes,
-	// 		Dbxrefs:         m.Dbxrefs,
-	// 		Publications:    m.Publications,
-	// 		StrainProperties: &stock.StrainProperties{
-	// 			SystematicName: m.SystematicName,
-	// 			Descriptor_:    m.Descriptor,
-	// 			Species:        m.Species,
-	// 			Plasmid:        m.Plasmid,
-	// 			Parents:        m.Parents,
-	// 			Names:          m.Names,
-	// 		},
-	// 		PlasmidProperties: &stock.PlasmidProperties{
-	// 			ImageMap: m.ImageMap,
-	// 			Sequence: m.Sequence,
-	// 		},
-	// 	},
-	// }
+	if r.Id[:3] == "DBS" {
+		m, err := s.repo.GetStrain(r.Id)
+		if err != nil {
+			return st, aphgrpc.HandleGetError(ctx, err)
+		}
+		if m.NotFound {
+			return st, aphgrpc.HandleNotFoundError(ctx, err)
+		}
+		st.Data = &stock.Stock_Data{
+			Type: s.GetResourceName(),
+			Id:   m.Key,
+			Attributes: &stock.StockAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+				CreatedBy:       m.CreatedBy,
+				UpdatedBy:       m.UpdatedBy,
+				Summary:         m.Summary,
+				EditableSummary: m.EditableSummary,
+				Depositor:       m.Depositor,
+				Genes:           m.Genes,
+				Dbxrefs:         m.Dbxrefs,
+				Publications:    m.Publications,
+				StrainProperties: &stock.StrainProperties{
+					SystematicName: m.StrainProperties.SystematicName,
+					Label:          m.StrainProperties.Label,
+					Species:        m.StrainProperties.Species,
+					Plasmid:        m.StrainProperties.Plasmid,
+					Parent:         m.StrainProperties.Parent,
+					Names:          m.StrainProperties.Names,
+				},
+			},
+		}
+	} else {
+		m, err := s.repo.GetPlasmid(r.Id)
+		if err != nil {
+			return st, aphgrpc.HandleGetError(ctx, err)
+		}
+		if m.NotFound {
+			return st, aphgrpc.HandleNotFoundError(ctx, err)
+		}
+		st.Data = &stock.Stock_Data{
+			Type: s.GetResourceName(),
+			Id:   m.Key,
+			Attributes: &stock.StockAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+				CreatedBy:       m.CreatedBy,
+				UpdatedBy:       m.UpdatedBy,
+				Summary:         m.Summary,
+				EditableSummary: m.EditableSummary,
+				Depositor:       m.Depositor,
+				Genes:           m.Genes,
+				Dbxrefs:         m.Dbxrefs,
+				Publications:    m.Publications,
+				PlasmidProperties: &stock.PlasmidProperties{
+					ImageMap: m.PlasmidProperties.ImageMap,
+					Sequence: m.PlasmidProperties.Sequence,
+				},
+			},
+		}
+	}
 	return st, nil
 }
 
@@ -89,41 +130,68 @@ func (s *StockService) CreateStock(ctx context.Context, r *stock.NewStock) (*sto
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
-	// m, err := s.repo.AddStock(r)
-	// if err != nil {
-	// 	return st, aphgrpc.HandleInsertError(ctx, err)
-	// }
-	// if m.NotFound {
-	// 	return st, aphgrpc.HandleNotFoundError(ctx, err)
-	// }
-	// st.Data = &stock.Stock_Data{
-	// 	Type: s.GetResourceName(),
-	// 	Id:   m.Key, // need to make sure this is DBS/DBP ID
-	// 	Attributes: &stock.StockAttributes{
-	// 		CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-	// 		UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-	// 		CreatedBy:       m.CreatedBy,
-	// 		UpdatedBy:       m.UpdatedBy,
-	// 		Summary:         m.Summary,
-	// 		EditableSummary: m.EditableSummary,
-	// 		Depositor:       m.Depositor,
-	// 		Genes:           m.Genes,
-	// 		Dbxrefs:         m.Dbxrefs,
-	// 		Publications:    m.Publications,
-	// 		StrainProperties: &stock.StrainProperties{
-	// 			SystematicName: m.SystematicName,
-	// 			Descriptor_:    m.Descriptor,
-	// 			Species:        m.Species,
-	// 			Plasmid:        m.Plasmid,
-	// 			Parents:        m.Parents,
-	// 			Names:          m.Names,
-	// 		},
-	// 		PlasmidProperties: &stock.PlasmidProperties{
-	// 			ImageMap: m.ImageMap,
-	// 			Sequence: m.Sequence,
-	// 		},
-	// 	},
-	// }
+	str := r.Data.GetType()
+	if str == "strain" {
+		m, err := s.repo.AddStrain(r)
+		if err != nil {
+			return st, aphgrpc.HandleInsertError(ctx, err)
+		}
+		if m.NotFound {
+			return st, aphgrpc.HandleNotFoundError(ctx, err)
+		}
+		st.Data = &stock.Stock_Data{
+			Type: s.GetResourceName(),
+			Id:   m.Key,
+			Attributes: &stock.StockAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+				CreatedBy:       m.CreatedBy,
+				UpdatedBy:       m.UpdatedBy,
+				Summary:         m.Summary,
+				EditableSummary: m.EditableSummary,
+				Depositor:       m.Depositor,
+				Genes:           m.Genes,
+				Dbxrefs:         m.Dbxrefs,
+				Publications:    m.Publications,
+				StrainProperties: &stock.StrainProperties{
+					SystematicName: m.StrainProperties.SystematicName,
+					Label:          m.StrainProperties.Label,
+					Species:        m.StrainProperties.Species,
+					Plasmid:        m.StrainProperties.Plasmid,
+					Parent:         m.StrainProperties.Parent,
+					Names:          m.StrainProperties.Names,
+				},
+			},
+		}
+	} else {
+		m, err := s.repo.AddPlasmid(r)
+		if err != nil {
+			return st, aphgrpc.HandleInsertError(ctx, err)
+		}
+		if m.NotFound {
+			return st, aphgrpc.HandleNotFoundError(ctx, err)
+		}
+		st.Data = &stock.Stock_Data{
+			Type: s.GetResourceName(),
+			Id:   m.Key,
+			Attributes: &stock.StockAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+				CreatedBy:       m.CreatedBy,
+				UpdatedBy:       m.UpdatedBy,
+				Summary:         m.Summary,
+				EditableSummary: m.EditableSummary,
+				Depositor:       m.Depositor,
+				Genes:           m.Genes,
+				Dbxrefs:         m.Dbxrefs,
+				Publications:    m.Publications,
+				PlasmidProperties: &stock.PlasmidProperties{
+					ImageMap: m.PlasmidProperties.ImageMap,
+					Sequence: m.PlasmidProperties.Sequence,
+				},
+			},
+		}
+	}
 	s.publisher.Publish(s.Topics["stockCreate"], st)
 	return st, nil
 }
@@ -134,195 +202,283 @@ func (s *StockService) UpdateStock(ctx context.Context, r *stock.StockUpdate) (*
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
-	// m, err := s.repo.EditStock(r)
-	// if err != nil {
-	// 	return st, aphgrpc.HandleUpdateError(ctx, err)
-	// }
-	// if m.NotFound {
-	// 	return st, aphgrpc.HandleNotFoundError(ctx, err)
-	// }
-	// st.Data = &stock.Stock_Data{
-	// 	Type: s.GetResourceName(),
-	// 	Id:   m.Key, // need to make sure this is DBS/DBP ID
-	// 	Attributes: &stock.StockAttributes{
-	// 		UpdatedBy:       m.UpdatedBy,
-	// 		Summary:         m.Summary,
-	// 		EditableSummary: m.EditableSummary,
-	// 		Depositor:       m.Depositor,
-	// 		Genes:           m.Genes,
-	// 		Dbxrefs:         m.Dbxrefs,
-	// 		Publications:    m.Publications,
-	// 		StrainProperties: &stock.StrainProperties{
-	// 			SystematicName: m.SystematicName,
-	// 			Descriptor_:    m.Descriptor,
-	// 			Species:        m.Species,
-	// 			Plasmid:        m.Plasmid,
-	// 			Parents:        m.Parents,
-	// 			Names:          m.Names,
-	// 		},
-	// 		PlasmidProperties: &stock.PlasmidProperties{
-	// 			ImageMap: m.ImageMap,
-	// 			Sequence: m.Sequence,
-	// 		},
-	// 	},
-	// }
+	str := r.Data.GetType()
+	if str == "strain" {
+		m, err := s.repo.EditStrain(r)
+		if err != nil {
+			return st, aphgrpc.HandleUpdateError(ctx, err)
+		}
+		if m.NotFound {
+			return st, aphgrpc.HandleNotFoundError(ctx, err)
+		}
+		st.Data = &stock.Stock_Data{
+			Type: s.GetResourceName(),
+			Id:   m.Key,
+			Attributes: &stock.StockAttributes{
+				UpdatedBy:       m.UpdatedBy,
+				Summary:         m.Summary,
+				EditableSummary: m.EditableSummary,
+				Depositor:       m.Depositor,
+				Genes:           m.Genes,
+				Dbxrefs:         m.Dbxrefs,
+				Publications:    m.Publications,
+				StrainProperties: &stock.StrainProperties{
+					SystematicName: m.StrainProperties.SystematicName,
+					Label:          m.StrainProperties.Label,
+					Species:        m.StrainProperties.Species,
+					Plasmid:        m.StrainProperties.Plasmid,
+					Parent:         m.StrainProperties.Parent,
+					Names:          m.StrainProperties.Names,
+				},
+			},
+		}
+	} else {
+		m, err := s.repo.EditPlasmid(r)
+		if err != nil {
+			return st, aphgrpc.HandleUpdateError(ctx, err)
+		}
+		if m.NotFound {
+			return st, aphgrpc.HandleNotFoundError(ctx, err)
+		}
+		st.Data = &stock.Stock_Data{
+			Type: s.GetResourceName(),
+			Id:   m.Key,
+			Attributes: &stock.StockAttributes{
+				UpdatedBy:       m.UpdatedBy,
+				Summary:         m.Summary,
+				EditableSummary: m.EditableSummary,
+				Depositor:       m.Depositor,
+				Genes:           m.Genes,
+				Dbxrefs:         m.Dbxrefs,
+				Publications:    m.Publications,
+				PlasmidProperties: &stock.PlasmidProperties{
+					ImageMap: m.PlasmidProperties.ImageMap,
+					Sequence: m.PlasmidProperties.Sequence,
+				},
+			},
+		}
+	}
 	s.publisher.Publish(s.Topics["stockUpdate"], st)
 	return st, nil
-}
-
-// ListStocks lists all existing stocks
-func (s *StockService) ListStocks(ctx context.Context, r *stock.StockParameters) (*stock.StockCollection, error) {
-	sc := &stock.StockCollection{}
-	// if len(r.Filter) == 0 { // no filter parameters
-	// 	mc, err := s.repo.ListStocks(r.Cursor, r.Limit)
-	// 	if err != nil {
-	// 		return sc, aphgrpc.HandleGetError(ctx, err)
-	// 	}
-	// 	if len(mc) == 0 {
-	// 		return sc, aphgrpc.HandleNotFoundError(ctx, err)
-	// 	}
-	// 	var scdata []*stock.StockCollection_Data
-	// 	for _, m := range mc {
-	// 		scdata = append(scdata, &stock.StockCollection_Data{
-	// 			Type: s.GetResourceName(),
-	// 			Id:   m.Key, // need to make sure this is DBS/DBP ID
-	// 			Attributes: &stock.StockAttributes{
-	// 				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-	// 				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-	// 				CreatedBy:       m.CreatedBy,
-	// 				UpdatedBy:       m.UpdatedBy,
-	// 				Summary:         m.Summary,
-	// 				EditableSummary: m.EditableSummary,
-	// 				Depositor:       m.Depositor,
-	// 				Genes:           m.Genes,
-	// 				Dbxrefs:         m.Dbxrefs,
-	// 				Publications:    m.Publications,
-	// 				StrainProperties: &stock.StrainProperties{
-	// 					SystematicName: m.SystematicName,
-	// 					Descriptor_:    m.Descriptor,
-	// 					Species:        m.Species,
-	// 					Plasmid:        m.Plasmid,
-	// 					Parents:        m.Parents,
-	// 					Names:          m.Names,
-	// 				},
-	// 				PlasmidProperties: &stock.PlasmidProperties{
-	// 					ImageMap: m.ImageMap,
-	// 					Sequence: m.Sequence,
-	// 				},
-	// 			},
-	// 		})
-	// 	}
-	// 	if len(scdata) < int(r.Limit)-2 { // fewer results than limit
-	// 		sc.Data = scdata
-	// 		sc.Meta = &stock.Meta{Limit: r.Limit}
-	// 		return sc, nil
-	// 	}
-	// 	sc.Data = scdata[:len(scdata)-1]
-	// 	sc.Meta = &stock.Meta{
-	// 		Limit:      r.Limit,
-	// 		NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
-	// 	}
-	// }
-	return sc, nil
 }
 
 // ListStrains lists all existing strains
 func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters) (*stock.StockCollection, error) {
 	sc := &stock.StockCollection{}
-	// if len(r.Filter) == 0 { // no filter parameters
-	// 	mc, err := s.repo.ListStocks(r.Cursor, r.Limit)
-	// 	if err != nil {
-	// 		return sc, aphgrpc.HandleGetError(ctx, err)
-	// 	}
-	// 	if len(mc) == 0 {
-	// 		return sc, aphgrpc.HandleNotFoundError(ctx, err)
-	// 	}
-	// 	var scdata []*stock.StockCollection_Data
-	// 	for _, m := range mc {
-	// 		scdata = append(scdata, &stock.StockCollection_Data{
-	// 			Type: s.GetResourceName(),
-	// 			Id:   m.Key, // need to make sure this is DBS/DBP ID
-	// 			Attributes: &stock.StockAttributes{
-	// 				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-	// 				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-	// 				CreatedBy:       m.CreatedBy,
-	// 				UpdatedBy:       m.UpdatedBy,
-	// 				Summary:         m.Summary,
-	// 				EditableSummary: m.EditableSummary,
-	// 				Depositor:       m.Depositor,
-	// 				Genes:           m.Genes,
-	// 				Dbxrefs:         m.Dbxrefs,
-	// 				Publications:    m.Publications,
-	// 				StrainProperties: &stock.StrainProperties{
-	// 					SystematicName: m.SystematicName,
-	// 					Descriptor_:    m.Descriptor,
-	// 					Species:        m.Species,
-	// 					Plasmid:        m.Plasmid,
-	// 					Parents:        m.Parents,
-	// 					Names:          m.Names,
-	// 				},
-	// 			},
-	// 		})
-	// 	}
-	// 	if len(scdata) < int(r.Limit)-2 { // fewer results than limit
-	// 		sc.Data = scdata
-	// 		sc.Meta = &stock.Meta{Limit: r.Limit}
-	// 		return sc, nil
-	// 	}
-	// 	sc.Data = scdata[:len(scdata)-1]
-	// 	sc.Meta = &stock.Meta{
-	// 		Limit:      r.Limit,
-	// 		NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
-	// 	}
-	// }
+	c := r.Cursor
+	l := r.Limit
+	f := r.Filter
+	if len(f) > 0 {
+		p, err := query.ParseFilterString(f)
+		if err != nil {
+			return sc, fmt.Errorf("error parsing filter string: %s", err)
+		}
+		str, err := query.GenAQLFilterStatement(fmap, p, "s")
+		if err != nil {
+			return sc, fmt.Errorf("error generating AQL filter statement: %s", err)
+		}
+		// if the parsed statement is empty FILTER, just return empty string
+		if str == "FILTER " {
+			str = ""
+		}
+		mc, err := s.repo.ListStrains(&stock.StockParameters{Cursor: c, Limit: l, Filter: str})
+		if err != nil {
+			return sc, aphgrpc.HandleGetError(ctx, err)
+		}
+		if len(mc) == 0 {
+			return sc, aphgrpc.HandleNotFoundError(ctx, err)
+		}
+		var scdata []*stock.StockCollection_Data
+		for _, m := range mc {
+			scdata = append(scdata, &stock.StockCollection_Data{
+				Type: s.GetResourceName(),
+				Id:   m.Key,
+				Attributes: &stock.StockAttributes{
+					CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+					UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+					CreatedBy:       m.CreatedBy,
+					UpdatedBy:       m.UpdatedBy,
+					Summary:         m.Summary,
+					EditableSummary: m.EditableSummary,
+					Depositor:       m.Depositor,
+					Genes:           m.Genes,
+					Dbxrefs:         m.Dbxrefs,
+					Publications:    m.Publications,
+					StrainProperties: &stock.StrainProperties{
+						SystematicName: m.StrainProperties.SystematicName,
+						Label:          m.StrainProperties.Label,
+						Species:        m.StrainProperties.Species,
+						Plasmid:        m.StrainProperties.Plasmid,
+						Parent:         m.StrainProperties.Parent,
+						Names:          m.StrainProperties.Names,
+					},
+				},
+			})
+		}
+		if len(scdata) < int(r.Limit)-2 { // fewer results than limit
+			sc.Data = scdata
+			sc.Meta = &stock.Meta{Limit: r.Limit}
+			return sc, nil
+		}
+		sc.Data = scdata[:len(scdata)-1]
+		sc.Meta = &stock.Meta{
+			Limit:      r.Limit,
+			NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
+			Total:      int64(len(scdata)),
+		}
+	} else {
+		mc, err := s.repo.ListStrains(&stock.StockParameters{Cursor: c, Limit: l})
+		if err != nil {
+			return sc, aphgrpc.HandleGetError(ctx, err)
+		}
+		if len(mc) == 0 {
+			return sc, aphgrpc.HandleNotFoundError(ctx, err)
+		}
+		var scdata []*stock.StockCollection_Data
+		for _, m := range mc {
+			scdata = append(scdata, &stock.StockCollection_Data{
+				Type: s.GetResourceName(),
+				Id:   m.Key,
+				Attributes: &stock.StockAttributes{
+					CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+					UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+					CreatedBy:       m.CreatedBy,
+					UpdatedBy:       m.UpdatedBy,
+					Summary:         m.Summary,
+					EditableSummary: m.EditableSummary,
+					Depositor:       m.Depositor,
+					Genes:           m.Genes,
+					Dbxrefs:         m.Dbxrefs,
+					Publications:    m.Publications,
+					StrainProperties: &stock.StrainProperties{
+						SystematicName: m.StrainProperties.SystematicName,
+						Label:          m.StrainProperties.Label,
+						Species:        m.StrainProperties.Species,
+						Plasmid:        m.StrainProperties.Plasmid,
+						Parent:         m.StrainProperties.Parent,
+						Names:          m.StrainProperties.Names,
+					},
+				},
+			})
+		}
+		if len(scdata) < int(r.Limit)-2 { // fewer results than limit
+			sc.Data = scdata
+			sc.Meta = &stock.Meta{Limit: r.Limit}
+			return sc, nil
+		}
+		sc.Data = scdata[:len(scdata)-1]
+		sc.Meta = &stock.Meta{
+			Limit:      r.Limit,
+			NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
+			Total:      int64(len(scdata)),
+		}
+	}
 	return sc, nil
 }
 
 // ListPlasmids lists all existing plasmids
 func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameters) (*stock.StockCollection, error) {
 	sc := &stock.StockCollection{}
-	// if len(r.Filter) == 0 { // no filter parameters
-	// 	mc, err := s.repo.ListStocks(r.Cursor, r.Limit)
-	// 	if err != nil {
-	// 		return sc, aphgrpc.HandleGetError(ctx, err)
-	// 	}
-	// 	if len(mc) == 0 {
-	// 		return sc, aphgrpc.HandleNotFoundError(ctx, err)
-	// 	}
-	// 	var scdata []*stock.StockCollection_Data
-	// 	for _, m := range mc {
-	// 		scdata = append(scdata, &stock.StockCollection_Data{
-	// 			Type: s.GetResourceName(),
-	// 			Id:   m.Key, // need to make sure this is DBS/DBP ID
-	// 			Attributes: &stock.StockAttributes{
-	// 				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-	// 				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-	// 				CreatedBy:       m.CreatedBy,
-	// 				UpdatedBy:       m.UpdatedBy,
-	// 				Summary:         m.Summary,
-	// 				EditableSummary: m.EditableSummary,
-	// 				Depositor:       m.Depositor,
-	// 				Genes:           m.Genes,
-	// 				Dbxrefs:         m.Dbxrefs,
-	// 				Publications:    m.Publications,
-	// 				PlasmidProperties: &stock.PlasmidProperties{
-	// 					ImageMap: m.ImageMap,
-	// 					Sequence: m.Sequence,
-	// 				},
-	// 			},
-	// 		})
-	// 	}
-	// 	if len(scdata) < int(r.Limit)-2 { // fewer results than limit
-	// 		sc.Data = scdata
-	// 		sc.Meta = &stock.Meta{Limit: r.Limit}
-	// 		return sc, nil
-	// 	}
-	// 	sc.Data = scdata[:len(scdata)-1]
-	// 	sc.Meta = &stock.Meta{
-	// 		Limit:      r.Limit,
-	// 		NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
-	// 	}
-	// }
+	c := r.Cursor
+	l := r.Limit
+	f := r.Filter
+	if len(f) > 0 {
+		p, err := query.ParseFilterString(f)
+		if err != nil {
+			return sc, fmt.Errorf("error parsing filter string: %s", err)
+		}
+		str, err := query.GenAQLFilterStatement(fmap, p, "s")
+		if err != nil {
+			return sc, fmt.Errorf("error generating AQL filter statement: %s", err)
+		}
+		// if the parsed statement is empty FILTER, just return empty string
+		if str == "FILTER " {
+			str = ""
+		}
+		mc, err := s.repo.ListPlasmids(&stock.StockParameters{Cursor: c, Limit: l, Filter: str})
+		if err != nil {
+			return sc, aphgrpc.HandleGetError(ctx, err)
+		}
+		if len(mc) == 0 {
+			return sc, aphgrpc.HandleNotFoundError(ctx, err)
+		}
+		var scdata []*stock.StockCollection_Data
+		for _, m := range mc {
+			scdata = append(scdata, &stock.StockCollection_Data{
+				Type: s.GetResourceName(),
+				Id:   m.Key,
+				Attributes: &stock.StockAttributes{
+					CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+					UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+					CreatedBy:       m.CreatedBy,
+					UpdatedBy:       m.UpdatedBy,
+					Summary:         m.Summary,
+					EditableSummary: m.EditableSummary,
+					Depositor:       m.Depositor,
+					Genes:           m.Genes,
+					Dbxrefs:         m.Dbxrefs,
+					Publications:    m.Publications,
+					PlasmidProperties: &stock.PlasmidProperties{
+						ImageMap: m.PlasmidProperties.ImageMap,
+						Sequence: m.PlasmidProperties.Sequence,
+					},
+				},
+			})
+		}
+		if len(scdata) < int(r.Limit)-2 { // fewer results than limit
+			sc.Data = scdata
+			sc.Meta = &stock.Meta{Limit: r.Limit}
+			return sc, nil
+		}
+		sc.Data = scdata[:len(scdata)-1]
+		sc.Meta = &stock.Meta{
+			Limit:      r.Limit,
+			NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
+			Total:      int64(len(scdata)),
+		}
+	} else {
+		mc, err := s.repo.ListPlasmids(&stock.StockParameters{Cursor: c, Limit: l})
+		if err != nil {
+			return sc, aphgrpc.HandleGetError(ctx, err)
+		}
+		if len(mc) == 0 {
+			return sc, aphgrpc.HandleNotFoundError(ctx, err)
+		}
+		var scdata []*stock.StockCollection_Data
+		for _, m := range mc {
+			scdata = append(scdata, &stock.StockCollection_Data{
+				Type: s.GetResourceName(),
+				Id:   m.Key,
+				Attributes: &stock.StockAttributes{
+					CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+					UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+					CreatedBy:       m.CreatedBy,
+					UpdatedBy:       m.UpdatedBy,
+					Summary:         m.Summary,
+					EditableSummary: m.EditableSummary,
+					Depositor:       m.Depositor,
+					Genes:           m.Genes,
+					Dbxrefs:         m.Dbxrefs,
+					Publications:    m.Publications,
+					PlasmidProperties: &stock.PlasmidProperties{
+						ImageMap: m.PlasmidProperties.ImageMap,
+						Sequence: m.PlasmidProperties.Sequence,
+					},
+				},
+			})
+		}
+		if len(scdata) < int(r.Limit)-2 { // fewer results than limit
+			sc.Data = scdata
+			sc.Meta = &stock.Meta{Limit: r.Limit}
+			return sc, nil
+		}
+		sc.Data = scdata[:len(scdata)-1]
+		sc.Meta = &stock.Meta{
+			Limit:      r.Limit,
+			NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
+			Total:      int64(len(scdata)),
+		}
+	}
 	return sc, nil
 }
 
