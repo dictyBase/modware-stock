@@ -414,14 +414,14 @@ func (ar *arangorepository) ListStrains(p *stock.StockParameters) ([]*model.Stoc
 			stmt = fmt.Sprintf(
 				statement.StrainList,
 				ar.stock.Name(),
-				ar.stockProp.Name(),
+				ar.stockPropType.Name(),
 				l+1,
 			)
 		} else {
 			stmt = fmt.Sprintf(
 				statement.StrainListWithCursor,
 				ar.stock.Name(),
-				ar.stockProp.Name(),
+				ar.stockPropType.Name(),
 				c,
 				l+1,
 			)
@@ -464,14 +464,14 @@ func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.Sto
 			stmt = fmt.Sprintf(
 				statement.PlasmidList,
 				ar.stock.Name(),
-				ar.stockProp.Name(),
+				ar.stockPropType.Name(),
 				l+1,
 			)
 		} else {
 			stmt = fmt.Sprintf(
 				statement.PlasmidListWithCursor,
 				ar.stock.Name(),
-				ar.stockProp.Name(),
+				ar.stockPropType.Name(),
 				c,
 				l+1,
 			)

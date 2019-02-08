@@ -73,11 +73,11 @@ const (
 			RETURN e._key
 	`
 	StrainList = `
-		FOR s IN @@stock_collection
-			FOR v, e IN 1..1 OUTBOUND s GRAPH @prop_graph
+		FOR s IN %s
+			FOR v, e IN 1..1 OUTBOUND s GRAPH '%s'
 				FILTER e.type == 'strain'
 				SORT s.created_at DESC
-				LIMIT @limit
+				LIMIT %d
 				RETURN MERGE(
 					s,
 					{
@@ -112,12 +112,12 @@ const (
 				)
 	`
 	StrainListWithCursor = `
-		FOR s IN @@stock_collection
-			FOR v, e IN 1..1 OUTBOUND s GRAPH @graph
+		FOR s IN %s
+			FOR v, e IN 1..1 OUTBOUND s GRAPH '%s'
 				FILTER e.type == 'strain'
-				FILTER s.created_at <= DATE_ISO8601(@next_cursor)
+				FILTER s.created_at <= DATE_ISO8601(%d)
 				SORT s.created_at DESC
-				LIMIT @limit
+				LIMIT %d
 				RETURN MERGE(
 					s,
 					{
@@ -153,11 +153,11 @@ const (
 				)
 	`
 	PlasmidList = `
-		FOR s IN @@stock_collection
-			FOR v, e IN 1..1 OUTBOUND s GRAPH @graph
+		FOR s IN %s
+			FOR v, e IN 1..1 OUTBOUND s GRAPH '%s'
 				FILTER e.type == 'plasmid'
 				SORT s.created_at DESC
-				LIMIT @limit
+				LIMIT %d
 				RETURN MERGE(
 					s,
 					{
@@ -186,12 +186,12 @@ const (
 				)
 	`
 	PlasmidListWithCursor = `
-		FOR s IN @@stock_collection
-			FOR v, e IN 1..1 OUTBOUND s GRAPH @graph
+		FOR s IN %s
+			FOR v, e IN 1..1 OUTBOUND s GRAPH '%s'
 				FILTER e.type == 'plasmid'
-				FILTER s.created_at <= DATE_ISO8601(@next_cursor)
+				FILTER s.created_at <= DATE_ISO8601(%d)
 				SORT s.created_at DESC
-				LIMIT @limit
+				LIMIT %d
 				RETURN MERGE(
 					s,
 					{
