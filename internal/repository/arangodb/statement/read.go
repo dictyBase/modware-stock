@@ -14,7 +14,7 @@ const (
 	`
 	StockGetStrain = `
 		LET a = (
-			FOR v,e IN 1..1 INBOUND CONCAT(@stock_collection,"/",@id) GRAPH @parent_graph
+			FOR v IN 1..1 INBOUND CONCAT(@stock_collection,"/",@id) GRAPH @parent_graph
 				RETURN v.stock_id
 		)
 		
@@ -72,37 +72,10 @@ const (
 		FOR v,e IN 1..1 INBOUND @strain_key GRAPH @parent_graph
 			RETURN e._key
 	`
-	StockList = `
-		FOR s IN %s
-			SORT s.created_at DESC
-			LIMIT %d
-			RETURN s
-	`
-	StockListFilter = `
-		FOR s in %s
-			%s
-			SORT s.created_at DESC
-			LIMIT %d
-			RETURN s
-	`
-	StockListWithCursor = `
-		FOR s in %s
-			FILTER s.created_at <= DATE_ISO8601(%d)
-			SORT s.created_at DESC
-			LIMIT %d
-			RETURN s
-	`
-	StockListFilterWithCursor = `
-		FOR s in %s
-			FILTER s.created_at <= DATE_ISO8601(%d)
-			%s
-			SORT s.created_at DESC
-			LIMIT %d
-			RETURN s	
-	`
 	StrainList = `
 		FOR s IN @@stock_collection
-			FOR v IN 1..1 OUTBOUND s GRAPH @graph
+			FOR v, e IN 1..1 OUTBOUND s GRAPH @prop_graph
+				FILTER e.type == 'strain'
 				SORT s.created_at DESC
 				LIMIT @limit
 				RETURN MERGE(
@@ -113,7 +86,6 @@ const (
 							descriptor: v.descriptor, 
 							species: v.species, 
 							plasmid: v.plasmid, 
-							parent: v.parent, 
 							names: v.names
 						} 
 					}
@@ -134,7 +106,6 @@ const (
 							descriptor: v.descriptor, 
 							species: v.species, 
 							plasmid: v.plasmid, 
-							parent: v.parent, 
 							names: v.names
 						} 
 					}
@@ -142,7 +113,8 @@ const (
 	`
 	StrainListWithCursor = `
 		FOR s IN @@stock_collection
-			FOR v IN 1..1 OUTBOUND s GRAPH @graph
+			FOR v, e IN 1..1 OUTBOUND s GRAPH @graph
+				FILTER e.type == 'strain'
 				FILTER s.created_at <= DATE_ISO8601(@next_cursor)
 				SORT s.created_at DESC
 				LIMIT @limit
@@ -154,7 +126,6 @@ const (
 							descriptor: v.descriptor, 
 							species: v.species, 
 							plasmid: v.plasmid, 
-							parent: v.parent, 
 							names: v.names
 						} 
 					}
@@ -176,7 +147,6 @@ const (
 							descriptor: v.descriptor, 
 							species: v.species, 
 							plasmid: v.plasmid, 
-							parent: v.parent, 
 							names: v.names
 						} 
 					}
@@ -184,7 +154,8 @@ const (
 	`
 	PlasmidList = `
 		FOR s IN @@stock_collection
-			FOR v IN 1..1 OUTBOUND s GRAPH @graph
+			FOR v, e IN 1..1 OUTBOUND s GRAPH @graph
+				FILTER e.type == 'plasmid'
 				SORT s.created_at DESC
 				LIMIT @limit
 				RETURN MERGE(
@@ -216,7 +187,8 @@ const (
 	`
 	PlasmidListWithCursor = `
 		FOR s IN @@stock_collection
-			FOR v IN 1..1 OUTBOUND s GRAPH @graph
+			FOR v, e IN 1..1 OUTBOUND s GRAPH @graph
+				FILTER e.type == 'plasmid'
 				FILTER s.created_at <= DATE_ISO8601(@next_cursor)
 				SORT s.created_at DESC
 				LIMIT @limit

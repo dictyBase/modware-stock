@@ -394,8 +394,8 @@ func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc,
 	return m, nil
 }
 
-// ListStocks provides a list of all stocks
-func (ar *arangorepository) ListStocks(p *stock.StockParameters) ([]*model.StockDoc, error) {
+// ListStrains provides a list of all strains
+func (ar *arangorepository) ListStrains(p *stock.StockParameters) ([]*model.StockDoc, error) {
 	var om []*model.StockDoc
 	var stmt string
 	c := p.Cursor
@@ -412,14 +412,66 @@ func (ar *arangorepository) ListStocks(p *stock.StockParameters) ([]*model.Stock
 		// otherwise use query statement without filter
 		if c == 0 { // no cursor so return first set of result
 			stmt = fmt.Sprintf(
-				statement.StockList,
+				statement.StrainList,
 				ar.stock.Name(),
+				ar.stockProp.Name(),
 				l+1,
 			)
 		} else {
 			stmt = fmt.Sprintf(
-				statement.StockListWithCursor,
+				statement.StrainListWithCursor,
 				ar.stock.Name(),
+				ar.stockProp.Name(),
+				c,
+				l+1,
+			)
+		}
+	}
+	rs, err := ar.database.Search(stmt)
+	if err != nil {
+		return om, err
+	}
+	if rs.IsEmpty() {
+		return om, nil
+	}
+	for rs.Scan() {
+		m := &model.StockDoc{}
+		if err := rs.Read(m); err != nil {
+			return om, err
+		}
+		om = append(om, m)
+	}
+	return om, nil
+}
+
+// ListPlasmids provides a list of all plasmids
+func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.StockDoc, error) {
+	var om []*model.StockDoc
+	var stmt string
+	c := p.Cursor
+	l := p.Limit
+	f := p.Filter
+	// if filter string exists, call getFilterStatement function to get proper query statement
+	if len(f) > 0 {
+		n, err := (*ar).getFilterStatement(&stock.StockParameters{Cursor: c, Limit: l, Filter: f})
+		if err != nil {
+			return om, err
+		}
+		stmt = n
+	} else {
+		// otherwise use query statement without filter
+		if c == 0 { // no cursor so return first set of result
+			stmt = fmt.Sprintf(
+				statement.PlasmidList,
+				ar.stock.Name(),
+				ar.stockProp.Name(),
+				l+1,
+			)
+		} else {
+			stmt = fmt.Sprintf(
+				statement.PlasmidListWithCursor,
+				ar.stock.Name(),
+				ar.stockProp.Name(),
 				c,
 				l+1,
 			)
@@ -471,18 +523,12 @@ func (ar *arangorepository) getFilterStatement(p *stock.StockParameters) (string
 				n,
 				l+1,
 			)
-		} else if strings.Contains(f, "stock_type===plasmid") {
+		}
+		if strings.Contains(f, "stock_type===plasmid") {
 			stmt = fmt.Sprintf(
 				statement.PlasmidListFilter,
 				ar.stock.Name(),
 				ar.stockPropType.Name(),
-				n,
-				l+1,
-			)
-		} else {
-			stmt = fmt.Sprintf(
-				statement.StockListFilter,
-				ar.stock.Name(),
 				n,
 				l+1,
 			)
@@ -497,21 +543,14 @@ func (ar *arangorepository) getFilterStatement(p *stock.StockParameters) (string
 				c,
 				l+1,
 			)
-		} else if strings.Contains(f, "stock_type===plasmid") {
+		}
+		if strings.Contains(f, "stock_type===plasmid") {
 			stmt = fmt.Sprintf(
 				statement.PlasmidListFilterWithCursor,
 				ar.stock.Name(),
 				ar.stockPropType.Name(),
 				n,
 				c,
-				l+1,
-			)
-		} else {
-			stmt = fmt.Sprintf(
-				statement.StockListFilterWithCursor,
-				ar.stock.Name(),
-				c,
-				n,
 				l+1,
 			)
 		}
@@ -521,7 +560,7 @@ func (ar *arangorepository) getFilterStatement(p *stock.StockParameters) (string
 
 // removeString checks if filter string contains stock_type field
 // if it does, then it replaces it with an empty string
-// otherwise, it would create issues with the GenAQLFilterStatement function
+// this is necessary since we are already filtering by stock type in our AQL statements
 func removeString(f string) string {
 	filter := f
 	if strings.Contains(f, "stock_type===strain;") {
