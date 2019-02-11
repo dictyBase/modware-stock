@@ -400,9 +400,9 @@ func (ar *arangorepository) ListStrains(p *stock.StockParameters) ([]*model.Stoc
 	c := p.Cursor
 	l := p.Limit
 	f := p.Filter
-	// if filter string exists, call getFilterStatement function to get proper query statement
+	// if filter string exists, it needs to be included in statement
 	if len(f) > 0 {
-		if c == 0 {
+		if c == 0 { // no cursor so return first set of results with filter
 			stmt = fmt.Sprintf(
 				statement.StrainListFilter,
 				ar.stock.Name(),
@@ -410,7 +410,7 @@ func (ar *arangorepository) ListStrains(p *stock.StockParameters) ([]*model.Stoc
 				f,
 				l+1,
 			)
-		} else {
+		} else { // else include both filter and cursor
 			stmt = fmt.Sprintf(
 				statement.StrainListFilterWithCursor,
 				ar.stock.Name(),
@@ -429,7 +429,7 @@ func (ar *arangorepository) ListStrains(p *stock.StockParameters) ([]*model.Stoc
 				ar.stockPropType.Name(),
 				l+1,
 			)
-		} else {
+		} else { // add cursor if it exists
 			stmt = fmt.Sprintf(
 				statement.StrainListWithCursor,
 				ar.stock.Name(),
@@ -463,9 +463,9 @@ func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.Sto
 	c := p.Cursor
 	l := p.Limit
 	f := p.Filter
-	// if filter string exists, call getFilterStatement function to get proper query statement
+	// if filter string exists, it needs to be included in statement
 	if len(f) > 0 {
-		if c == 0 {
+		if c == 0 { // no cursor so return first set of result
 			stmt = fmt.Sprintf(
 				statement.PlasmidListFilter,
 				ar.stock.Name(),
@@ -473,7 +473,7 @@ func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.Sto
 				f,
 				l+1,
 			)
-		} else {
+		} else { // else include both filter and cursor
 			stmt = fmt.Sprintf(
 				statement.PlasmidListFilterWithCursor,
 				ar.stock.Name(),
@@ -492,7 +492,7 @@ func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.Sto
 				ar.stockPropType.Name(),
 				l+1,
 			)
-		} else {
+		} else { // add cursor if it exists
 			stmt = fmt.Sprintf(
 				statement.PlasmidListWithCursor,
 				ar.stock.Name(),
