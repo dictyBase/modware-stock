@@ -839,7 +839,11 @@ func TestListStrains(t *testing.T) {
 	}
 	assert.Equal(len(as), 5, "should list five strains")
 
-	// should also do a test using date filter
+	da, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("created_at$<=2019")})
+	if err != nil {
+		t.Fatalf("error in getting list of stocks with cursor and date filter %s", err)
+	}
+	assert.Equal(len(da), 0, "should list no strains")
 }
 
 func TestListPlasmids(t *testing.T) {
@@ -927,7 +931,11 @@ func TestListPlasmids(t *testing.T) {
 	}
 	assert.Equal(len(as), 5, "should list five plasmids")
 
-	// should also do a test using date filter
+	da, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("created_at$<=2019")})
+	if err != nil {
+		t.Fatalf("error in getting list of stocks with cursor and date filter %s", err)
+	}
+	assert.Equal(len(da), 0, "should list no plasmids")
 }
 
 func TestRemoveStock(t *testing.T) {
