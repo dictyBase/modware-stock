@@ -2,9 +2,10 @@ module github.com/dictyBase/modware-stock
 
 require (
 	github.com/arangodb/go-driver v0.0.0-20190123094303-4da7b19c6d72
+	github.com/arangodb/go-velocypack v0.0.0-20190129082528-7896a965b4ad // indirect
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
 	github.com/dictyBase/apihelpers v0.0.0-20181218160245-dce81474776f
-	github.com/dictyBase/arangomanager v0.0.0-20190108160338-ca3ad7d3b383
+	github.com/dictyBase/arangomanager v0.0.0-20190211195628-971aad3cbd68
 	github.com/dictyBase/go-genproto v0.0.0-20190208225242-f2fd11d17f9e
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/gogo/protobuf v1.2.0 // indirect
@@ -29,7 +30,7 @@ require (
 	github.com/pmylund/go-cache v2.1.0+incompatible // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.3.0
-	github.com/stretchr/testify v1.2.2
+	github.com/stretchr/testify v1.3.0
 	google.golang.org/grpc v1.17.0
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/go-playground/validator.v9 v9.26.0

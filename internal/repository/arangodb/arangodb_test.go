@@ -774,7 +774,7 @@ func TestListStrains(t *testing.T) {
 		}
 	}
 	// get first five results
-	ls, err := repo.ListStrains(&stock.StockParameters{Cursor: 0, Limit: 4})
+	ls, err := repo.ListStrains(&stock.StockParameters{Limit: 4})
 	if err != nil {
 		t.Fatalf("error in getting first five stocks %s", err)
 	}
@@ -783,7 +783,7 @@ func TestListStrains(t *testing.T) {
 
 	for _, stock := range ls {
 		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
-		assert.NotEmpty(stock.Key, "should not have empty key")
+		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
 	}
 	assert.NotEqual(ls[0].CreatedBy, ls[1].CreatedBy, "should have different created_by")
 	// convert fifth result to numeric timestamp in milliseconds
@@ -797,7 +797,7 @@ func TestListStrains(t *testing.T) {
 	}
 	assert.Equal(len(ls2), 5, "should match the provided limit number + 1")
 	assert.Equal(ls2[0], ls[4], "last item from first five results and first item from next five results should be the same")
-	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different consumers")
+	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different created_by fields")
 
 	// convert ninth result to numeric timestamp
 	ti2 := toTimestamp(ls2[4].CreatedAt)
@@ -809,21 +809,22 @@ func TestListStrains(t *testing.T) {
 	assert.Equal(len(ls3), 2, "should retrieve the last two results")
 	assert.Equal(ls3[0].CreatedBy, ls2[4].CreatedBy, "last item from previous five results and first item from next five results should be the same")
 
+	// sort all of the results
 	testModelListSort(ls, t)
 	testModelListSort(ls2, t)
 	testModelListSort(ls3, t)
 
-	sf, err := repo.ListStrains(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com")})
+	sf, err := repo.ListStrains(&stock.StockParameters{Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com")})
 	if err != nil {
-		t.Fatalf("error in getting list of stocks with depositor george@costanza.com %s", err)
+		t.Fatalf("error in getting list of strains with depositor george@costanza.com %s", err)
 	}
-	assert.Equal(len(sf), 10, "should list ten stocks")
+	assert.Equal(len(sf), 10, "should list ten strains")
 
-	n, err := repo.ListStrains(&stock.StockParameters{Cursor: 0, Limit: 100, Filter: convertFilterToQuery("depositor===george@costanza.com;depositor===rg@gmail.com")})
+	n, err := repo.ListStrains(&stock.StockParameters{Limit: 100, Filter: convertFilterToQuery("depositor===george@costanza.com;depositor===rg@gmail.com")})
 	if err != nil {
 		t.Fatalf("error in getting list of stocks with two depositors with AND logic %s", err)
 	}
-	assert.Equal(len(n), 0, "should list no stocks")
+	assert.Equal(len(n), 0, "should list no strains")
 
 	cs, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[4].CreatedAt), Limit: 10})
 	if err != nil {
@@ -831,11 +832,14 @@ func TestListStrains(t *testing.T) {
 	}
 	assert.Equal(len(cs), 6, "should list six strains")
 
-	as, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com,depositor===rg@gmail.com")})
+	// do a check for array filter
+	as, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("name@==gammaS13")})
 	if err != nil {
 		t.Fatalf("error in getting list of stocks with cursor and filter %s", err)
 	}
-	assert.Equal(len(as), 5, "should list ten strains")
+	assert.Equal(len(as), 5, "should list five strains")
+
+	// should also do a test using date filter
 }
 
 func TestListPlasmids(t *testing.T) {
@@ -860,7 +864,7 @@ func TestListPlasmids(t *testing.T) {
 		}
 	}
 	// get first five results
-	ls, err := repo.ListPlasmids(&stock.StockParameters{Cursor: 0, Limit: 4})
+	ls, err := repo.ListPlasmids(&stock.StockParameters{Limit: 4})
 	if err != nil {
 		t.Fatalf("error in getting first five plasmids %s", err)
 	}
@@ -869,7 +873,7 @@ func TestListPlasmids(t *testing.T) {
 
 	for _, stock := range ls {
 		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
-		assert.NotEmpty(stock.Key, "should not have empty key")
+		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
 	}
 	assert.NotEqual(ls[0].CreatedBy, ls[1].CreatedBy, "should have different created_by")
 	// convert fifth result to numeric timestamp in milliseconds
@@ -883,7 +887,7 @@ func TestListPlasmids(t *testing.T) {
 	}
 	assert.Equal(len(ls2), 5, "should match the provided limit number + 1")
 	assert.Equal(ls2[0], ls[4], "last item from first five results and first item from next five results should be the same")
-	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different consumers")
+	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different created_by fields")
 
 	// convert ninth result to numeric timestamp
 	ti2 := toTimestamp(ls2[4].CreatedAt)
@@ -899,13 +903,13 @@ func TestListPlasmids(t *testing.T) {
 	testModelListSort(ls2, t)
 	testModelListSort(ls3, t)
 
-	sf, err := repo.ListPlasmids(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com")})
+	sf, err := repo.ListPlasmids(&stock.StockParameters{Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com")})
 	if err != nil {
 		t.Fatalf("error in getting list of plasmids with depositor george@costanza.com %s", err)
 	}
 	assert.Equal(len(sf), 10, "should list ten plasmids")
 
-	n, err := repo.ListPlasmids(&stock.StockParameters{Cursor: 0, Limit: 100, Filter: convertFilterToQuery("depositor===george@costanza.com;depositor===rg@gmail.com")})
+	n, err := repo.ListPlasmids(&stock.StockParameters{Limit: 100, Filter: convertFilterToQuery("depositor===george@costanza.com;depositor===rg@gmail.com")})
 	if err != nil {
 		t.Fatalf("error in getting list of plasmids with two depositors with AND logic %s", err)
 	}
@@ -917,11 +921,13 @@ func TestListPlasmids(t *testing.T) {
 	}
 	assert.Equal(len(cs), 6, "should list six plasmids")
 
-	as, err := repo.ListPlasmids(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com,depositor===rg@gmail.com")})
+	as, err := repo.ListPlasmids(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com,name@==gammaS13")})
 	if err != nil {
 		t.Fatalf("error in getting list of plasmids with cursor and filter %s", err)
 	}
-	assert.Equal(len(as), 5, "should list ten plasmids")
+	assert.Equal(len(as), 5, "should list five plasmids")
+
+	// should also do a test using date filter
 }
 
 func TestRemoveStock(t *testing.T) {
@@ -1010,7 +1016,7 @@ func convertFilterToQuery(s string) string {
 		log.Printf("error parsing filter string %s", err)
 		return s
 	}
-	str, err := query.GenAQLFilterStatement(FMap, p, "s")
+	str, err := query.GenAQLFilterStatement(&query.StatementParameters{Fmap: FMap, Filters: p, Doc: "s", Vert: "v"})
 	if err != nil {
 		log.Printf("error generating AQL filter statement %s", err)
 		return s

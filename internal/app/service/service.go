@@ -261,7 +261,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		if err != nil {
 			return sc, fmt.Errorf("error parsing filter string: %s", err)
 		}
-		str, err := query.GenAQLFilterStatement(arangodb.FMap, p, "s")
+		str, err := query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Doc: "s", Vert: "v"})
 		if err != nil {
 			return sc, fmt.Errorf("error generating AQL filter statement: %s", err)
 		}
@@ -375,7 +375,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 		if err != nil {
 			return sc, fmt.Errorf("error parsing filter string: %s", err)
 		}
-		str, err := query.GenAQLFilterStatement(arangodb.FMap, p, "s")
+		str, err := query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Doc: "s", Vert: "v"})
 		if err != nil {
 			return sc, fmt.Errorf("error generating AQL filter statement: %s", err)
 		}
