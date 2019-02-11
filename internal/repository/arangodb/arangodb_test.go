@@ -11,6 +11,7 @@ import (
 
 	driver "github.com/arangodb/go-driver"
 	manager "github.com/dictyBase/arangomanager"
+	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
@@ -72,7 +73,7 @@ func newTestStrain(createdby string) *stock.NewStock {
 			Attributes: &stock.NewStockAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
-				Depositor:       "rg@gmail.com",
+				Depositor:       "george@costanza.com",
 				Summary:         "Radiation-sensitive mutant.",
 				EditableSummary: "Radiation-sensitive mutant.",
 				Dbxrefs:         []string{"5466867", "4536935", "d2578", "d0319", "d2020/1033268", "d2580"},
@@ -249,17 +250,17 @@ func TestEditStrain(t *testing.T) {
 	assert.ElementsMatch(
 		um.Publications,
 		m.Publications,
-		"publications list should remains unchanged",
+		"publications list should remain unchanged",
 	)
 	assert.Equal(
 		um.StrainProperties.SystematicName,
 		m.StrainProperties.SystematicName,
-		"systematic name should remains unchanged",
+		"systematic name should remain unchanged",
 	)
 	assert.Equal(
 		um.StrainProperties.Species,
 		m.StrainProperties.Species,
-		"species name should remains unchanged",
+		"species name should remain unchanged",
 	)
 	assert.Equal(
 		um.StrainProperties.Label,
@@ -274,7 +275,7 @@ func TestEditStrain(t *testing.T) {
 	assert.ElementsMatch(
 		um.StrainProperties.Names,
 		us.Data.Attributes.StrainProperties.Names,
-		"should updated list of strain names",
+		"should have updated list of strain names",
 	)
 
 	// test by adding parent strain
@@ -337,6 +338,35 @@ func TestEditStrain(t *testing.T) {
 		us2.Data.Attributes.StrainProperties.Parent,
 		"should have updated parent",
 	)
+
+	// add another new strain, let's make this one a parent
+	// so we can test updating parent if one already exists
+	pu, err := repo.AddStrain(newUpdatableTestStrain("castle@vania.org"))
+	if err != nil {
+		t.Fatalf("error in adding strain: %s", err)
+	}
+	us3 := &stock.StockUpdate{
+		Data: &stock.StockUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   um.StockID,
+			Attributes: &stock.StockUpdateAttributes{
+				UpdatedBy: "mario@snes.org",
+				StrainProperties: &stock.StrainUpdateProperties{
+					Parent: pu.StockID,
+				},
+			},
+		},
+	}
+	um3, err := repo.EditStrain(us3)
+	if err != nil {
+		t.Fatalf("error in updating strain id %s: %s", um.StockID, err)
+	}
+	assert.Equal(
+		um3.StrainProperties.Parent,
+		us3.Data.Attributes.StrainProperties.Parent,
+		"should have updated parent",
+	)
+	assert.Equal(um.StockID, um3.StockID, "should have same stock ID")
 }
 
 func TestAddStrain(t *testing.T) {
@@ -464,6 +494,7 @@ func TestAddPlasmidWithoutProp(t *testing.T) {
 		ns.Data.Attributes.Publications,
 		"should match publications",
 	)
+	assert.Empty(m.PlasmidProperties, "should have empty plasmid properties field")
 }
 
 func TestAddPlasmid(t *testing.T) {
@@ -528,7 +559,7 @@ func TestEditPlasmid(t *testing.T) {
 			t.Fatalf("error in clearing stocks %s", err)
 		}
 	}()
-	ns := newUpdatableTestPlasmid("art@vandeley.org")
+	ns := newUpdatableTestPlasmid("art@vandelay.org")
 	m, err := repo.AddPlasmid(ns)
 	if err != nil {
 		t.Fatalf("error in adding plasmid: %s", err)
@@ -573,6 +604,7 @@ func TestEditPlasmid(t *testing.T) {
 		ns.Data.Attributes.Dbxrefs,
 		"dbxrefs should remain unchanged",
 	)
+	assert.Equal(um.PlasmidProperties.ImageMap, us.Data.Attributes.PlasmidProperties.ImageMap, "should match image map")
 	us2 := &stock.StockUpdate{
 		Data: &stock.StockUpdate_Data{
 			Type: ns.Data.Type,
@@ -588,7 +620,7 @@ func TestEditPlasmid(t *testing.T) {
 	}
 	um2, err := repo.EditPlasmid(us2)
 	if err != nil {
-		t.Fatalf("error in re updating the plasmid %s", err)
+		t.Fatalf("error in reupdating the plasmid %s", err)
 	}
 	assert.Equal(um2.StockID, um.StockID, "should match the previous stock id")
 	assert.Equal(um2.UpdatedBy, us2.Data.Attributes.UpdatedBy, "should have updated the updatedby field")
@@ -634,23 +666,35 @@ func TestGetStrain(t *testing.T) {
 		t.Fatalf("error in getting stock %s with ID %s", m.StockID, err)
 	}
 	assert := assert.New(t)
+	assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), g.StockID, "should have a strain stock id")
 	assert.Equal(g.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
 	assert.Equal(g.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
 	assert.Equal(g.Summary, ns.Data.Attributes.Summary, "should match summary")
 	assert.Equal(g.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
 	assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
 	assert.ElementsMatch(g.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
+	assert.ElementsMatch(g.StrainProperties.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
+	assert.ElementsMatch(g.Genes, ns.Data.Attributes.Genes, "should match genes")
 	assert.Equal(g.StrainProperties.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
 	assert.Equal(g.StrainProperties.Label, ns.Data.Attributes.StrainProperties.Label, "should match descriptor")
 	assert.Equal(g.StrainProperties.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
-	assert.Equal(g.StrainProperties.Parent, ns.Data.Attributes.StrainProperties.Parent, "should match parent")
-	assert.ElementsMatch(g.StrainProperties.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
-	assert.ElementsMatch(g.Genes, ns.Data.Attributes.Genes, "should match genes")
 	assert.Equal(g.StrainProperties.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should match plasmid")
+	assert.Empty(g.StrainProperties.Parent, "should not have parent")
 	assert.Equal(len(g.Dbxrefs), 6, "should match length of six dbxrefs")
-	assert.NotEmpty(g.Key, "should not have empty key")
 	assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
 	assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
+
+	ns2 := newTestStrain("dead@cells.com")
+	ns2.Data.Attributes.StrainProperties.Parent = m.StockID
+	m2, err := repo.AddStrain(ns2)
+	if err != nil {
+		t.Fatalf("error in adding strain %s", err)
+	}
+	g2, err := repo.GetStrain(m2.StockID)
+	if err != nil {
+		t.Fatalf("error in getting stock %s with ID %s", m2.StockID, err)
+	}
+	assert.Equal(g2.StrainProperties.Parent, m.StockID, "should match parent")
 
 	ne, err := repo.GetStrain("DBS01")
 	if err != nil {
@@ -686,14 +730,14 @@ func TestGetPlasmid(t *testing.T) {
 		t.Fatalf("error in getting stock %s with ID %s", m.StockID, err)
 	}
 	assert := assert.New(t)
+	assert.Regexp(regexp.MustCompile(`^DBP0\d{6,}$`), g.StockID, "should have a plasmid stock id")
 	assert.Equal(g.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
 	assert.Equal(g.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
+	assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
 	assert.Equal(g.Summary, ns.Data.Attributes.Summary, "should match summary")
 	assert.Equal(g.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
-	assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
 	assert.Equal(g.PlasmidProperties.ImageMap, ns.Data.Attributes.PlasmidProperties.ImageMap, "should match image_map")
 	assert.Equal(g.PlasmidProperties.Sequence, ns.Data.Attributes.PlasmidProperties.Sequence, "should match sequence")
-	assert.NotEmpty(g.Key, "should not have empty key")
 	assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
 	assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
 
@@ -708,7 +752,7 @@ func TestGetPlasmid(t *testing.T) {
 	assert.True(ne.NotFound, "entry should not exist")
 }
 
-func TestListStocks(t *testing.T) {
+func TestListStrains(t *testing.T) {
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
@@ -729,16 +773,8 @@ func TestListStocks(t *testing.T) {
 			t.Fatalf("error in adding strain %s", err)
 		}
 	}
-	// add 5 new test plasmids
-	for i := 1; i <= 5; i++ {
-		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
-		_, err := repo.AddPlasmid(np)
-		if err != nil {
-			t.Fatalf("error in adding plasmid %s", err)
-		}
-	}
 	// get first five results
-	ls, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 4})
+	ls, err := repo.ListStrains(&stock.StockParameters{Limit: 4})
 	if err != nil {
 		t.Fatalf("error in getting first five stocks %s", err)
 	}
@@ -747,7 +783,7 @@ func TestListStocks(t *testing.T) {
 
 	for _, stock := range ls {
 		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
-		assert.NotEmpty(stock.Key, "should not have empty key")
+		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
 	}
 	assert.NotEqual(ls[0].CreatedBy, ls[1].CreatedBy, "should have different created_by")
 	// convert fifth result to numeric timestamp in milliseconds
@@ -755,103 +791,151 @@ func TestListStocks(t *testing.T) {
 	ti := toTimestamp(ls[4].CreatedAt)
 
 	// get next five results (5-9)
-	ls2, err := repo.ListStocks(&stock.StockParameters{Cursor: ti, Limit: 4})
+	ls2, err := repo.ListStrains(&stock.StockParameters{Cursor: ti, Limit: 4})
 	if err != nil {
 		t.Fatalf("error in getting stocks 5-9 %s", err)
 	}
 	assert.Equal(len(ls2), 5, "should match the provided limit number + 1")
 	assert.Equal(ls2[0], ls[4], "last item from first five results and first item from next five results should be the same")
-	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different consumers")
+	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different created_by fields")
 
 	// convert ninth result to numeric timestamp
 	ti2 := toTimestamp(ls2[4].CreatedAt)
-	// get last five results (9-13)
-	ls3, err := repo.ListStocks(&stock.StockParameters{Cursor: ti2, Limit: 4})
+	// get last results (9-10)
+	ls3, err := repo.ListStrains(&stock.StockParameters{Cursor: ti2, Limit: 4})
 	if err != nil {
-		t.Fatalf("error in getting stocks 9-13 %s", err)
+		t.Fatalf("error in getting stocks 9-10 %s", err)
 	}
-	assert.Equal(len(ls3), 5, "should match the provided limit number + 1")
+	assert.Equal(len(ls3), 2, "should retrieve the last two results")
 	assert.Equal(ls3[0].CreatedBy, ls2[4].CreatedBy, "last item from previous five results and first item from next five results should be the same")
 
-	// convert 13th result to numeric timestamp
-	ti3 := toTimestamp(ls3[4].CreatedAt)
-	// get last results
-	ls4, err := repo.ListStocks(&stock.StockParameters{Cursor: ti3, Limit: 4})
-	if err != nil {
-		t.Fatalf("error in getting stocks 13-15 %s", err)
-	}
-	assert.Equal(len(ls4), 3, "should only bring last three results")
-	assert.Equal(ls3[4].CreatedBy, ls4[0].CreatedBy, "last item from previous five results and first item from next three results should be the same")
+	// sort all of the results
 	testModelListSort(ls, t)
 	testModelListSort(ls2, t)
 	testModelListSort(ls3, t)
-	testModelListSort(ls4, t)
 
-	sf, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "depositor===rg@gmail.com"})
+	sf, err := repo.ListStrains(&stock.StockParameters{Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com")})
 	if err != nil {
-		t.Fatalf("error in getting list of stocks with depositor rg@gmail.com %s", err)
+		t.Fatalf("error in getting list of strains with depositor george@costanza.com %s", err)
 	}
-	assert.Equal(len(sf), 10, "should list ten stocks")
+	assert.Equal(len(sf), 10, "should list ten strains")
 
-	pf, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "depositor===george@costanza.com"})
-	if err != nil {
-		t.Fatalf("error in getting list of stocks with depositor george@costanza.com %s", err)
-	}
-	assert.Equal(len(pf), 5, "should list five stocks")
-
-	a, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 100, Filter: "depositor===george@costanza.com,depositor===rg@gmail.com"})
-	if err != nil {
-		t.Fatalf("error in getting list of stocks with two depositors with OR logic %s", err)
-	}
-	assert.Equal(len(a), 15, "should list all 15 stocks")
-
-	n, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 100, Filter: "depositor===george@costanza.com;depositor===rg@gmail.com"})
+	n, err := repo.ListStrains(&stock.StockParameters{Limit: 100, Filter: convertFilterToQuery("depositor===george@costanza.com;depositor===rg@gmail.com")})
 	if err != nil {
 		t.Fatalf("error in getting list of stocks with two depositors with AND logic %s", err)
 	}
-	assert.Equal(len(n), 0, "should list no stocks")
+	assert.Equal(len(n), 0, "should list no strains")
 
-	ss, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "stock_type===strain"})
-	if err != nil {
-		t.Fatalf("error in getting list of strains %s", err)
-	}
-	assert.Equal(len(ss), 10, "should list ten strains")
-
-	ps, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "stock_type===plasmid"})
-	if err != nil {
-		t.Fatalf("error in getting list of plasmids %s", err)
-	}
-	assert.Equal(len(ps), 5, "should list five plasmids")
-
-	cs, err := repo.ListStocks(&stock.StockParameters{Cursor: toTimestamp(ss[4].CreatedAt), Limit: 10, Filter: "stock_type===strain"})
+	cs, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[4].CreatedAt), Limit: 10})
 	if err != nil {
 		t.Fatalf("error in getting list of strains with cursor %s", err)
 	}
 	assert.Equal(len(cs), 6, "should list six strains")
 
-	cp, err := repo.ListStocks(&stock.StockParameters{Cursor: toTimestamp(ps[2].CreatedAt), Limit: 10, Filter: "stock_type===plasmid"})
-	if err != nil {
-		t.Fatalf("error in getting list of plasmids with cursor %s", err)
-	}
-	assert.Equal(len(cp), 3, "should list three plasmids")
-
-	as, err := repo.ListStocks(&stock.StockParameters{Cursor: toTimestamp(a[5].CreatedAt), Limit: 10, Filter: "depositor===george@costanza.com,depositor===rg@gmail.com"})
+	// do a check for array filter
+	as, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("name@==gammaS13")})
 	if err != nil {
 		t.Fatalf("error in getting list of stocks with cursor and filter %s", err)
 	}
-	assert.Equal(len(as), 10, "should list ten stocks")
+	assert.Equal(len(as), 5, "should list five strains")
 
-	rg, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "stock_type===strain;depositor===rg@gmail.com"})
+	da, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("created_at$<=2019")})
 	if err != nil {
-		t.Fatalf("error in getting list of strains %s", err)
+		t.Fatalf("error in getting list of stocks with cursor and date filter %s", err)
 	}
-	assert.Equal(len(rg), 10, "should list ten strains")
+	assert.Equal(len(da), 0, "should list no strains")
+}
 
-	gc, err := repo.ListStocks(&stock.StockParameters{Cursor: 0, Limit: 10, Filter: "stock_type===plasmid;depositor===george@costanza.com"})
+func TestListPlasmids(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
 	if err != nil {
-		t.Fatalf("error in getting list of plasmids %s", err)
+		t.Fatalf("error in connecting to stock repository %s", err)
 	}
-	assert.Equal(len(gc), 5, "should list five plasmids")
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
+	// add ten new test plasmids
+	for i := 1; i <= 10; i++ {
+		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
+		_, err := repo.AddPlasmid(np)
+		if err != nil {
+			t.Fatalf("error in adding plasmid %s", err)
+		}
+	}
+	// get first five results
+	ls, err := repo.ListPlasmids(&stock.StockParameters{Limit: 4})
+	if err != nil {
+		t.Fatalf("error in getting first five plasmids %s", err)
+	}
+	assert := assert.New(t)
+	assert.Equal(len(ls), 5, "should match the provided limit number + 1")
+
+	for _, stock := range ls {
+		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
+		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
+	}
+	assert.NotEqual(ls[0].CreatedBy, ls[1].CreatedBy, "should have different created_by")
+	// convert fifth result to numeric timestamp in milliseconds
+	// so we can use this as cursor
+	ti := toTimestamp(ls[4].CreatedAt)
+
+	// get next five results (5-9)
+	ls2, err := repo.ListPlasmids(&stock.StockParameters{Cursor: ti, Limit: 4})
+	if err != nil {
+		t.Fatalf("error in getting plasmids 5-9 %s", err)
+	}
+	assert.Equal(len(ls2), 5, "should match the provided limit number + 1")
+	assert.Equal(ls2[0], ls[4], "last item from first five results and first item from next five results should be the same")
+	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different created_by fields")
+
+	// convert ninth result to numeric timestamp
+	ti2 := toTimestamp(ls2[4].CreatedAt)
+	// get last results (9-10)
+	ls3, err := repo.ListPlasmids(&stock.StockParameters{Cursor: ti2, Limit: 4})
+	if err != nil {
+		t.Fatalf("error in getting plasmids 9-10 %s", err)
+	}
+	assert.Equal(len(ls3), 2, "should retrieve the last two results")
+	assert.Equal(ls3[0].CreatedBy, ls2[4].CreatedBy, "last item from previous five results and first item from next five results should be the same")
+
+	testModelListSort(ls, t)
+	testModelListSort(ls2, t)
+	testModelListSort(ls3, t)
+
+	sf, err := repo.ListPlasmids(&stock.StockParameters{Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com")})
+	if err != nil {
+		t.Fatalf("error in getting list of plasmids with depositor george@costanza.com %s", err)
+	}
+	assert.Equal(len(sf), 10, "should list ten plasmids")
+
+	n, err := repo.ListPlasmids(&stock.StockParameters{Limit: 100, Filter: convertFilterToQuery("depositor===george@costanza.com;depositor===rg@gmail.com")})
+	if err != nil {
+		t.Fatalf("error in getting list of plasmids with two depositors with AND logic %s", err)
+	}
+	assert.Equal(len(n), 0, "should list no plasmids")
+
+	cs, err := repo.ListPlasmids(&stock.StockParameters{Cursor: toTimestamp(sf[4].CreatedAt), Limit: 10})
+	if err != nil {
+		t.Fatalf("error in getting list of plasmids with cursor %s", err)
+	}
+	assert.Equal(len(cs), 6, "should list six plasmids")
+
+	as, err := repo.ListPlasmids(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("depositor===george@costanza.com,name@==gammaS13")})
+	if err != nil {
+		t.Fatalf("error in getting list of plasmids with cursor and filter %s", err)
+	}
+	assert.Equal(len(as), 5, "should list five plasmids")
+
+	da, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("created_at$<=2019")})
+	if err != nil {
+		t.Fatalf("error in getting list of stocks with cursor and date filter %s", err)
+	}
+	assert.Equal(len(da), 0, "should list no plasmids")
 }
 
 func TestRemoveStock(t *testing.T) {
@@ -930,4 +1014,20 @@ func RandString(length int) string {
 
 func toTimestamp(t time.Time) int64 {
 	return t.UnixNano() / 1000000
+}
+
+func convertFilterToQuery(s string) string {
+	// parse filter logic
+	// this needs to be done here since it is implemented in the service, not repository
+	p, err := query.ParseFilterString(s)
+	if err != nil {
+		log.Printf("error parsing filter string %s", err)
+		return s
+	}
+	str, err := query.GenAQLFilterStatement(&query.StatementParameters{Fmap: FMap, Filters: p, Doc: "s", Vert: "v"})
+	if err != nil {
+		log.Printf("error generating AQL filter statement %s", err)
+		return s
+	}
+	return str
 }
