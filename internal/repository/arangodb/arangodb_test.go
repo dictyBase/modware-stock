@@ -289,8 +289,11 @@ func TestEditStrain(t *testing.T) {
 			Id:   um.StockID,
 			Attributes: &stock.StockUpdateAttributes{
 				UpdatedBy: "mario@snes.org",
+				Depositor: "mario@snes.org",
 				StrainProperties: &stock.StrainUpdateProperties{
-					Parent: pm.StockID,
+					Parent:         pm.StockID,
+					SystematicName: "y99",
+					Species:        "updated species",
 				},
 			},
 		},
@@ -300,7 +303,7 @@ func TestEditStrain(t *testing.T) {
 		t.Fatalf("error in updating strain id %s: %s", um.StockID, err)
 	}
 	assert.Equal(um2.StockID, um.StockID, "should match their id")
-	assert.Equal(um2.Depositor, m.Depositor, "depositor name should not be updated")
+	assert.Equal(um2.Depositor, us2.Data.Attributes.Depositor, "depositor name should be updated")
 	assert.Equal(um2.CreatedBy, m.CreatedBy, "created by should not be updated")
 	assert.Equal(um2.Summary, um.Summary, "summary should not be updated")
 	assert.ElementsMatch(
@@ -338,6 +341,8 @@ func TestEditStrain(t *testing.T) {
 		us2.Data.Attributes.StrainProperties.Parent,
 		"should have updated parent",
 	)
+	assert.Equal(um2.StrainProperties.SystematicName, us2.Data.Attributes.StrainProperties.SystematicName, "systematic name should be updated")
+	assert.Equal(um2.StrainProperties.Species, us2.Data.Attributes.StrainProperties.Species, "species should be updated")
 
 	// add another new strain, let's make this one a parent
 	// so we can test updating parent if one already exists
@@ -367,6 +372,7 @@ func TestEditStrain(t *testing.T) {
 		"should have updated parent",
 	)
 	assert.Equal(um.StockID, um3.StockID, "should have same stock ID")
+	assert.Equal(um2.StrainProperties.Plasmid, um3.StrainProperties.Plasmid, "plasmid should not have been updated")
 }
 
 func TestAddStrain(t *testing.T) {
@@ -640,6 +646,30 @@ func TestEditPlasmid(t *testing.T) {
 		um2.PlasmidProperties.Sequence,
 		us2.Data.Attributes.PlasmidProperties.Sequence,
 		"sequence plasmid property should have been updated",
+	)
+	us3 := &stock.StockUpdate{
+		Data: &stock.StockUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   um.StockID,
+			Attributes: &stock.StockUpdateAttributes{
+				UpdatedBy:       "seven@costanza.org",
+				Summary:         "this is an updated summary",
+				EditableSummary: "this is an updated summary",
+			},
+		},
+	}
+	um3, err := repo.EditPlasmid(us3)
+	if err != nil {
+		t.Fatalf("error in reupdating the plasmid %s", err)
+	}
+	assert.Equal(um3.StockID, um.StockID, "should match the original stock id")
+	assert.Equal(um3.UpdatedBy, us3.Data.Attributes.UpdatedBy, "should have updated the updatedby field")
+	assert.Equal(um3.Summary, us3.Data.Attributes.Summary, "should have updated the summary field")
+	assert.Equal(um3.EditableSummary, us3.Data.Attributes.EditableSummary, "should have updated the editable summary field")
+	assert.ElementsMatch(
+		um3.Dbxrefs,
+		um2.Dbxrefs,
+		"dbxrefs list should remain the same",
 	)
 }
 
@@ -974,6 +1004,9 @@ func TestRemoveStock(t *testing.T) {
 	}
 	assert := assert.New(t)
 	assert.True(ne.NotFound, "entry should not exist")
+	// try removing nonexistent stock
+	e := repo.RemoveStock("xyz")
+	assert.Error(e)
 }
 
 func testModelListSort(m []*model.StockDoc, t *testing.T) {
