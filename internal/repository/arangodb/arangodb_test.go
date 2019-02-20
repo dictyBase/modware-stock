@@ -1009,6 +1009,143 @@ func TestRemoveStock(t *testing.T) {
 	assert.Error(e)
 }
 
+func TestLoadStockWithStrains(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
+	nsp := newTestParentStrain("todd@gagg.com")
+	m, err := repo.LoadStock("DBS0252873", nsp)
+	if err != nil {
+		t.Fatalf("error in adding strain: %s", err)
+	}
+	assert := assert.New(t)
+	assert.Equal("DBS0252873", m.StockID, "should match given stock id")
+	assert.Equal(m.Key, m.StockID, "should have identical key and stock ID")
+	assert.Equal(m.CreatedBy, nsp.Data.Attributes.CreatedBy, "should match created_by id")
+	assert.Equal(m.UpdatedBy, nsp.Data.Attributes.UpdatedBy, "should match updated_by id")
+	assert.Equal(m.Summary, nsp.Data.Attributes.Summary, "should match summary")
+	assert.Equal(m.EditableSummary, nsp.Data.Attributes.EditableSummary, "should match editable_summary")
+	assert.Equal(m.Depositor, nsp.Data.Attributes.Depositor, "should match depositor")
+	assert.ElementsMatch(m.Dbxrefs, nsp.Data.Attributes.Dbxrefs, "should match dbxrefs")
+	assert.Empty(m.Genes, "should not be tied to any genes")
+	assert.Empty(m.Publications, "should not be tied to any publications")
+	assert.Equal(m.StrainProperties.SystematicName, nsp.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
+	assert.Equal(m.StrainProperties.Label, nsp.Data.Attributes.StrainProperties.Label, "should match descriptor")
+	assert.Equal(m.StrainProperties.Species, nsp.Data.Attributes.StrainProperties.Species, "should match species")
+	assert.ElementsMatch(m.StrainProperties.Names, nsp.Data.Attributes.StrainProperties.Names, "should match names")
+	assert.Empty(m.StrainProperties.Plasmid, "should not have any plasmid")
+	assert.Empty(m.StrainProperties.Parent, "should not have any parent")
+
+	ns := newTestStrain("pennypacker@penny.com")
+	ns.Data.Attributes.StrainProperties.Parent = m.StockID
+	m2, err := repo.LoadStock("DBS0235412", ns)
+	if err != nil {
+		t.Fatalf("error in adding strain: %s", err)
+	}
+	assert.Equal("DBS0235412", m2.StockID, "should match given stock id")
+	assert.Equal(m2.Key, m2.StockID, "should have identical key and stock ID")
+	assert.Equal(m2.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
+	assert.Equal(m2.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
+	assert.Equal(m2.Summary, ns.Data.Attributes.Summary, "should match summary")
+	assert.Equal(m2.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
+	assert.Equal(m2.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
+	assert.ElementsMatch(m2.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
+	assert.ElementsMatch(m2.Genes, ns.Data.Attributes.Genes, "should match gene ids")
+	assert.ElementsMatch(
+		m2.Publications,
+		ns.Data.Attributes.Publications,
+		"should match list of publications",
+	)
+	assert.Equal(
+		m2.StrainProperties.SystematicName,
+		ns.Data.Attributes.StrainProperties.SystematicName,
+		"should match systematic_name",
+	)
+	assert.Equal(
+		m2.StrainProperties.Label,
+		ns.Data.Attributes.StrainProperties.Label,
+		"should match descriptor",
+	)
+	assert.Equal(
+		m2.StrainProperties.Species,
+		ns.Data.Attributes.StrainProperties.Species,
+		"should match species",
+	)
+	assert.ElementsMatch(
+		m2.StrainProperties.Names,
+		ns.Data.Attributes.StrainProperties.Names,
+		"should match names",
+	)
+	assert.Equal(
+		m2.StrainProperties.Plasmid,
+		ns.Data.Attributes.StrainProperties.Plasmid,
+		"should match plasmid entry",
+	)
+	assert.Equal(
+		m2.StrainProperties.Parent,
+		ns.Data.Attributes.StrainProperties.Parent,
+		"should match parent entry",
+	)
+}
+
+func TestLoadStockWithPlasmids(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
+	ns := newTestPlasmid("george@costanza.com")
+	m, err := repo.LoadStock("DBP0000098", ns)
+	if err != nil {
+		t.Fatalf("error in adding plasmid: %s", err)
+	}
+	assert := assert.New(t)
+	assert.Equal("DBP0000098", m.StockID, "should match given plasmid stock id")
+	assert.Equal(m.Key, m.StockID, "should have identical key and stock ID")
+	assert.Equal(m.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
+	assert.Equal(m.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
+	assert.Equal(m.Summary, ns.Data.Attributes.Summary, "should match summary")
+	assert.Equal(
+		m.EditableSummary,
+		ns.Data.Attributes.EditableSummary,
+		"should match editable_summary",
+	)
+	assert.Equal(m.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
+	assert.Empty(m.Genes, "should have empty genes field")
+	assert.Empty(m.Dbxrefs, "should have empty dbxrefs field")
+	assert.ElementsMatch(
+		m.Publications,
+		ns.Data.Attributes.Publications,
+		"should match publications",
+	)
+	assert.Equal(
+		m.PlasmidProperties.ImageMap,
+		ns.Data.Attributes.PlasmidProperties.ImageMap,
+		"should match image_map",
+	)
+	assert.Equal(
+		m.PlasmidProperties.Sequence,
+		ns.Data.Attributes.PlasmidProperties.Sequence,
+		"should match sequence",
+	)
+}
+
 func testModelListSort(m []*model.StockDoc, t *testing.T) {
 	it, err := NewPairWiseIterator(m)
 	if err != nil {

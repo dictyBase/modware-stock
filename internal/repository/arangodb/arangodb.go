@@ -544,7 +544,6 @@ func (ar *arangorepository) LoadStock(id string, ns *stock.NewStock) (*model.Sto
 	m := &model.StockDoc{}
 	var stmt string
 	var bindVars map[string]interface{}
-	bindVars["stock_id"] = id
 	if id[:3] == "DBS" {
 		if len(ns.Data.Attributes.StrainProperties.Parent) > 0 { // in case parent is present
 			p := ns.Data.Attributes.StrainProperties.Parent
@@ -565,11 +564,13 @@ func (ar *arangorepository) LoadStock(id string, ns *stock.NewStock) (*model.Sto
 			}
 			stmt = statement.StockStrainWithParentLoad
 			bindVars = addableStrainBindParams(ns.Data.Attributes)
+			bindVars["stock_id"] = id
 			bindVars["pid"] = pid
 			bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
 			m.StrainProperties = &model.StrainProperties{Parent: p}
 		} else {
 			bindVars = addableStrainBindParams(ns.Data.Attributes)
+			bindVars["stock_id"] = id
 			stmt = statement.StockStrainLoad
 		}
 		bindVars["@stock_collection"] = ar.stock.Name()
@@ -586,10 +587,11 @@ func (ar *arangorepository) LoadStock(id string, ns *stock.NewStock) (*model.Sto
 	}
 	if id[:3] == "DBP" {
 		attr := ns.Data.Attributes
-		bindVars := addablePlasmidBindParams(attr)
+		bindVars = addablePlasmidBindParams(attr)
 		bindVars["@stock_collection"] = ar.stock.Name()
 		bindVars["@stock_type_collection"] = ar.stockType.Name()
 		bindVars["@stock_properties_collection"] = ar.stockProp.Name()
+		bindVars["stock_id"] = id
 		r, err := ar.database.DoRun(statement.StockPlasmidLoad, bindVars)
 		if err != nil {
 			return m, err
