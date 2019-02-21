@@ -538,6 +538,72 @@ func (ar *arangorepository) RemoveStock(id string) error {
 	return nil
 }
 
+// LoadStock will insert existing stock data into the database.
+// It receives the already existing stock ID and the data to go with it.
+func (ar *arangorepository) LoadStock(id string, ns *stock.NewStock) (*model.StockDoc, error) {
+	m := &model.StockDoc{}
+	var stmt string
+	var bindVars map[string]interface{}
+	if id[:3] == "DBS" {
+		if len(ns.Data.Attributes.StrainProperties.Parent) > 0 { // in case parent is present
+			p := ns.Data.Attributes.StrainProperties.Parent
+			pVars := map[string]interface{}{
+				"@stock_collection": ar.stock.Name(),
+				"id":                p,
+			}
+			r, err := ar.database.GetRow(statement.StockFindQ, pVars)
+			if err != nil {
+				return m, fmt.Errorf("error in searching for parent %s %s", p, err)
+			}
+			if r.IsEmpty() {
+				return m, fmt.Errorf("parent %s is not found", p)
+			}
+			var pid string
+			if err := r.Read(&pid); err != nil {
+				return m, fmt.Errorf("error in scanning the value %s %s", p, err)
+			}
+			stmt = statement.StockStrainWithParentLoad
+			bindVars = addableStrainBindParams(ns.Data.Attributes)
+			bindVars["stock_id"] = id
+			bindVars["pid"] = pid
+			bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
+			m.StrainProperties = &model.StrainProperties{Parent: p}
+		} else {
+			bindVars = addableStrainBindParams(ns.Data.Attributes)
+			bindVars["stock_id"] = id
+			stmt = statement.StockStrainLoad
+		}
+		bindVars["@stock_collection"] = ar.stock.Name()
+		bindVars["@stock_properties_collection"] = ar.stockProp.Name()
+		bindVars["@stock_type_collection"] = ar.stockType.Name()
+		r, err := ar.database.DoRun(stmt, bindVars)
+		if err != nil {
+			return m, err
+		}
+		if err := r.Read(m); err != nil {
+			return m, err
+		}
+		return m, nil
+	}
+	if id[:3] == "DBP" {
+		attr := ns.Data.Attributes
+		bindVars = addablePlasmidBindParams(attr)
+		bindVars["@stock_collection"] = ar.stock.Name()
+		bindVars["@stock_type_collection"] = ar.stockType.Name()
+		bindVars["@stock_properties_collection"] = ar.stockProp.Name()
+		bindVars["stock_id"] = id
+		r, err := ar.database.DoRun(statement.StockPlasmidLoad, bindVars)
+		if err != nil {
+			return m, err
+		}
+		if err := r.Read(m); err != nil {
+			return m, err
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
 // ClearStocks clears all stocks from the repository datasource
 func (ar *arangorepository) ClearStocks() error {
 	if err := ar.stock.Truncate(context.Background()); err != nil {

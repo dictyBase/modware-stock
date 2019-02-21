@@ -482,6 +482,78 @@ func (s *StockService) RemoveStock(ctx context.Context, r *stock.StockId) (*empt
 	return e, nil
 }
 
+// LoadStock loads stocks with existing IDs into the database
+func (s *StockService) LoadStock(ctx context.Context, n *stock.StockId, r *stock.NewStock) (*stock.Stock, error) {
+	st := &stock.Stock{}
+	if err := r.Validate(); err != nil {
+		return st, aphgrpc.HandleInvalidParamError(ctx, err)
+	}
+	id := n.Id
+	if id[:3] == "DBS" {
+		m, err := s.repo.LoadStock(id, r)
+		if err != nil {
+			return st, aphgrpc.HandleInsertError(ctx, err)
+		}
+		if m.NotFound {
+			return st, aphgrpc.HandleNotFoundError(ctx, err)
+		}
+		st.Data = &stock.Stock_Data{
+			Type: s.GetResourceName(),
+			Id:   m.Key,
+			Attributes: &stock.StockAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+				CreatedBy:       m.CreatedBy,
+				UpdatedBy:       m.UpdatedBy,
+				Summary:         m.Summary,
+				EditableSummary: m.EditableSummary,
+				Depositor:       m.Depositor,
+				Genes:           m.Genes,
+				Dbxrefs:         m.Dbxrefs,
+				Publications:    m.Publications,
+				StrainProperties: &stock.StrainProperties{
+					SystematicName: m.StrainProperties.SystematicName,
+					Label:          m.StrainProperties.Label,
+					Species:        m.StrainProperties.Species,
+					Plasmid:        m.StrainProperties.Plasmid,
+					Parent:         m.StrainProperties.Parent,
+					Names:          m.StrainProperties.Names,
+				},
+			},
+		}
+	} else {
+		m, err := s.repo.LoadStock(id, r)
+		if err != nil {
+			return st, aphgrpc.HandleInsertError(ctx, err)
+		}
+		if m.NotFound {
+			return st, aphgrpc.HandleNotFoundError(ctx, err)
+		}
+		st.Data = &stock.Stock_Data{
+			Type: s.GetResourceName(),
+			Id:   m.Key,
+			Attributes: &stock.StockAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+				CreatedBy:       m.CreatedBy,
+				UpdatedBy:       m.UpdatedBy,
+				Summary:         m.Summary,
+				EditableSummary: m.EditableSummary,
+				Depositor:       m.Depositor,
+				Genes:           m.Genes,
+				Dbxrefs:         m.Dbxrefs,
+				Publications:    m.Publications,
+				PlasmidProperties: &stock.PlasmidProperties{
+					ImageMap: m.PlasmidProperties.ImageMap,
+					Sequence: m.PlasmidProperties.Sequence,
+				},
+			},
+		}
+	}
+	s.publisher.Publish(s.Topics["stockCreate"], st)
+	return st, nil
+}
+
 func genNextCursorVal(scd *stock.StockCollection_Data) int64 {
 	tint, _ := strconv.ParseInt(
 		fmt.Sprintf("%d%d", scd.Attributes.CreatedAt.GetSeconds(), scd.Attributes.CreatedAt.GetNanos()),
