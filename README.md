@@ -57,6 +57,7 @@ OPTIONS:
    --is-secure                             flag for secured or unsecured arangodb endpoint
    --nats-host value                       nats messaging server host [$NATS_SERVICE_HOST]
    --nats-port value                       nats messaging server port [$NATS_SERVICE_PORT]
+   --reflection, --ref                     flag for enabling server reflection
 ```
 
 # API

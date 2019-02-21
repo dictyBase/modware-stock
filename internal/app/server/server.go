@@ -83,8 +83,10 @@ func RunServer(c *cli.Context) error {
 				}),
 		),
 	)
-	reflection.Register(grpcS)
-
+	if c.Bool("reflection") {
+		// register reflection service on gRPC server
+		reflection.Register(grpcS)
+	}
 	// create listener
 	endP := fmt.Sprintf(":%s", c.String("port"))
 	lis, err := net.Listen("tcp", endP)

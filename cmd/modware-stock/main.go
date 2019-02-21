@@ -99,6 +99,10 @@ func getServerFlags() []cli.Flag {
 				Usage: "arangodb named graph for managing relations between strains and their parents",
 				Value: "strain2parent",
 			},
+			cli.BoolTFlag{
+				Name:  "reflection, ref",
+				Usage: "flag for enabling server reflection",
+			},
 		}...,
 	)
 	f = append(f, arangoflag.ArangodbFlags()...)
