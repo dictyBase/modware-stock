@@ -79,8 +79,8 @@ const (
 	StockStrainLoad = `
 		LET n = (
 			INSERT {
-				created_at: DATE_ISO8601(DATE_NOW()),
-				updated_at: DATE_ISO8601(DATE_NOW()),
+				created_at: DATE_ISO8601(@created_at),
+				updated_at: DATE_ISO8601(@updated_at),
 				created_by: @created_by,
 				updated_by: @updated_by,
 				summary: @summary,
@@ -113,8 +113,8 @@ const (
 	StockStrainWithParentLoad = `
 		LET n = (
 			INSERT {
-				created_at: DATE_ISO8601(DATE_NOW()),
-				updated_at: DATE_ISO8601(DATE_NOW()),
+				created_at: DATE_ISO8601(@created_at),
+				updated_at: DATE_ISO8601(@updated_at),
 				created_by: @created_by,
 				updated_by: @updated_by,
 				summary: @summary,
@@ -182,8 +182,8 @@ const (
 	StockPlasmidLoad = `
 		LET n = (
 			INSERT {
-				created_at: DATE_ISO8601(DATE_NOW()),
-				updated_at: DATE_ISO8601(DATE_NOW()),
+				created_at: DATE_ISO8601(@created_at),
+				updated_at: DATE_ISO8601(@updated_at),
 				created_by: @created_by,
 				updated_by: @updated_by,
 				summary: @summary,

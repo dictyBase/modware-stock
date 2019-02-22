@@ -10,6 +10,7 @@ import (
 	"time"
 
 	driver "github.com/arangodb/go-driver"
+	"github.com/dictyBase/apihelpers/aphgrpc"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/arangomanager/testarango"
@@ -1022,12 +1023,35 @@ func TestLoadStockWithStrains(t *testing.T) {
 			t.Fatalf("error in clearing stocks %s", err)
 		}
 	}()
-	nsp := newTestParentStrain("todd@gagg.com")
+	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
+	nsp := &stock.ExistingStock{
+		Data: &stock.ExistingStock_Data{
+			Type: "strain",
+			Id:   "DBS0252873",
+			Attributes: &stock.ExistingStockAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(tm),
+				UpdatedAt:       aphgrpc.TimestampProto(tm),
+				CreatedBy:       "wizard_of_loneliness@testemail.org",
+				UpdatedBy:       "wizard_of_loneliness@testemail.org",
+				Depositor:       "wizard_of_loneliness@testemail.org",
+				Summary:         "Remi-mutant strain",
+				EditableSummary: "Remi-mutant strain.",
+				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
+				StrainProperties: &stock.StrainProperties{
+					SystematicName: "AK40107",
+					Label:          "egeB/DDB_G0270724_ps-REMI",
+					Species:        "Dictyostelium discoideum",
+					Names:          []string{"gammaS13", "BCN149086"},
+				},
+			},
+		},
+	}
 	m, err := repo.LoadStock("DBS0252873", nsp)
 	if err != nil {
 		t.Fatalf("error in adding strain: %s", err)
 	}
 	assert := assert.New(t)
+	assert.True(m.CreatedAt.Equal(tm), "should match created_at")
 	assert.Equal("DBS0252873", m.StockID, "should match given stock id")
 	assert.Equal(m.Key, m.StockID, "should have identical key and stock ID")
 	assert.Equal(m.CreatedBy, nsp.Data.Attributes.CreatedBy, "should match created_by id")
@@ -1045,7 +1069,28 @@ func TestLoadStockWithStrains(t *testing.T) {
 	assert.Empty(m.StrainProperties.Plasmid, "should not have any plasmid")
 	assert.Empty(m.StrainProperties.Parent, "should not have any parent")
 
-	ns := newTestStrain("pennypacker@penny.com")
+	ns := &stock.ExistingStock{
+		Data: &stock.ExistingStock_Data{
+			Type: "strain",
+			Id:   "DBS0252873",
+			Attributes: &stock.ExistingStockAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(tm),
+				UpdatedAt:       aphgrpc.TimestampProto(tm),
+				CreatedBy:       "wizard_of_loneliness@testemail.org",
+				UpdatedBy:       "wizard_of_loneliness@testemail.org",
+				Depositor:       "wizard_of_loneliness@testemail.org",
+				Summary:         "Remi-mutant strain",
+				EditableSummary: "Remi-mutant strain.",
+				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
+				StrainProperties: &stock.StrainProperties{
+					SystematicName: "AK40107",
+					Label:          "egeB/DDB_G0270724_ps-REMI",
+					Species:        "Dictyostelium discoideum",
+					Names:          []string{"gammaS13", "BCN149086"},
+				},
+			},
+		},
+	}
 	ns.Data.Attributes.StrainProperties.Parent = m.StockID
 	m2, err := repo.LoadStock("DBS0235412", ns)
 	if err != nil {
@@ -1110,7 +1155,27 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 			t.Fatalf("error in clearing stocks %s", err)
 		}
 	}()
-	ns := newTestPlasmid("george@costanza.com")
+	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
+	ns := &stock.ExistingStock{
+		Data: &stock.ExistingStock_Data{
+			Type: "plasmid",
+			Id:   "DBP0000098",
+			Attributes: &stock.ExistingStockAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(tm),
+				UpdatedAt:       aphgrpc.TimestampProto(tm),
+				CreatedBy:       "george@costanza.com",
+				UpdatedBy:       "george@costanza.com",
+				Depositor:       "george@costanza.com",
+				Summary:         "this is a test plasmid",
+				EditableSummary: "this is a test plasmid",
+				Publications:    []string{"1348970"},
+				PlasmidProperties: &stock.PlasmidProperties{
+					ImageMap: "http://dictybase.org/data/plasmid/images/87.jpg",
+					Sequence: "tttttyyyyjkausadaaaavvvvvv",
+				},
+			},
+		},
+	}
 	m, err := repo.LoadStock("DBP0000098", ns)
 	if err != nil {
 		t.Fatalf("error in adding plasmid: %s", err)

@@ -6,7 +6,7 @@ require (
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
 	github.com/dictyBase/apihelpers v0.0.0-20181218160245-dce81474776f
 	github.com/dictyBase/arangomanager v0.0.0-20190211195628-971aad3cbd68
-	github.com/dictyBase/go-genproto v0.0.0-20190208225242-f2fd11d17f9e
+	github.com/dictyBase/go-genproto v0.0.0-20190221201930-e74be4d392e5
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/gogo/protobuf v1.2.0 // indirect
 	github.com/golang/protobuf v1.2.0

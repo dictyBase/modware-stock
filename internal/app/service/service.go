@@ -483,12 +483,12 @@ func (s *StockService) RemoveStock(ctx context.Context, r *stock.StockId) (*empt
 }
 
 // LoadStock loads stocks with existing IDs into the database
-func (s *StockService) LoadStock(ctx context.Context, n *stock.StockId, r *stock.NewStock) (*stock.Stock, error) {
+func (s *StockService) LoadStock(ctx context.Context, r *stock.ExistingStock) (*stock.Stock, error) {
 	st := &stock.Stock{}
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
-	id := n.Id
+	id := r.Data.Id
 	if id[:3] == "DBS" {
 		m, err := s.repo.LoadStock(id, r)
 		if err != nil {

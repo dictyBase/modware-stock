@@ -11,6 +11,7 @@ import (
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
+	"github.com/golang/protobuf/ptypes"
 	validator "gopkg.in/go-playground/validator.v9"
 )
 
@@ -540,13 +541,13 @@ func (ar *arangorepository) RemoveStock(id string) error {
 
 // LoadStock will insert existing stock data into the database.
 // It receives the already existing stock ID and the data to go with it.
-func (ar *arangorepository) LoadStock(id string, ns *stock.NewStock) (*model.StockDoc, error) {
+func (ar *arangorepository) LoadStock(id string, es *stock.ExistingStock) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	var stmt string
 	var bindVars map[string]interface{}
 	if id[:3] == "DBS" {
-		if len(ns.Data.Attributes.StrainProperties.Parent) > 0 { // in case parent is present
-			p := ns.Data.Attributes.StrainProperties.Parent
+		if len(es.Data.Attributes.StrainProperties.Parent) > 0 { // in case parent is present
+			p := es.Data.Attributes.StrainProperties.Parent
 			pVars := map[string]interface{}{
 				"@stock_collection": ar.stock.Name(),
 				"id":                p,
@@ -563,13 +564,13 @@ func (ar *arangorepository) LoadStock(id string, ns *stock.NewStock) (*model.Sto
 				return m, fmt.Errorf("error in scanning the value %s %s", p, err)
 			}
 			stmt = statement.StockStrainWithParentLoad
-			bindVars = addableStrainBindParams(ns.Data.Attributes)
+			bindVars = existingStrainBindParams(es.Data.Attributes)
 			bindVars["stock_id"] = id
 			bindVars["pid"] = pid
 			bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
 			m.StrainProperties = &model.StrainProperties{Parent: p}
 		} else {
-			bindVars = addableStrainBindParams(ns.Data.Attributes)
+			bindVars = existingStrainBindParams(es.Data.Attributes)
 			bindVars["stock_id"] = id
 			stmt = statement.StockStrainLoad
 		}
@@ -586,8 +587,8 @@ func (ar *arangorepository) LoadStock(id string, ns *stock.NewStock) (*model.Sto
 		return m, nil
 	}
 	if id[:3] == "DBP" {
-		attr := ns.Data.Attributes
-		bindVars = addablePlasmidBindParams(attr)
+		attr := es.Data.Attributes
+		bindVars = existingPlasmidBindParams(attr)
 		bindVars["@stock_collection"] = ar.stock.Name()
 		bindVars["@stock_type_collection"] = ar.stockType.Name()
 		bindVars["@stock_properties_collection"] = ar.stockProp.Name()
@@ -647,6 +648,48 @@ func addableStrainBindParams(attr *stock.NewStockAttributes) map[string]interfac
 		"species":          attr.StrainProperties.Species,
 		"created_by":       attr.CreatedBy,
 		"updated_by":       attr.UpdatedBy,
+	}
+}
+
+func existingPlasmidBindParams(attr *stock.ExistingStockAttributes) map[string]interface{} {
+	bindVars := map[string]interface{}{
+		"created_at":       ptypes.TimestampString(attr.CreatedAt),
+		"updated_at":       ptypes.TimestampString(attr.UpdatedAt),
+		"depositor":        attr.Depositor,
+		"created_by":       attr.CreatedBy,
+		"updated_by":       attr.UpdatedBy,
+		"summary":          normalizeStrBindParam(attr.Summary),
+		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
+		"genes":            normalizeSliceBindParam(attr.Genes),
+		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
+		"publications":     normalizeSliceBindParam(attr.Publications),
+		"image_map":        "",
+		"sequence":         "",
+	}
+	if attr.PlasmidProperties != nil {
+		bindVars["image_map"] = normalizeStrBindParam(attr.PlasmidProperties.ImageMap)
+		bindVars["sequence"] = normalizeStrBindParam(attr.PlasmidProperties.Sequence)
+	}
+	return bindVars
+}
+
+func existingStrainBindParams(attr *stock.ExistingStockAttributes) map[string]interface{} {
+	return map[string]interface{}{
+		"summary":          normalizeStrBindParam(attr.Summary),
+		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
+		"genes":            normalizeSliceBindParam(attr.Genes),
+		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
+		"publications":     normalizeSliceBindParam(attr.Publications),
+		"plasmid":          normalizeStrBindParam(attr.StrainProperties.Plasmid),
+		"names":            normalizeSliceBindParam(attr.StrainProperties.Names),
+		"depositor":        attr.Depositor,
+		"systematic_name":  attr.StrainProperties.SystematicName,
+		"label":            attr.StrainProperties.Label,
+		"species":          attr.StrainProperties.Species,
+		"created_by":       attr.CreatedBy,
+		"updated_by":       attr.UpdatedBy,
+		"created_at":       ptypes.TimestampString(attr.CreatedAt),
+		"updated_at":       ptypes.TimestampString(attr.UpdatedAt),
 	}
 }
 
