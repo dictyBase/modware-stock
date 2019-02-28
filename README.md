@@ -40,15 +40,13 @@ USAGE:
 OPTIONS:
    --port value                            tcp port at which the server will be available (default: "9560")
    --stock-collection value                arangodb collection for storing biological stocks (default: "stock")
-   --strain-collection value               arangodb collection for storing strains (default: "strain")
-   --plasmid-collection value              arangodb collection for storing plasmids (default: "plasmid")
+   --stockprop-collection value            arangodb collection for storing stock properties (default: "stockprop")
    --stock-key-generator-collection value  arangodb collection for generating unique IDs (default: "stock_key_generator")
-   --stock-plasmid-edge value              arangodb edge collection for connecting stocks and plasmids (default: "stock_plasmid")
-   --stock-strain-edge value               arangodb edge collection for connecting stocks and strains (default: "stock_strain")
-   --parent-strain-edge value              arangodb edge collection for connecting strains to their parents (default: "parent_strain")
-   --stock2plasmid-graph value             arangodb named graph for managing relations between stocks and plasmids (default: "stock2plasmid")
-   --stock2strain-graph value              arangodb named graph for managing relations between stocks and strains (default: "stock2strain")
+   --stock-type-edge value                 arangodb edge collection for connecting stocks to their types (strain or plasmid) (default: "stock_type")
+   --parent-strain-edge value              arangodb edge collection for connecting strains to their parent (default: "parent_strain")
+   --stockproptype-graph value             arangodb named graph for managing relations between stocks and their properties (default: "stockprop_type")
    --strain2parent-graph value             arangodb named graph for managing relations between strains and their parents (default: "strain2parent")
+   --reflection, --ref                     flag for enabling server reflection
    --arangodb-pass value, --pass value     arangodb database password [$ARANGODB_PASS]
    --arangodb-database value, --db value   arangodb database name [$ARANGODB_DATABASE]
    --arangodb-user value, --user value     arangodb database user [$ARANGODB_USER]
@@ -57,8 +55,25 @@ OPTIONS:
    --is-secure                             flag for secured or unsecured arangodb endpoint
    --nats-host value                       nats messaging server host [$NATS_SERVICE_HOST]
    --nats-port value                       nats messaging server port [$NATS_SERVICE_PORT]
-   --reflection, --ref                     flag for enabling server reflection
 ```
+
+## Default Names
+
+**Collections**
+
+- stock
+- stockprop
+- stock_key_generator
+
+**Edge Collections**
+
+- parent_strain
+- stock_type
+
+**Graphs**
+
+- stockprop_type
+- strain2parent
 
 # API
 

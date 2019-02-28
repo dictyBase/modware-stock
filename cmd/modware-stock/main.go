@@ -55,14 +55,9 @@ func getServerFlags() []cli.Flag {
 				Value: "stock",
 			},
 			cli.StringFlag{
-				Name:  "strain-collection",
-				Usage: "arangodb collection for storing strains",
-				Value: "strain",
-			},
-			cli.StringFlag{
-				Name:  "plasmid-collection",
-				Usage: "arangodb collection for storing plasmids",
-				Value: "plasmid",
+				Name:  "stockprop-collection",
+				Usage: "arangodb collection for storing stock properties",
+				Value: "stockprop",
 			},
 			cli.StringFlag{
 				Name:  "stock-key-generator-collection",
@@ -70,29 +65,19 @@ func getServerFlags() []cli.Flag {
 				Value: "stock_key_generator",
 			},
 			cli.StringFlag{
-				Name:  "stock-plasmid-edge",
-				Usage: "arangodb edge collection for connecting stocks and plasmids",
-				Value: "stock_plasmid",
-			},
-			cli.StringFlag{
-				Name:  "stock-strain-edge",
-				Usage: "arangodb edge collection for connecting stocks and strains",
-				Value: "stock_strain",
+				Name:  "stock-type-edge",
+				Usage: "arangodb edge collection for connecting stocks to their types (strain or plasmid)",
+				Value: "stock_type",
 			},
 			cli.StringFlag{
 				Name:  "parent-strain-edge",
-				Usage: "arangodb edge collection for connecting strains to their parents",
+				Usage: "arangodb edge collection for connecting strains to their parent",
 				Value: "parent_strain",
 			},
 			cli.StringFlag{
-				Name:  "stock2plasmid-graph",
-				Usage: "arangodb named graph for managing relations between stocks and plasmids",
-				Value: "stock2plasmid",
-			},
-			cli.StringFlag{
-				Name:  "stock2strain-graph",
-				Usage: "arangodb named graph for managing relations between stocks and strains",
-				Value: "stock2strain",
+				Name:  "stockproptype-graph",
+				Usage: "arangodb named graph for managing relations between stocks and their properties",
+				Value: "stockprop_type",
 			},
 			cli.StringFlag{
 				Name:  "strain2parent-graph",
