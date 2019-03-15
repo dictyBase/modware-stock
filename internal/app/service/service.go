@@ -48,6 +48,9 @@ func (s *StockService) GetStock(ctx context.Context, r *stock.StockId) (*stock.S
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
+	if len(r.Id) < 3 {
+		return st, fmt.Errorf("stock ID %s is not long enough (must begin with DBS or DBP)", r.Id)
+	}
 	if r.Id[:3] == "DBS" {
 		m, err := s.repo.GetStrain(r.Id)
 		if err != nil {
@@ -80,7 +83,7 @@ func (s *StockService) GetStock(ctx context.Context, r *stock.StockId) (*stock.S
 				},
 			},
 		}
-	} else {
+	} else if r.Id[:3] == "DBP" {
 		m, err := s.repo.GetPlasmid(r.Id)
 		if err != nil {
 			return st, aphgrpc.HandleGetError(ctx, err)
@@ -108,6 +111,8 @@ func (s *StockService) GetStock(ctx context.Context, r *stock.StockId) (*stock.S
 				},
 			},
 		}
+	} else {
+		return st, fmt.Errorf("stock ID %s is not valid (must begin with DBS or DBP)", r.Id)
 	}
 	return st, nil
 }
@@ -123,9 +128,6 @@ func (s *StockService) CreateStock(ctx context.Context, r *stock.NewStock) (*sto
 		m, err := s.repo.AddStrain(r)
 		if err != nil {
 			return st, aphgrpc.HandleInsertError(ctx, err)
-		}
-		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
@@ -155,9 +157,6 @@ func (s *StockService) CreateStock(ctx context.Context, r *stock.NewStock) (*sto
 		m, err := s.repo.AddPlasmid(r)
 		if err != nil {
 			return st, aphgrpc.HandleInsertError(ctx, err)
-		}
-		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
@@ -494,9 +493,6 @@ func (s *StockService) LoadStock(ctx context.Context, r *stock.ExistingStock) (*
 		if err != nil {
 			return st, aphgrpc.HandleInsertError(ctx, err)
 		}
-		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
-		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
 			Id:   m.Key,
@@ -525,9 +521,6 @@ func (s *StockService) LoadStock(ctx context.Context, r *stock.ExistingStock) (*
 		m, err := s.repo.LoadStock(id, r)
 		if err != nil {
 			return st, aphgrpc.HandleInsertError(ctx, err)
-		}
-		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),

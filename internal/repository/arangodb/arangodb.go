@@ -157,7 +157,7 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 	}
 	if g.IsEmpty() {
 		m.NotFound = true
-		return m, nil
+		return m, fmt.Errorf("strain with id %s is not in database", id)
 	}
 	r, err := ar.database.GetRow(statement.StockGetStrain, bindVars)
 	if err != nil {
@@ -183,7 +183,7 @@ func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 	}
 	if r.IsEmpty() {
 		m.NotFound = true
-		return m, nil
+		return m, fmt.Errorf("plasmid with id %s is not in database", id)
 	}
 	if err := r.Read(m); err != nil {
 		return m, err
