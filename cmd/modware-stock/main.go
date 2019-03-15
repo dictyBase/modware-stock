@@ -84,6 +84,11 @@ func getServerFlags() []cli.Flag {
 				Usage: "arangodb named graph for managing relations between strains and their parents",
 				Value: "strain2parent",
 			},
+			cli.IntFlag{
+				Name:  "keyoffset",
+				Usage: "initial offset for stock id generation",
+				Value: 370000,
+			},
 			cli.BoolTFlag{
 				Name:  "reflection, ref",
 				Usage: "flag for enabling server reflection",
