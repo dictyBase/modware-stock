@@ -1,0 +1,72 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "stock-api.fullname" . }}
+  labels:
+    app: {{ template "stock-api.fullname" . }}
+    chart: {{ template "stock-api.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "stock-api.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "stock-api.fullname" . }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: [
+            "--log-level",
+            "{{ .Values.logLevel }}",
+            "start-server",
+        {{- if .Values.database }}
+          {{- with .Values.database }}
+            "--user",
+            "{{ .user }}",
+            "--pass",
+            "{{ .password }}",
+            "--db",
+            "{{ .name }}",
+          {{- end }}
+            "--port",
+            "{{ .Values.service.port }}",
+          {{- if eq .Values.endpoint "https" }}
+            "--is-secure",
+            "true"
+          {{- end }}
+        {{- else }}    
+          {{required "A value for .Values.database is required" .Values.database }}
+        {{- end }}
+          ]
+          ports:
+            - name: {{ .Values.service.name }}
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- if .Values.resources }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- end }}
+    {{- if .Values.nodeSelector }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.affinity }}
+      {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.tolerations }}
+      {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+{{- end }}
