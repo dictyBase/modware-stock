@@ -48,13 +48,16 @@ func (s *StockService) GetStock(ctx context.Context, r *stock.StockId) (*stock.S
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
+	if len(r.Id) < 3 {
+		return st, fmt.Errorf("stock ID %s is not long enough (must begin with DBS or DBP)", r.Id)
+	}
 	if r.Id[:3] == "DBS" {
 		m, err := s.repo.GetStrain(r.Id)
 		if err != nil {
 			return st, aphgrpc.HandleGetError(ctx, err)
 		}
 		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
+			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", r.Id))
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
@@ -80,13 +83,13 @@ func (s *StockService) GetStock(ctx context.Context, r *stock.StockId) (*stock.S
 				},
 			},
 		}
-	} else {
+	} else if r.Id[:3] == "DBP" {
 		m, err := s.repo.GetPlasmid(r.Id)
 		if err != nil {
 			return st, aphgrpc.HandleGetError(ctx, err)
 		}
 		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
+			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", r.Id))
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
@@ -108,6 +111,8 @@ func (s *StockService) GetStock(ctx context.Context, r *stock.StockId) (*stock.S
 				},
 			},
 		}
+	} else {
+		return st, fmt.Errorf("stock ID %s is not valid (must begin with DBS or DBP)", r.Id)
 	}
 	return st, nil
 }
@@ -123,9 +128,6 @@ func (s *StockService) CreateStock(ctx context.Context, r *stock.NewStock) (*sto
 		m, err := s.repo.AddStrain(r)
 		if err != nil {
 			return st, aphgrpc.HandleInsertError(ctx, err)
-		}
-		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
@@ -155,9 +157,6 @@ func (s *StockService) CreateStock(ctx context.Context, r *stock.NewStock) (*sto
 		m, err := s.repo.AddPlasmid(r)
 		if err != nil {
 			return st, aphgrpc.HandleInsertError(ctx, err)
-		}
-		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
@@ -197,7 +196,7 @@ func (s *StockService) UpdateStock(ctx context.Context, r *stock.StockUpdate) (*
 			return st, aphgrpc.HandleUpdateError(ctx, err)
 		}
 		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
+			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", m.ID))
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
@@ -226,7 +225,7 @@ func (s *StockService) UpdateStock(ctx context.Context, r *stock.StockUpdate) (*
 			return st, aphgrpc.HandleUpdateError(ctx, err)
 		}
 		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
+			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", m.ID))
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
@@ -274,7 +273,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 			return sc, aphgrpc.HandleGetError(ctx, err)
 		}
 		if len(mc) == 0 {
-			return sc, aphgrpc.HandleNotFoundError(ctx, err)
+			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any strains"))
 		}
 		var scdata []*stock.StockCollection_Data
 		for _, m := range mc {
@@ -320,7 +319,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 			return sc, aphgrpc.HandleGetError(ctx, err)
 		}
 		if len(mc) == 0 {
-			return sc, aphgrpc.HandleNotFoundError(ctx, err)
+			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any strains"))
 		}
 		var scdata []*stock.StockCollection_Data
 		for _, m := range mc {
@@ -388,7 +387,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 			return sc, aphgrpc.HandleGetError(ctx, err)
 		}
 		if len(mc) == 0 {
-			return sc, aphgrpc.HandleNotFoundError(ctx, err)
+			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any plasmids"))
 		}
 		var scdata []*stock.StockCollection_Data
 		for _, m := range mc {
@@ -430,7 +429,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 			return sc, aphgrpc.HandleGetError(ctx, err)
 		}
 		if len(mc) == 0 {
-			return sc, aphgrpc.HandleNotFoundError(ctx, err)
+			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any plasmids"))
 		}
 		var scdata []*stock.StockCollection_Data
 		for _, m := range mc {
@@ -494,9 +493,6 @@ func (s *StockService) LoadStock(ctx context.Context, r *stock.ExistingStock) (*
 		if err != nil {
 			return st, aphgrpc.HandleInsertError(ctx, err)
 		}
-		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
-		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
 			Id:   m.Key,
@@ -525,9 +521,6 @@ func (s *StockService) LoadStock(ctx context.Context, r *stock.ExistingStock) (*
 		m, err := s.repo.LoadStock(id, r)
 		if err != nil {
 			return st, aphgrpc.HandleInsertError(ctx, err)
-		}
-		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),

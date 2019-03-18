@@ -3,12 +3,12 @@ package statement
 const (
 	StockUpd = `
 		UPDATE { _key: @key }
-			WITH { %s }
+			WITH { updated_at: DATE_ISO8601(DATE_NOW()), %s }
 			IN @@stock_collection RETURN NEW
 	`
 	StrainUpd = `
 		LET s = (
-			UPDATE { _key: @key } WITH { %s }
+			UPDATE { _key: @key } WITH { updated_at: DATE_ISO8601(DATE_NOW()), %s }
 			IN @@stock_collection RETURN NEW
 		)
 		LET p = (
@@ -28,7 +28,7 @@ const (
 	`
 	StrainWithNewParentUpd = `
 		LET s = (
-			UPDATE { _key: @key } WITH { %s }
+			UPDATE { _key: @key } WITH { updated_at: DATE_ISO8601(DATE_NOW()), %s }
 			IN @@stock_collection RETURN NEW
 		)
 		LET prop = (
@@ -53,7 +53,7 @@ const (
 	`
 	StrainWithExistingParentUpd = `
 		LET s = (
-			UPDATE { _key: @key } WITH { %s }
+			UPDATE { _key: @key } WITH { updated_at: DATE_ISO8601(DATE_NOW()), %s }
 			IN @@stock_collection RETURN NEW
 		)
 		LET prop = (
@@ -77,7 +77,7 @@ const (
 	`
 	PlasmidUpd = `
 		LET s = (
-			UPDATE { _key: @key } WITH { %s }
+			UPDATE { _key: @key } WITH { updated_at: DATE_ISO8601(DATE_NOW()), %s }
 			IN @@stock_collection RETURN NEW
 		)
 		LET p = (
