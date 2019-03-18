@@ -196,7 +196,7 @@ func (s *StockService) UpdateStock(ctx context.Context, r *stock.StockUpdate) (*
 			return st, aphgrpc.HandleUpdateError(ctx, err)
 		}
 		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
+			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", r.Id))
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
@@ -225,7 +225,7 @@ func (s *StockService) UpdateStock(ctx context.Context, r *stock.StockUpdate) (*
 			return st, aphgrpc.HandleUpdateError(ctx, err)
 		}
 		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
+			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", r.Id))
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
@@ -273,7 +273,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 			return sc, aphgrpc.HandleGetError(ctx, err)
 		}
 		if len(mc) == 0 {
-			return sc, aphgrpc.HandleNotFoundError(ctx, err)
+			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any strains"))
 		}
 		var scdata []*stock.StockCollection_Data
 		for _, m := range mc {
@@ -319,7 +319,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 			return sc, aphgrpc.HandleGetError(ctx, err)
 		}
 		if len(mc) == 0 {
-			return sc, aphgrpc.HandleNotFoundError(ctx, err)
+			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any strains"))
 		}
 		var scdata []*stock.StockCollection_Data
 		for _, m := range mc {
@@ -387,7 +387,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 			return sc, aphgrpc.HandleGetError(ctx, err)
 		}
 		if len(mc) == 0 {
-			return sc, aphgrpc.HandleNotFoundError(ctx, err)
+			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any plasmids"))
 		}
 		var scdata []*stock.StockCollection_Data
 		for _, m := range mc {
@@ -429,7 +429,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 			return sc, aphgrpc.HandleGetError(ctx, err)
 		}
 		if len(mc) == 0 {
-			return sc, aphgrpc.HandleNotFoundError(ctx, err)
+			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any plasmids"))
 		}
 		var scdata []*stock.StockCollection_Data
 		for _, m := range mc {
