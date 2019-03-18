@@ -196,7 +196,7 @@ func (s *StockService) UpdateStock(ctx context.Context, r *stock.StockUpdate) (*
 			return st, aphgrpc.HandleUpdateError(ctx, err)
 		}
 		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", r.Id))
+			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", m.ID))
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
@@ -225,7 +225,7 @@ func (s *StockService) UpdateStock(ctx context.Context, r *stock.StockUpdate) (*
 			return st, aphgrpc.HandleUpdateError(ctx, err)
 		}
 		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", r.Id))
+			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", m.ID))
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
