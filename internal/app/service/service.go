@@ -57,7 +57,7 @@ func (s *StockService) GetStock(ctx context.Context, r *stock.StockId) (*stock.S
 			return st, aphgrpc.HandleGetError(ctx, err)
 		}
 		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
+			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", r.Id))
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
@@ -89,7 +89,7 @@ func (s *StockService) GetStock(ctx context.Context, r *stock.StockId) (*stock.S
 			return st, aphgrpc.HandleGetError(ctx, err)
 		}
 		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, err)
+			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", r.Id))
 		}
 		st.Data = &stock.Stock_Data{
 			Type: s.GetResourceName(),
