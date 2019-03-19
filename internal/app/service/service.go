@@ -269,9 +269,14 @@ func (s *StockService) UpdateStock(ctx context.Context, r *stock.StockUpdate) (*
 // ListStrains lists all existing strains
 func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters) (*stock.StockCollection, error) {
 	sc := &stock.StockCollection{}
+	var l int64
 	c := r.Cursor
-	l := r.Limit
 	f := r.Filter
+	if r.Limit == 0 {
+		l = 10
+	} else {
+		l = r.Limit
+	}
 	if len(f) > 0 {
 		p, err := query.ParseFilterString(f)
 		if err != nil {
@@ -319,14 +324,14 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 				},
 			})
 		}
-		if len(scdata) < int(r.Limit)-2 { // fewer results than limit
+		if len(scdata) < int(l)-2 { // fewer results than limit
 			sc.Data = scdata
-			sc.Meta = &stock.Meta{Limit: r.Limit}
+			sc.Meta = &stock.Meta{Limit: l}
 			return sc, nil
 		}
 		sc.Data = scdata[:len(scdata)-1]
 		sc.Meta = &stock.Meta{
-			Limit:      r.Limit,
+			Limit:      l,
 			NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
 			Total:      int64(len(scdata)),
 		}
@@ -365,14 +370,14 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 				},
 			})
 		}
-		if len(scdata) < int(r.Limit)-2 { // fewer results than limit
+		if len(scdata) < int(l)-2 { // fewer results than limit
 			sc.Data = scdata
-			sc.Meta = &stock.Meta{Limit: r.Limit}
+			sc.Meta = &stock.Meta{Limit: l}
 			return sc, nil
 		}
 		sc.Data = scdata[:len(scdata)-1]
 		sc.Meta = &stock.Meta{
-			Limit:      r.Limit,
+			Limit:      l,
 			NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
 			Total:      int64(len(scdata)),
 		}
@@ -383,9 +388,14 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 // ListPlasmids lists all existing plasmids
 func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameters) (*stock.StockCollection, error) {
 	sc := &stock.StockCollection{}
+	var l int64
 	c := r.Cursor
-	l := r.Limit
 	f := r.Filter
+	if r.Limit == 0 {
+		l = 10
+	} else {
+		l = r.Limit
+	}
 	if len(f) > 0 {
 		p, err := query.ParseFilterString(f)
 		if err != nil {
@@ -429,14 +439,14 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 				},
 			})
 		}
-		if len(scdata) < int(r.Limit)-2 { // fewer results than limit
+		if len(scdata) < int(l)-2 { // fewer results than limit
 			sc.Data = scdata
-			sc.Meta = &stock.Meta{Limit: r.Limit}
+			sc.Meta = &stock.Meta{Limit: l}
 			return sc, nil
 		}
 		sc.Data = scdata[:len(scdata)-1]
 		sc.Meta = &stock.Meta{
-			Limit:      r.Limit,
+			Limit:      l,
 			NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
 			Total:      int64(len(scdata)),
 		}
@@ -471,14 +481,14 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 				},
 			})
 		}
-		if len(scdata) < int(r.Limit)-2 { // fewer results than limit
+		if len(scdata) < int(l)-2 { // fewer results than limit
 			sc.Data = scdata
-			sc.Meta = &stock.Meta{Limit: r.Limit}
+			sc.Meta = &stock.Meta{Limit: l}
 			return sc, nil
 		}
 		sc.Data = scdata[:len(scdata)-1]
 		sc.Meta = &stock.Meta{
-			Limit:      r.Limit,
+			Limit:      l,
 			NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
 			Total:      int64(len(scdata)),
 		}
