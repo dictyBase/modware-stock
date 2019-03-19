@@ -227,23 +227,40 @@ func (s *StockService) UpdateStock(ctx context.Context, r *stock.StockUpdate) (*
 		if m.NotFound {
 			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", m.ID))
 		}
-		st.Data = &stock.Stock_Data{
-			Type: s.GetResourceName(),
-			Id:   m.Key,
-			Attributes: &stock.StockAttributes{
-				UpdatedBy:       m.UpdatedBy,
-				Summary:         m.Summary,
-				EditableSummary: m.EditableSummary,
-				Depositor:       m.Depositor,
-				Genes:           m.Genes,
-				Dbxrefs:         m.Dbxrefs,
-				Publications:    m.Publications,
-				PlasmidProperties: &stock.PlasmidProperties{
-					ImageMap: m.PlasmidProperties.ImageMap,
-					Sequence: m.PlasmidProperties.Sequence,
+		if m.PlasmidProperties != nil {
+			st.Data = &stock.Stock_Data{
+				Type: s.GetResourceName(),
+				Id:   m.Key,
+				Attributes: &stock.StockAttributes{
+					UpdatedBy:       m.UpdatedBy,
+					Summary:         m.Summary,
+					EditableSummary: m.EditableSummary,
+					Depositor:       m.Depositor,
+					Genes:           m.Genes,
+					Dbxrefs:         m.Dbxrefs,
+					Publications:    m.Publications,
+					PlasmidProperties: &stock.PlasmidProperties{
+						ImageMap: m.PlasmidProperties.ImageMap,
+						Sequence: m.PlasmidProperties.Sequence,
+					},
 				},
-			},
+			}
+		} else {
+			st.Data = &stock.Stock_Data{
+				Type: s.GetResourceName(),
+				Id:   m.Key,
+				Attributes: &stock.StockAttributes{
+					UpdatedBy:       m.UpdatedBy,
+					Summary:         m.Summary,
+					EditableSummary: m.EditableSummary,
+					Depositor:       m.Depositor,
+					Genes:           m.Genes,
+					Dbxrefs:         m.Dbxrefs,
+					Publications:    m.Publications,
+				},
+			}
 		}
+
 	}
 	s.publisher.Publish(s.Topics["stockUpdate"], st)
 	return st, nil
