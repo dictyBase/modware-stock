@@ -42,62 +42,212 @@ func NewStockService(repo repository.StockRepository, pub message.Publisher, opt
 	}
 }
 
-// GetStock handles getting a stock by its ID
-func (s *StockService) GetStock(ctx context.Context, r *stock.StockId) (*stock.Stock, error) {
-	st := &stock.Stock{}
+// GetStrain handles getting a strain by its ID
+func (s *StockService) GetStrain(ctx context.Context, r *stock.StockId) (*stock.Strain, error) {
+	st := &stock.Strain{}
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
-	if len(r.Id) < 3 {
-		return st, fmt.Errorf("stock ID %s is not long enough (must begin with DBS or DBP)", r.Id)
+	m, err := s.repo.GetStrain(r.Id)
+	if err != nil {
+		return st, aphgrpc.HandleGetError(ctx, err)
 	}
-	if r.Id[:3] == "DBS" {
-		m, err := s.repo.GetStrain(r.Id)
-		if err != nil {
-			return st, aphgrpc.HandleGetError(ctx, err)
-		}
-		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", r.Id))
-		}
-		st.Data = &stock.Stock_Data{
-			Type: s.GetResourceName(),
-			Id:   m.Key,
-			Attributes: &stock.StockAttributes{
-				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-				CreatedBy:       m.CreatedBy,
-				UpdatedBy:       m.UpdatedBy,
-				Summary:         m.Summary,
-				EditableSummary: m.EditableSummary,
-				Depositor:       m.Depositor,
-				Genes:           m.Genes,
-				Dbxrefs:         m.Dbxrefs,
-				Publications:    m.Publications,
-				StrainProperties: &stock.StrainProperties{
-					SystematicName: m.StrainProperties.SystematicName,
-					Label:          m.StrainProperties.Label,
-					Species:        m.StrainProperties.Species,
-					Plasmid:        m.StrainProperties.Plasmid,
-					Parent:         m.StrainProperties.Parent,
-					Names:          m.StrainProperties.Names,
-				},
+	if m.NotFound {
+		return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", r.Id))
+	}
+	st.Data = &stock.Strain_Data{
+		Type: "strain",
+		Id:   m.Key,
+		Attributes: &stock.StrainAttributes{
+			CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+			UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+			CreatedBy:       m.CreatedBy,
+			UpdatedBy:       m.UpdatedBy,
+			Summary:         m.Summary,
+			EditableSummary: m.EditableSummary,
+			Depositor:       m.Depositor,
+			Genes:           m.Genes,
+			Dbxrefs:         m.Dbxrefs,
+			Publications:    m.Publications,
+			StrainProperties: &stock.StrainProperties{
+				SystematicName: m.StrainProperties.SystematicName,
+				Label:          m.StrainProperties.Label,
+				Species:        m.StrainProperties.Species,
+				Plasmid:        m.StrainProperties.Plasmid,
+				Parent:         m.StrainProperties.Parent,
+				Names:          m.StrainProperties.Names,
 			},
-		}
-	} else if r.Id[:3] == "DBP" {
-		m, err := s.repo.GetPlasmid(r.Id)
-		if err != nil {
-			return st, aphgrpc.HandleGetError(ctx, err)
-		}
-		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", r.Id))
-		}
-		st.Data = &stock.Stock_Data{
-			Type: s.GetResourceName(),
+		},
+	}
+	return st, nil
+}
+
+// GetPlasmid handles getting a plasmid by its ID
+func (s *StockService) GetPlasmid(ctx context.Context, r *stock.StockId) (*stock.Plasmid, error) {
+	st := &stock.Plasmid{}
+	if err := r.Validate(); err != nil {
+		return st, aphgrpc.HandleInvalidParamError(ctx, err)
+	}
+
+	m, err := s.repo.GetPlasmid(r.Id)
+	if err != nil {
+		return st, aphgrpc.HandleGetError(ctx, err)
+	}
+	if m.NotFound {
+		return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", r.Id))
+	}
+	st.Data = &stock.Plasmid_Data{
+		Type: "plasmid",
+		Id:   m.Key,
+		Attributes: &stock.PlasmidAttributes{
+			CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+			UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+			CreatedBy:       m.CreatedBy,
+			UpdatedBy:       m.UpdatedBy,
+			Summary:         m.Summary,
+			EditableSummary: m.EditableSummary,
+			Depositor:       m.Depositor,
+			Genes:           m.Genes,
+			Dbxrefs:         m.Dbxrefs,
+			Publications:    m.Publications,
+			PlasmidProperties: &stock.PlasmidProperties{
+				ImageMap: m.PlasmidProperties.ImageMap,
+				Sequence: m.PlasmidProperties.Sequence,
+			},
+		},
+	}
+	return st, nil
+}
+
+// CreateStrain handles the creation of a new strain
+func (s *StockService) CreateStrain(ctx context.Context, r *stock.NewStrain) (*stock.Strain, error) {
+	st := &stock.Strain{}
+	if err := r.Validate(); err != nil {
+		return st, aphgrpc.HandleInvalidParamError(ctx, err)
+	}
+	m, err := s.repo.AddStrain(r)
+	if err != nil {
+		return st, aphgrpc.HandleInsertError(ctx, err)
+	}
+	st.Data = &stock.Strain_Data{
+		Type: "strain",
+		Id:   m.Key,
+		Attributes: &stock.StrainAttributes{
+			CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+			UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+			CreatedBy:       m.CreatedBy,
+			UpdatedBy:       m.UpdatedBy,
+			Summary:         m.Summary,
+			EditableSummary: m.EditableSummary,
+			Depositor:       m.Depositor,
+			Genes:           m.Genes,
+			Dbxrefs:         m.Dbxrefs,
+			Publications:    m.Publications,
+			StrainProperties: &stock.StrainProperties{
+				SystematicName: m.StrainProperties.SystematicName,
+				Label:          m.StrainProperties.Label,
+				Species:        m.StrainProperties.Species,
+				Plasmid:        m.StrainProperties.Plasmid,
+				Parent:         m.StrainProperties.Parent,
+				Names:          m.StrainProperties.Names,
+			},
+		},
+	}
+	s.publisher.PublishStrain(s.Topics["stockCreate"], st)
+	return st, nil
+}
+
+// CreatePlasmid handles the creation of a new plasmid
+func (s *StockService) CreatePlasmid(ctx context.Context, r *stock.NewPlasmid) (*stock.Plasmid, error) {
+	st := &stock.Plasmid{}
+	if err := r.Validate(); err != nil {
+		return st, aphgrpc.HandleInvalidParamError(ctx, err)
+	}
+
+	m, err := s.repo.AddPlasmid(r)
+	if err != nil {
+		return st, aphgrpc.HandleInsertError(ctx, err)
+	}
+	st.Data = &stock.Plasmid_Data{
+		Type: "plasmid",
+		Id:   m.Key,
+		Attributes: &stock.PlasmidAttributes{
+			CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+			UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+			CreatedBy:       m.CreatedBy,
+			UpdatedBy:       m.UpdatedBy,
+			Summary:         m.Summary,
+			EditableSummary: m.EditableSummary,
+			Depositor:       m.Depositor,
+			Genes:           m.Genes,
+			Dbxrefs:         m.Dbxrefs,
+			Publications:    m.Publications,
+			PlasmidProperties: &stock.PlasmidProperties{
+				ImageMap: m.PlasmidProperties.ImageMap,
+				Sequence: m.PlasmidProperties.Sequence,
+			},
+		},
+	}
+	s.publisher.PublishPlasmid(s.Topics["stockCreate"], st)
+	return st, nil
+}
+
+// UpdateStrain handles updating an existing strain
+func (s *StockService) UpdateStrain(ctx context.Context, r *stock.StrainUpdate) (*stock.Strain, error) {
+	st := &stock.Strain{}
+	if err := r.Validate(); err != nil {
+		return st, aphgrpc.HandleInvalidParamError(ctx, err)
+	}
+	m, err := s.repo.EditStrain(r)
+	if err != nil {
+		return st, aphgrpc.HandleUpdateError(ctx, err)
+	}
+	if m.NotFound {
+		return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", m.ID))
+	}
+	st.Data = &stock.Strain_Data{
+		Type: "strain",
+		Id:   m.Key,
+		Attributes: &stock.StrainAttributes{
+			UpdatedBy:       m.UpdatedBy,
+			Summary:         m.Summary,
+			EditableSummary: m.EditableSummary,
+			Depositor:       m.Depositor,
+			Genes:           m.Genes,
+			Dbxrefs:         m.Dbxrefs,
+			Publications:    m.Publications,
+			StrainProperties: &stock.StrainProperties{
+				SystematicName: m.StrainProperties.SystematicName,
+				Label:          m.StrainProperties.Label,
+				Species:        m.StrainProperties.Species,
+				Plasmid:        m.StrainProperties.Plasmid,
+				Parent:         m.StrainProperties.Parent,
+				Names:          m.StrainProperties.Names,
+			},
+		},
+	}
+	s.publisher.PublishStrain(s.Topics["stockUpdate"], st)
+	return st, nil
+}
+
+// UpdatePlasmid handles updating an existing plasmid
+func (s *StockService) UpdatePlasmid(ctx context.Context, r *stock.PlasmidUpdate) (*stock.Plasmid, error) {
+	st := &stock.Plasmid{}
+	if err := r.Validate(); err != nil {
+		return st, aphgrpc.HandleInvalidParamError(ctx, err)
+	}
+	m, err := s.repo.EditPlasmid(r)
+	if err != nil {
+		return st, aphgrpc.HandleUpdateError(ctx, err)
+	}
+	if m.NotFound {
+		return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", m.ID))
+	}
+	if m.PlasmidProperties != nil {
+		st.Data = &stock.Plasmid_Data{
+			Type: "plasmid",
 			Id:   m.Key,
-			Attributes: &stock.StockAttributes{
-				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-				CreatedBy:       m.CreatedBy,
+			Attributes: &stock.PlasmidAttributes{
 				UpdatedBy:       m.UpdatedBy,
 				Summary:         m.Summary,
 				EditableSummary: m.EditableSummary,
@@ -112,30 +262,10 @@ func (s *StockService) GetStock(ctx context.Context, r *stock.StockId) (*stock.S
 			},
 		}
 	} else {
-		return st, fmt.Errorf("stock ID %s is not valid (must begin with DBS or DBP)", r.Id)
-	}
-	return st, nil
-}
-
-// CreateStock handles the creation of a new stock
-func (s *StockService) CreateStock(ctx context.Context, r *stock.NewStock) (*stock.Stock, error) {
-	st := &stock.Stock{}
-	if err := r.Validate(); err != nil {
-		return st, aphgrpc.HandleInvalidParamError(ctx, err)
-	}
-	str := r.Data.GetType()
-	if str == "strain" {
-		m, err := s.repo.AddStrain(r)
-		if err != nil {
-			return st, aphgrpc.HandleInsertError(ctx, err)
-		}
-		st.Data = &stock.Stock_Data{
-			Type: s.GetResourceName(),
+		st.Data = &stock.Plasmid_Data{
+			Type: "plasmid",
 			Id:   m.Key,
-			Attributes: &stock.StockAttributes{
-				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-				CreatedBy:       m.CreatedBy,
+			Attributes: &stock.PlasmidAttributes{
 				UpdatedBy:       m.UpdatedBy,
 				Summary:         m.Summary,
 				EditableSummary: m.EditableSummary,
@@ -143,132 +273,16 @@ func (s *StockService) CreateStock(ctx context.Context, r *stock.NewStock) (*sto
 				Genes:           m.Genes,
 				Dbxrefs:         m.Dbxrefs,
 				Publications:    m.Publications,
-				StrainProperties: &stock.StrainProperties{
-					SystematicName: m.StrainProperties.SystematicName,
-					Label:          m.StrainProperties.Label,
-					Species:        m.StrainProperties.Species,
-					Plasmid:        m.StrainProperties.Plasmid,
-					Parent:         m.StrainProperties.Parent,
-					Names:          m.StrainProperties.Names,
-				},
-			},
-		}
-	} else {
-		m, err := s.repo.AddPlasmid(r)
-		if err != nil {
-			return st, aphgrpc.HandleInsertError(ctx, err)
-		}
-		st.Data = &stock.Stock_Data{
-			Type: s.GetResourceName(),
-			Id:   m.Key,
-			Attributes: &stock.StockAttributes{
-				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-				CreatedBy:       m.CreatedBy,
-				UpdatedBy:       m.UpdatedBy,
-				Summary:         m.Summary,
-				EditableSummary: m.EditableSummary,
-				Depositor:       m.Depositor,
-				Genes:           m.Genes,
-				Dbxrefs:         m.Dbxrefs,
-				Publications:    m.Publications,
-				PlasmidProperties: &stock.PlasmidProperties{
-					ImageMap: m.PlasmidProperties.ImageMap,
-					Sequence: m.PlasmidProperties.Sequence,
-				},
 			},
 		}
 	}
-	s.publisher.Publish(s.Topics["stockCreate"], st)
-	return st, nil
-}
-
-// UpdateStock handles updating an existing stock
-func (s *StockService) UpdateStock(ctx context.Context, r *stock.StockUpdate) (*stock.Stock, error) {
-	st := &stock.Stock{}
-	if err := r.Validate(); err != nil {
-		return st, aphgrpc.HandleInvalidParamError(ctx, err)
-	}
-	str := r.Data.GetType()
-	if str == "strain" {
-		m, err := s.repo.EditStrain(r)
-		if err != nil {
-			return st, aphgrpc.HandleUpdateError(ctx, err)
-		}
-		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", m.ID))
-		}
-		st.Data = &stock.Stock_Data{
-			Type: s.GetResourceName(),
-			Id:   m.Key,
-			Attributes: &stock.StockAttributes{
-				UpdatedBy:       m.UpdatedBy,
-				Summary:         m.Summary,
-				EditableSummary: m.EditableSummary,
-				Depositor:       m.Depositor,
-				Genes:           m.Genes,
-				Dbxrefs:         m.Dbxrefs,
-				Publications:    m.Publications,
-				StrainProperties: &stock.StrainProperties{
-					SystematicName: m.StrainProperties.SystematicName,
-					Label:          m.StrainProperties.Label,
-					Species:        m.StrainProperties.Species,
-					Plasmid:        m.StrainProperties.Plasmid,
-					Parent:         m.StrainProperties.Parent,
-					Names:          m.StrainProperties.Names,
-				},
-			},
-		}
-	} else {
-		m, err := s.repo.EditPlasmid(r)
-		if err != nil {
-			return st, aphgrpc.HandleUpdateError(ctx, err)
-		}
-		if m.NotFound {
-			return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", m.ID))
-		}
-		if m.PlasmidProperties != nil {
-			st.Data = &stock.Stock_Data{
-				Type: s.GetResourceName(),
-				Id:   m.Key,
-				Attributes: &stock.StockAttributes{
-					UpdatedBy:       m.UpdatedBy,
-					Summary:         m.Summary,
-					EditableSummary: m.EditableSummary,
-					Depositor:       m.Depositor,
-					Genes:           m.Genes,
-					Dbxrefs:         m.Dbxrefs,
-					Publications:    m.Publications,
-					PlasmidProperties: &stock.PlasmidProperties{
-						ImageMap: m.PlasmidProperties.ImageMap,
-						Sequence: m.PlasmidProperties.Sequence,
-					},
-				},
-			}
-		} else {
-			st.Data = &stock.Stock_Data{
-				Type: s.GetResourceName(),
-				Id:   m.Key,
-				Attributes: &stock.StockAttributes{
-					UpdatedBy:       m.UpdatedBy,
-					Summary:         m.Summary,
-					EditableSummary: m.EditableSummary,
-					Depositor:       m.Depositor,
-					Genes:           m.Genes,
-					Dbxrefs:         m.Dbxrefs,
-					Publications:    m.Publications,
-				},
-			}
-		}
-
-	}
-	s.publisher.Publish(s.Topics["stockUpdate"], st)
+	s.publisher.PublishPlasmid(s.Topics["stockUpdate"], st)
 	return st, nil
 }
 
 // ListStrains lists all existing strains
-func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters) (*stock.StockCollection, error) {
-	sc := &stock.StockCollection{}
+func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters) (*stock.StrainCollection, error) {
+	sc := &stock.StrainCollection{}
 	var l int64
 	c := r.Cursor
 	f := r.Filter
@@ -297,12 +311,12 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		if len(mc) == 0 {
 			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any strains"))
 		}
-		var scdata []*stock.StockCollection_Data
+		var scdata []*stock.StrainCollection_Data
 		for _, m := range mc {
-			scdata = append(scdata, &stock.StockCollection_Data{
-				Type: s.GetResourceName(),
+			scdata = append(scdata, &stock.StrainCollection_Data{
+				Type: "strain",
 				Id:   m.Key,
-				Attributes: &stock.StockAttributes{
+				Attributes: &stock.StrainAttributes{
 					CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
 					UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
 					CreatedBy:       m.CreatedBy,
@@ -332,7 +346,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		sc.Data = scdata[:len(scdata)-1]
 		sc.Meta = &stock.Meta{
 			Limit:      l,
-			NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
+			NextCursor: genNextStrainCursorVal(scdata[len(scdata)-1]),
 			Total:      int64(len(scdata)),
 		}
 	} else {
@@ -343,12 +357,12 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		if len(mc) == 0 {
 			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any strains"))
 		}
-		var scdata []*stock.StockCollection_Data
+		var scdata []*stock.StrainCollection_Data
 		for _, m := range mc {
-			scdata = append(scdata, &stock.StockCollection_Data{
-				Type: s.GetResourceName(),
+			scdata = append(scdata, &stock.StrainCollection_Data{
+				Type: "strain",
 				Id:   m.Key,
-				Attributes: &stock.StockAttributes{
+				Attributes: &stock.StrainAttributes{
 					CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
 					UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
 					CreatedBy:       m.CreatedBy,
@@ -378,7 +392,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		sc.Data = scdata[:len(scdata)-1]
 		sc.Meta = &stock.Meta{
 			Limit:      l,
-			NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
+			NextCursor: genNextStrainCursorVal(scdata[len(scdata)-1]),
 			Total:      int64(len(scdata)),
 		}
 	}
@@ -386,8 +400,8 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 }
 
 // ListPlasmids lists all existing plasmids
-func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameters) (*stock.StockCollection, error) {
-	sc := &stock.StockCollection{}
+func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameters) (*stock.PlasmidCollection, error) {
+	sc := &stock.PlasmidCollection{}
 	var l int64
 	c := r.Cursor
 	f := r.Filter
@@ -416,12 +430,12 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 		if len(mc) == 0 {
 			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any plasmids"))
 		}
-		var scdata []*stock.StockCollection_Data
+		var scdata []*stock.PlasmidCollection_Data
 		for _, m := range mc {
-			scdata = append(scdata, &stock.StockCollection_Data{
-				Type: s.GetResourceName(),
+			scdata = append(scdata, &stock.PlasmidCollection_Data{
+				Type: "plasmid",
 				Id:   m.Key,
-				Attributes: &stock.StockAttributes{
+				Attributes: &stock.PlasmidAttributes{
 					CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
 					UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
 					CreatedBy:       m.CreatedBy,
@@ -447,7 +461,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 		sc.Data = scdata[:len(scdata)-1]
 		sc.Meta = &stock.Meta{
 			Limit:      l,
-			NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
+			NextCursor: genNextPlasmidCursorVal(scdata[len(scdata)-1]),
 			Total:      int64(len(scdata)),
 		}
 	} else {
@@ -458,12 +472,12 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 		if len(mc) == 0 {
 			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any plasmids"))
 		}
-		var scdata []*stock.StockCollection_Data
+		var scdata []*stock.PlasmidCollection_Data
 		for _, m := range mc {
-			scdata = append(scdata, &stock.StockCollection_Data{
-				Type: s.GetResourceName(),
+			scdata = append(scdata, &stock.PlasmidCollection_Data{
+				Type: "plasmid",
 				Id:   m.Key,
-				Attributes: &stock.StockAttributes{
+				Attributes: &stock.PlasmidAttributes{
 					CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
 					UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
 					CreatedBy:       m.CreatedBy,
@@ -489,7 +503,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 		sc.Data = scdata[:len(scdata)-1]
 		sc.Meta = &stock.Meta{
 			Limit:      l,
-			NextCursor: genNextCursorVal(scdata[len(scdata)-1]),
+			NextCursor: genNextPlasmidCursorVal(scdata[len(scdata)-1]),
 			Total:      int64(len(scdata)),
 		}
 	}
@@ -521,7 +535,7 @@ func (s *StockService) LoadStock(ctx context.Context, r *stock.ExistingStock) (*
 			return st, aphgrpc.HandleInsertError(ctx, err)
 		}
 		st.Data = &stock.Stock_Data{
-			Type: s.GetResourceName(),
+			Type: "strain",
 			Id:   m.Key,
 			Attributes: &stock.StockAttributes{
 				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
@@ -550,7 +564,7 @@ func (s *StockService) LoadStock(ctx context.Context, r *stock.ExistingStock) (*
 			return st, aphgrpc.HandleInsertError(ctx, err)
 		}
 		st.Data = &stock.Stock_Data{
-			Type: s.GetResourceName(),
+			Type: "plasmid",
 			Id:   m.Key,
 			Attributes: &stock.StockAttributes{
 				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
@@ -570,13 +584,22 @@ func (s *StockService) LoadStock(ctx context.Context, r *stock.ExistingStock) (*
 			},
 		}
 	}
-	s.publisher.Publish(s.Topics["stockCreate"], st)
+	s.publisher.PublishStock(s.Topics["stockCreate"], st)
 	return st, nil
 }
 
-func genNextCursorVal(scd *stock.StockCollection_Data) int64 {
+func genNextStrainCursorVal(scd *stock.StrainCollection_Data) int64 {
 	tint, _ := strconv.ParseInt(
 		fmt.Sprintf("%d%d", scd.Attributes.CreatedAt.GetSeconds(), scd.Attributes.CreatedAt.GetNanos()),
+		10,
+		64,
+	)
+	return tint / 1000000
+}
+
+func genNextPlasmidCursorVal(pcd *stock.PlasmidCollection_Data) int64 {
+	tint, _ := strconv.ParseInt(
+		fmt.Sprintf("%d%d", pcd.Attributes.CreatedAt.GetSeconds(), pcd.Attributes.CreatedAt.GetNanos()),
 		10,
 		64,
 	)

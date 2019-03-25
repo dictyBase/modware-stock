@@ -25,8 +25,16 @@ func NewPublisher(host, port string, options ...gnats.Option) (message.Publisher
 	return &natsPublisher{econn: ec}, nil
 }
 
-func (n *natsPublisher) Publish(subj string, st *stock.Stock) error {
-	return n.econn.Publish(subj, st)
+func (n *natsPublisher) PublishStrain(subj string, s *stock.Strain) error {
+	return n.econn.Publish(subj, s)
+}
+
+func (n *natsPublisher) PublishPlasmid(subj string, p *stock.Plasmid) error {
+	return n.econn.Publish(subj, p)
+}
+
+func (n *natsPublisher) PublishStock(subj string, s *stock.Stock) error {
+	return n.econn.Publish(subj, s)
 }
 
 func (n *natsPublisher) Close() error {

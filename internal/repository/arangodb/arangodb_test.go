@@ -45,11 +45,11 @@ func getCollectionParams() *CollectionParams {
 	}
 }
 
-func newUpdatableTestStrain(createdby string) *stock.NewStock {
-	return &stock.NewStock{
-		Data: &stock.NewStock_Data{
+func newUpdatableTestStrain(createdby string) *stock.NewStrain {
+	return &stock.NewStrain{
+		Data: &stock.NewStrain_Data{
 			Type: "strain",
-			Attributes: &stock.NewStockAttributes{
+			Attributes: &stock.NewStrainAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
 				Depositor:       createdby,
@@ -67,11 +67,11 @@ func newUpdatableTestStrain(createdby string) *stock.NewStock {
 	}
 }
 
-func newTestStrain(createdby string) *stock.NewStock {
-	return &stock.NewStock{
-		Data: &stock.NewStock_Data{
+func newTestStrain(createdby string) *stock.NewStrain {
+	return &stock.NewStrain{
+		Data: &stock.NewStrain_Data{
 			Type: "strain",
-			Attributes: &stock.NewStockAttributes{
+			Attributes: &stock.NewStrainAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
 				Depositor:       "george@costanza.com",
@@ -92,11 +92,11 @@ func newTestStrain(createdby string) *stock.NewStock {
 	}
 }
 
-func newTestParentStrain(createdby string) *stock.NewStock {
-	return &stock.NewStock{
-		Data: &stock.NewStock_Data{
+func newTestParentStrain(createdby string) *stock.NewStrain {
+	return &stock.NewStrain{
+		Data: &stock.NewStrain_Data{
 			Type: "strain",
-			Attributes: &stock.NewStockAttributes{
+			Attributes: &stock.NewStrainAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
 				Depositor:       createdby,
@@ -114,11 +114,11 @@ func newTestParentStrain(createdby string) *stock.NewStock {
 	}
 }
 
-func newUpdatableTestPlasmid(createdby string) *stock.NewStock {
-	return &stock.NewStock{
-		Data: &stock.NewStock_Data{
+func newUpdatableTestPlasmid(createdby string) *stock.NewPlasmid {
+	return &stock.NewPlasmid{
+		Data: &stock.NewPlasmid_Data{
 			Type: "plasmid",
-			Attributes: &stock.NewStockAttributes{
+			Attributes: &stock.NewPlasmidAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
 				Depositor:       createdby,
@@ -131,11 +131,11 @@ func newUpdatableTestPlasmid(createdby string) *stock.NewStock {
 	}
 }
 
-func newTestPlasmidWithoutProp(createdby string) *stock.NewStock {
-	return &stock.NewStock{
-		Data: &stock.NewStock_Data{
+func newTestPlasmidWithoutProp(createdby string) *stock.NewPlasmid {
+	return &stock.NewPlasmid{
+		Data: &stock.NewPlasmid_Data{
 			Type: "plasmid",
-			Attributes: &stock.NewStockAttributes{
+			Attributes: &stock.NewPlasmidAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
 				Depositor:       createdby,
@@ -147,11 +147,11 @@ func newTestPlasmidWithoutProp(createdby string) *stock.NewStock {
 	}
 }
 
-func newTestPlasmid(createdby string) *stock.NewStock {
-	return &stock.NewStock{
-		Data: &stock.NewStock_Data{
+func newTestPlasmid(createdby string) *stock.NewPlasmid {
+	return &stock.NewPlasmid{
+		Data: &stock.NewPlasmid_Data{
 			Type: "plasmid",
-			Attributes: &stock.NewStockAttributes{
+			Attributes: &stock.NewPlasmidAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
 				Depositor:       "george@costanza.com",
@@ -206,11 +206,11 @@ func TestEditStrain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in adding strain: %s", err)
 	}
-	us := &stock.StockUpdate{
-		Data: &stock.StockUpdate_Data{
+	us := &stock.StrainUpdate{
+		Data: &stock.StrainUpdate_Data{
 			Type: ns.Data.Type,
 			Id:   m.StockID,
-			Attributes: &stock.StockUpdateAttributes{
+			Attributes: &stock.StrainUpdateAttributes{
 				UpdatedBy:       "kirby@snes.org",
 				Summary:         "updated strain",
 				EditableSummary: "updated strain",
@@ -284,11 +284,11 @@ func TestEditStrain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in adding parent strain %s", err)
 	}
-	us2 := &stock.StockUpdate{
-		Data: &stock.StockUpdate_Data{
+	us2 := &stock.StrainUpdate{
+		Data: &stock.StrainUpdate_Data{
 			Type: ns.Data.Type,
 			Id:   um.StockID,
-			Attributes: &stock.StockUpdateAttributes{
+			Attributes: &stock.StrainUpdateAttributes{
 				UpdatedBy: "mario@snes.org",
 				Depositor: "mario@snes.org",
 				StrainProperties: &stock.StrainUpdateProperties{
@@ -351,11 +351,11 @@ func TestEditStrain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in adding strain: %s", err)
 	}
-	us3 := &stock.StockUpdate{
-		Data: &stock.StockUpdate_Data{
+	us3 := &stock.StrainUpdate{
+		Data: &stock.StrainUpdate_Data{
 			Type: ns.Data.Type,
 			Id:   um.StockID,
-			Attributes: &stock.StockUpdateAttributes{
+			Attributes: &stock.StrainUpdateAttributes{
 				UpdatedBy: "mario@snes.org",
 				StrainProperties: &stock.StrainUpdateProperties{
 					Parent: pu.StockID,
@@ -571,11 +571,11 @@ func TestEditPlasmid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error in adding plasmid: %s", err)
 	}
-	us := &stock.StockUpdate{
-		Data: &stock.StockUpdate_Data{
+	us := &stock.PlasmidUpdate{
+		Data: &stock.PlasmidUpdate_Data{
 			Type: ns.Data.Type,
 			Id:   m.StockID,
-			Attributes: &stock.StockUpdateAttributes{
+			Attributes: &stock.PlasmidUpdateAttributes{
 				UpdatedBy:       "varnes@seinfeld.org",
 				Summary:         "updated plasmid",
 				EditableSummary: "updated plasmid",
@@ -612,11 +612,11 @@ func TestEditPlasmid(t *testing.T) {
 		"dbxrefs should remain unchanged",
 	)
 	assert.Equal(um.PlasmidProperties.ImageMap, us.Data.Attributes.PlasmidProperties.ImageMap, "should match image map")
-	us2 := &stock.StockUpdate{
-		Data: &stock.StockUpdate_Data{
+	us2 := &stock.PlasmidUpdate{
+		Data: &stock.PlasmidUpdate_Data{
 			Type: ns.Data.Type,
 			Id:   um.StockID,
-			Attributes: &stock.StockUpdateAttributes{
+			Attributes: &stock.PlasmidUpdateAttributes{
 				UpdatedBy: "puddy@seinfeld.org",
 				Genes:     []string{"DDB_G0270851", "DDB_G02748", "DDB_G7392222"},
 				PlasmidProperties: &stock.PlasmidProperties{
@@ -648,11 +648,11 @@ func TestEditPlasmid(t *testing.T) {
 		us2.Data.Attributes.PlasmidProperties.Sequence,
 		"sequence plasmid property should have been updated",
 	)
-	us3 := &stock.StockUpdate{
-		Data: &stock.StockUpdate_Data{
+	us3 := &stock.PlasmidUpdate{
+		Data: &stock.PlasmidUpdate_Data{
 			Type: ns.Data.Type,
 			Id:   um.StockID,
-			Attributes: &stock.StockUpdateAttributes{
+			Attributes: &stock.PlasmidUpdateAttributes{
 				UpdatedBy:       "seven@costanza.org",
 				Summary:         "this is an updated summary",
 				EditableSummary: "this is an updated summary",

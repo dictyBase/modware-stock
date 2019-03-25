@@ -9,10 +9,10 @@ import (
 type StockRepository interface {
 	GetStrain(id string) (*model.StockDoc, error)
 	GetPlasmid(id string) (*model.StockDoc, error)
-	AddStrain(ns *stock.NewStock) (*model.StockDoc, error)
-	AddPlasmid(ns *stock.NewStock) (*model.StockDoc, error)
-	EditPlasmid(us *stock.StockUpdate) (*model.StockDoc, error)
-	EditStrain(us *stock.StockUpdate) (*model.StockDoc, error)
+	AddStrain(ns *stock.NewStrain) (*model.StockDoc, error)
+	AddPlasmid(ns *stock.NewPlasmid) (*model.StockDoc, error)
+	EditStrain(us *stock.StrainUpdate) (*model.StockDoc, error)
+	EditPlasmid(us *stock.PlasmidUpdate) (*model.StockDoc, error)
 	ListStrains(s *stock.StockParameters) ([]*model.StockDoc, error)
 	ListPlasmids(s *stock.StockParameters) ([]*model.StockDoc, error)
 	RemoveStock(id string) error
