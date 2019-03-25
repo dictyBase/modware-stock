@@ -192,7 +192,7 @@ func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 }
 
 // AddStrain creates a new strain stock
-func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, error) {
+func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	var stmt string
 	var bindVars map[string]interface{}
@@ -237,7 +237,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStock) (*model.StockDoc, erro
 }
 
 // AddPlasmid creates a new plasmid stock
-func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, error) {
+func (ar *arangorepository) AddPlasmid(ns *stock.NewPlasmid) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	attr := ns.Data.Attributes
 	bindVars := addablePlasmidBindParams(attr)
@@ -256,7 +256,7 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewStock) (*model.StockDoc, err
 }
 
 // EditStrain updates an existing strain
-func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, error) {
+func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	r, err := ar.database.GetRow(
 		statement.StockFindIdQ,
@@ -275,8 +275,8 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 	if err := r.Read(&propKey); err != nil {
 		return m, fmt.Errorf("error in reading using strain id %s %s", us.Data.Id, err)
 	}
-	bindVars := getUpdatableStockBindParams(us.Data.Attributes)
-	bindStVars := getUpdatableStrainBindParams(us.Data.Attributes)
+	bindVars := getUpdatableStrainBindParams(us.Data.Attributes)
+	bindStVars := getUpdatableStrainPropBindParams(us.Data.Attributes)
 	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindStVars}...)
 	var stmt string
 	parent := us.Data.Attributes.StrainProperties.Parent
@@ -345,7 +345,7 @@ func (ar *arangorepository) EditStrain(us *stock.StockUpdate) (*model.StockDoc, 
 }
 
 // EditPlasmid updates an existing plasmid
-func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc, error) {
+func (ar *arangorepository) EditPlasmid(us *stock.PlasmidUpdate) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	r, err := ar.database.GetRow(
 		statement.StockFindIdQ,
@@ -365,8 +365,8 @@ func (ar *arangorepository) EditPlasmid(us *stock.StockUpdate) (*model.StockDoc,
 		return m, fmt.Errorf("error in reading using plasmid id %s %s", us.Data.Id, err)
 	}
 	var stmt string
-	bindVars := getUpdatableStockBindParams(us.Data.Attributes)
-	bindPlVars := getUpdatablePlasmidBindParams(us.Data.Attributes)
+	bindVars := getUpdatablePlasmidBindParams(us.Data.Attributes)
+	bindPlVars := getUpdatablePlasmidPropBindParams(us.Data.Attributes)
 	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindPlVars}...)
 	if len(bindPlVars) > 0 { // plasmid with optional attributes
 		stmt = fmt.Sprintf(
@@ -613,7 +613,7 @@ func (ar *arangorepository) ClearStocks() error {
 	return nil
 }
 
-func addablePlasmidBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
+func addablePlasmidBindParams(attr *stock.NewPlasmidAttributes) map[string]interface{} {
 	bindVars := map[string]interface{}{
 		"depositor":        attr.Depositor,
 		"created_by":       attr.CreatedBy,
@@ -633,7 +633,7 @@ func addablePlasmidBindParams(attr *stock.NewStockAttributes) map[string]interfa
 	return bindVars
 }
 
-func addableStrainBindParams(attr *stock.NewStockAttributes) map[string]interface{} {
+func addableStrainBindParams(attr *stock.NewStrainAttributes) map[string]interface{} {
 	return map[string]interface{}{
 		"summary":          normalizeStrBindParam(attr.Summary),
 		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
@@ -707,7 +707,7 @@ func normalizeStrBindParam(str string) string {
 	return ""
 }
 
-func getUpdatableStockBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
+func getUpdatablePlasmidBindParams(attr *stock.PlasmidUpdateAttributes) map[string]interface{} {
 	bindVars := map[string]interface{}{
 		"updated_by": attr.UpdatedBy,
 	}
@@ -732,7 +732,32 @@ func getUpdatableStockBindParams(attr *stock.StockUpdateAttributes) map[string]i
 	return bindVars
 }
 
-func getUpdatableStrainBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
+func getUpdatableStrainBindParams(attr *stock.StrainUpdateAttributes) map[string]interface{} {
+	bindVars := map[string]interface{}{
+		"updated_by": attr.UpdatedBy,
+	}
+	if len(attr.Summary) > 0 {
+		bindVars["summary"] = attr.Summary
+	}
+	if len(attr.EditableSummary) > 0 {
+		bindVars["editable_summary"] = attr.EditableSummary
+	}
+	if len(attr.Depositor) > 0 {
+		bindVars["depositor"] = attr.Depositor
+	}
+	if len(attr.Genes) > 0 {
+		bindVars["genes"] = attr.Genes
+	}
+	if len(attr.Dbxrefs) > 0 {
+		bindVars["dbxrefs"] = attr.Dbxrefs
+	}
+	if len(attr.Publications) > 0 {
+		bindVars["publications"] = attr.Publications
+	}
+	return bindVars
+}
+
+func getUpdatableStrainPropBindParams(attr *stock.StrainUpdateAttributes) map[string]interface{} {
 	bindVars := make(map[string]interface{})
 	if len(attr.StrainProperties.SystematicName) > 0 {
 		bindVars["systematic_name"] = attr.StrainProperties.SystematicName
@@ -752,7 +777,7 @@ func getUpdatableStrainBindParams(attr *stock.StockUpdateAttributes) map[string]
 	return bindVars
 }
 
-func getUpdatablePlasmidBindParams(attr *stock.StockUpdateAttributes) map[string]interface{} {
+func getUpdatablePlasmidPropBindParams(attr *stock.PlasmidUpdateAttributes) map[string]interface{} {
 	bindVars := make(map[string]interface{})
 	if attr.PlasmidProperties != nil {
 		if len(attr.PlasmidProperties.ImageMap) > 0 {
