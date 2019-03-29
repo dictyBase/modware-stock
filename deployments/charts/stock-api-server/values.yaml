@@ -24,9 +24,16 @@ service:
   type: NodePort
   port: 9513
 
+# healthCheck:
+# configure liveness probes for
+# container
+# path: "/healthz"
+# initial: 10
+# period: 10
+
 # Level of log
 logLevel: debug
-# resources: {}
+resources: {}
 # We usually recommend not to specify default resources and to leave this as a conscious
 # choice for the user. This also increases chances charts run on environments with little
 # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -38,8 +45,7 @@ logLevel: debug
 #  cpu: 100m
 #  memory: 128Mi
 
-# nodeSelector: {}
-
+nodeSelector: {}
 # tolerations: []
 
 # affinity: {}

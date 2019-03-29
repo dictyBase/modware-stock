@@ -37,8 +37,7 @@ spec:
             "--port",
             "{{ .Values.service.port }}",
           {{- if eq .Values.endpoint "https" }}
-            "--is-secure",
-            "true"
+            "--is-secure"
           {{- end }}
         {{- else }}    
           {{required "A value for .Values.database is required" .Values.database }}
