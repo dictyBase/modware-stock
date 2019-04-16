@@ -340,7 +340,11 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		}
 		if len(scdata) < int(l)-2 { // fewer results than limit
 			sc.Data = scdata
-			sc.Meta = &stock.Meta{Limit: l}
+			sc.Meta = &stock.Meta{
+				Limit:      l,
+				NextCursor: genNextStrainCursorVal(scdata[len(scdata)-1]),
+				Total:      int64(len(scdata)),
+			}
 			return sc, nil
 		}
 		sc.Data = scdata[:len(scdata)-1]
@@ -386,7 +390,11 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		}
 		if len(scdata) < int(l)-2 { // fewer results than limit
 			sc.Data = scdata
-			sc.Meta = &stock.Meta{Limit: l}
+			sc.Meta = &stock.Meta{
+				Limit:      l,
+				NextCursor: genNextStrainCursorVal(scdata[len(scdata)-1]),
+				Total:      int64(len(scdata)),
+			}
 			return sc, nil
 		}
 		sc.Data = scdata[:len(scdata)-1]
@@ -455,7 +463,11 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 		}
 		if len(scdata) < int(l)-2 { // fewer results than limit
 			sc.Data = scdata
-			sc.Meta = &stock.Meta{Limit: l}
+			sc.Meta = &stock.Meta{
+				Limit:      l,
+				NextCursor: genNextPlasmidCursorVal(scdata[len(scdata)-1]),
+				Total:      int64(len(scdata)),
+			}
 			return sc, nil
 		}
 		sc.Data = scdata[:len(scdata)-1]
@@ -497,7 +509,11 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 		}
 		if len(scdata) < int(l)-2 { // fewer results than limit
 			sc.Data = scdata
-			sc.Meta = &stock.Meta{Limit: l}
+			sc.Meta = &stock.Meta{
+				Limit:      l,
+				NextCursor: genNextPlasmidCursorVal(scdata[len(scdata)-1]),
+				Total:      int64(len(scdata)),
+			}
 			return sc, nil
 		}
 		sc.Data = scdata[:len(scdata)-1]
