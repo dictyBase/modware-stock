@@ -6,10 +6,10 @@ require (
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
 	github.com/dictyBase/apihelpers v0.0.0-20181218160245-dce81474776f
 	github.com/dictyBase/arangomanager v0.0.0-20190211195628-971aad3cbd68
-	github.com/dictyBase/go-genproto v0.0.0-20190321161400-54b3688b55da
+	github.com/dictyBase/go-genproto v0.0.0-20190417165125-903e1d6677f9
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/gogo/protobuf v1.2.0 // indirect
-	github.com/golang/protobuf v1.2.0
+	github.com/golang/protobuf v1.3.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/grpc-gateway v1.7.0 // indirect
 	github.com/jmoiron/sqlx v1.2.0 // indirect

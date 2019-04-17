@@ -86,7 +86,8 @@ const (
 			RETURN {
 				plasmid_properties: {
 					image_map: NEW.image_map,
-					sequence: NEW.sequence
+					sequence: NEW.sequence,
+					name: NEW.name,
 				}
 			}
 		)

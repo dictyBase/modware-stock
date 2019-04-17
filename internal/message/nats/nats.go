@@ -33,10 +33,6 @@ func (n *natsPublisher) PublishPlasmid(subj string, p *stock.Plasmid) error {
 	return n.econn.Publish(subj, p)
 }
 
-func (n *natsPublisher) PublishStock(subj string, s *stock.Stock) error {
-	return n.econn.Publish(subj, s)
-}
-
 func (n *natsPublisher) Close() error {
 	n.econn.Close()
 	return nil

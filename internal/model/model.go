@@ -6,7 +6,7 @@ import (
 	driver "github.com/arangodb/go-driver"
 )
 
-// StockDoc is the data structure for stock orders
+// StockDoc is the data structure for biological stocks
 type StockDoc struct {
 	driver.DocumentMeta
 	CreatedAt         time.Time          `json:"created_at"`
@@ -39,4 +39,5 @@ type StrainProperties struct {
 type PlasmidProperties struct {
 	ImageMap string `json:"image_map,omitempty"`
 	Sequence string `json:"sequence,omitempty"`
+	Name     string `json:"name"`
 }

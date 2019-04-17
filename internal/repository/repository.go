@@ -16,6 +16,7 @@ type StockRepository interface {
 	ListStrains(s *stock.StockParameters) ([]*model.StockDoc, error)
 	ListPlasmids(s *stock.StockParameters) ([]*model.StockDoc, error)
 	RemoveStock(id string) error
-	LoadStock(id string, es *stock.ExistingStock) (*model.StockDoc, error)
+	LoadStrain(id string, es *stock.ExistingStrain) (*model.StockDoc, error)
+	LoadPlasmid(id string, ep *stock.ExistingPlasmid) (*model.StockDoc, error)
 	ClearStocks() error
 }

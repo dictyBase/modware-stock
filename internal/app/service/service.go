@@ -69,14 +69,12 @@ func (s *StockService) GetStrain(ctx context.Context, r *stock.StockId) (*stock.
 			Genes:           m.Genes,
 			Dbxrefs:         m.Dbxrefs,
 			Publications:    m.Publications,
-			StrainProperties: &stock.StrainProperties{
-				SystematicName: m.StrainProperties.SystematicName,
-				Label:          m.StrainProperties.Label,
-				Species:        m.StrainProperties.Species,
-				Plasmid:        m.StrainProperties.Plasmid,
-				Parent:         m.StrainProperties.Parent,
-				Names:          m.StrainProperties.Names,
-			},
+			SystematicName:  m.StrainProperties.SystematicName,
+			Label:           m.StrainProperties.Label,
+			Species:         m.StrainProperties.Species,
+			Plasmid:         m.StrainProperties.Plasmid,
+			Parent:          m.StrainProperties.Parent,
+			Names:           m.StrainProperties.Names,
 		},
 	}
 	return st, nil
@@ -110,10 +108,9 @@ func (s *StockService) GetPlasmid(ctx context.Context, r *stock.StockId) (*stock
 			Genes:           m.Genes,
 			Dbxrefs:         m.Dbxrefs,
 			Publications:    m.Publications,
-			PlasmidProperties: &stock.PlasmidProperties{
-				ImageMap: m.PlasmidProperties.ImageMap,
-				Sequence: m.PlasmidProperties.Sequence,
-			},
+			ImageMap:        m.PlasmidProperties.ImageMap,
+			Sequence:        m.PlasmidProperties.Sequence,
+			Name:            m.PlasmidProperties.Name,
 		},
 	}
 	return st, nil
@@ -143,14 +140,12 @@ func (s *StockService) CreateStrain(ctx context.Context, r *stock.NewStrain) (*s
 			Genes:           m.Genes,
 			Dbxrefs:         m.Dbxrefs,
 			Publications:    m.Publications,
-			StrainProperties: &stock.StrainProperties{
-				SystematicName: m.StrainProperties.SystematicName,
-				Label:          m.StrainProperties.Label,
-				Species:        m.StrainProperties.Species,
-				Plasmid:        m.StrainProperties.Plasmid,
-				Parent:         m.StrainProperties.Parent,
-				Names:          m.StrainProperties.Names,
-			},
+			SystematicName:  m.StrainProperties.SystematicName,
+			Label:           m.StrainProperties.Label,
+			Species:         m.StrainProperties.Species,
+			Plasmid:         m.StrainProperties.Plasmid,
+			Parent:          m.StrainProperties.Parent,
+			Names:           m.StrainProperties.Names,
 		},
 	}
 	s.publisher.PublishStrain(s.Topics["stockCreate"], st)
@@ -182,10 +177,9 @@ func (s *StockService) CreatePlasmid(ctx context.Context, r *stock.NewPlasmid) (
 			Genes:           m.Genes,
 			Dbxrefs:         m.Dbxrefs,
 			Publications:    m.Publications,
-			PlasmidProperties: &stock.PlasmidProperties{
-				ImageMap: m.PlasmidProperties.ImageMap,
-				Sequence: m.PlasmidProperties.Sequence,
-			},
+			ImageMap:        m.PlasmidProperties.ImageMap,
+			Sequence:        m.PlasmidProperties.Sequence,
+			Name:            m.PlasmidProperties.Name,
 		},
 	}
 	s.publisher.PublishPlasmid(s.Topics["stockCreate"], st)
@@ -216,14 +210,12 @@ func (s *StockService) UpdateStrain(ctx context.Context, r *stock.StrainUpdate) 
 			Genes:           m.Genes,
 			Dbxrefs:         m.Dbxrefs,
 			Publications:    m.Publications,
-			StrainProperties: &stock.StrainProperties{
-				SystematicName: m.StrainProperties.SystematicName,
-				Label:          m.StrainProperties.Label,
-				Species:        m.StrainProperties.Species,
-				Plasmid:        m.StrainProperties.Plasmid,
-				Parent:         m.StrainProperties.Parent,
-				Names:          m.StrainProperties.Names,
-			},
+			SystematicName:  m.StrainProperties.SystematicName,
+			Label:           m.StrainProperties.Label,
+			Species:         m.StrainProperties.Species,
+			Plasmid:         m.StrainProperties.Plasmid,
+			Parent:          m.StrainProperties.Parent,
+			Names:           m.StrainProperties.Names,
 		},
 	}
 	s.publisher.PublishStrain(s.Topics["stockUpdate"], st)
@@ -243,38 +235,21 @@ func (s *StockService) UpdatePlasmid(ctx context.Context, r *stock.PlasmidUpdate
 	if m.NotFound {
 		return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", m.ID))
 	}
-	if m.PlasmidProperties != nil {
-		st.Data = &stock.Plasmid_Data{
-			Type: "plasmid",
-			Id:   m.Key,
-			Attributes: &stock.PlasmidAttributes{
-				UpdatedBy:       m.UpdatedBy,
-				Summary:         m.Summary,
-				EditableSummary: m.EditableSummary,
-				Depositor:       m.Depositor,
-				Genes:           m.Genes,
-				Dbxrefs:         m.Dbxrefs,
-				Publications:    m.Publications,
-				PlasmidProperties: &stock.PlasmidProperties{
-					ImageMap: m.PlasmidProperties.ImageMap,
-					Sequence: m.PlasmidProperties.Sequence,
-				},
-			},
-		}
-	} else {
-		st.Data = &stock.Plasmid_Data{
-			Type: "plasmid",
-			Id:   m.Key,
-			Attributes: &stock.PlasmidAttributes{
-				UpdatedBy:       m.UpdatedBy,
-				Summary:         m.Summary,
-				EditableSummary: m.EditableSummary,
-				Depositor:       m.Depositor,
-				Genes:           m.Genes,
-				Dbxrefs:         m.Dbxrefs,
-				Publications:    m.Publications,
-			},
-		}
+	st.Data = &stock.Plasmid_Data{
+		Type: "plasmid",
+		Id:   m.Key,
+		Attributes: &stock.PlasmidAttributes{
+			UpdatedBy:       m.UpdatedBy,
+			Summary:         m.Summary,
+			EditableSummary: m.EditableSummary,
+			Depositor:       m.Depositor,
+			Genes:           m.Genes,
+			Dbxrefs:         m.Dbxrefs,
+			Publications:    m.Publications,
+			ImageMap:        m.PlasmidProperties.ImageMap,
+			Sequence:        m.PlasmidProperties.Sequence,
+			Name:            m.PlasmidProperties.Name,
+		},
 	}
 	s.publisher.PublishPlasmid(s.Topics["stockUpdate"], st)
 	return st, nil
@@ -327,14 +302,12 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 					Genes:           m.Genes,
 					Dbxrefs:         m.Dbxrefs,
 					Publications:    m.Publications,
-					StrainProperties: &stock.StrainProperties{
-						SystematicName: m.StrainProperties.SystematicName,
-						Label:          m.StrainProperties.Label,
-						Species:        m.StrainProperties.Species,
-						Plasmid:        m.StrainProperties.Plasmid,
-						Parent:         m.StrainProperties.Parent,
-						Names:          m.StrainProperties.Names,
-					},
+					SystematicName:  m.StrainProperties.SystematicName,
+					Label:           m.StrainProperties.Label,
+					Species:         m.StrainProperties.Species,
+					Plasmid:         m.StrainProperties.Plasmid,
+					Parent:          m.StrainProperties.Parent,
+					Names:           m.StrainProperties.Names,
 				},
 			})
 		}
@@ -377,14 +350,12 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 					Genes:           m.Genes,
 					Dbxrefs:         m.Dbxrefs,
 					Publications:    m.Publications,
-					StrainProperties: &stock.StrainProperties{
-						SystematicName: m.StrainProperties.SystematicName,
-						Label:          m.StrainProperties.Label,
-						Species:        m.StrainProperties.Species,
-						Plasmid:        m.StrainProperties.Plasmid,
-						Parent:         m.StrainProperties.Parent,
-						Names:          m.StrainProperties.Names,
-					},
+					SystematicName:  m.StrainProperties.SystematicName,
+					Label:           m.StrainProperties.Label,
+					Species:         m.StrainProperties.Species,
+					Plasmid:         m.StrainProperties.Plasmid,
+					Parent:          m.StrainProperties.Parent,
+					Names:           m.StrainProperties.Names,
 				},
 			})
 		}
@@ -454,10 +425,9 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 					Genes:           m.Genes,
 					Dbxrefs:         m.Dbxrefs,
 					Publications:    m.Publications,
-					PlasmidProperties: &stock.PlasmidProperties{
-						ImageMap: m.PlasmidProperties.ImageMap,
-						Sequence: m.PlasmidProperties.Sequence,
-					},
+					ImageMap:        m.PlasmidProperties.ImageMap,
+					Sequence:        m.PlasmidProperties.Sequence,
+					Name:            m.PlasmidProperties.Name,
 				},
 			})
 		}
@@ -500,10 +470,9 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 					Genes:           m.Genes,
 					Dbxrefs:         m.Dbxrefs,
 					Publications:    m.Publications,
-					PlasmidProperties: &stock.PlasmidProperties{
-						ImageMap: m.PlasmidProperties.ImageMap,
-						Sequence: m.PlasmidProperties.Sequence,
-					},
+					ImageMap:        m.PlasmidProperties.ImageMap,
+					Sequence:        m.PlasmidProperties.Sequence,
+					Name:            m.PlasmidProperties.Name,
 				},
 			})
 		}
@@ -538,69 +507,76 @@ func (s *StockService) RemoveStock(ctx context.Context, r *stock.StockId) (*empt
 	return e, nil
 }
 
-// LoadStock loads stocks with existing IDs into the database
-func (s *StockService) LoadStock(ctx context.Context, r *stock.ExistingStock) (*stock.Stock, error) {
-	st := &stock.Stock{}
+// LoadStock loads strains with existing IDs into the database
+func (s *StockService) LoadStrain(ctx context.Context, r *stock.ExistingStrain) (*stock.Strain, error) {
+	st := &stock.Strain{}
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
 	id := r.Data.Id
-	if id[:3] == "DBS" {
-		m, err := s.repo.LoadStock(id, r)
-		if err != nil {
-			return st, aphgrpc.HandleInsertError(ctx, err)
-		}
-		st.Data = &stock.Stock_Data{
-			Type: "strain",
-			Id:   m.Key,
-			Attributes: &stock.StockAttributes{
-				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-				CreatedBy:       m.CreatedBy,
-				UpdatedBy:       m.UpdatedBy,
-				Summary:         m.Summary,
-				EditableSummary: m.EditableSummary,
-				Depositor:       m.Depositor,
-				Genes:           m.Genes,
-				Dbxrefs:         m.Dbxrefs,
-				Publications:    m.Publications,
-				StrainProperties: &stock.StrainProperties{
-					SystematicName: m.StrainProperties.SystematicName,
-					Label:          m.StrainProperties.Label,
-					Species:        m.StrainProperties.Species,
-					Plasmid:        m.StrainProperties.Plasmid,
-					Parent:         m.StrainProperties.Parent,
-					Names:          m.StrainProperties.Names,
-				},
-			},
-		}
-	} else {
-		m, err := s.repo.LoadStock(id, r)
-		if err != nil {
-			return st, aphgrpc.HandleInsertError(ctx, err)
-		}
-		st.Data = &stock.Stock_Data{
-			Type: "plasmid",
-			Id:   m.Key,
-			Attributes: &stock.StockAttributes{
-				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-				CreatedBy:       m.CreatedBy,
-				UpdatedBy:       m.UpdatedBy,
-				Summary:         m.Summary,
-				EditableSummary: m.EditableSummary,
-				Depositor:       m.Depositor,
-				Genes:           m.Genes,
-				Dbxrefs:         m.Dbxrefs,
-				Publications:    m.Publications,
-				PlasmidProperties: &stock.PlasmidProperties{
-					ImageMap: m.PlasmidProperties.ImageMap,
-					Sequence: m.PlasmidProperties.Sequence,
-				},
-			},
-		}
+	m, err := s.repo.LoadStrain(id, r)
+	if err != nil {
+		return st, aphgrpc.HandleInsertError(ctx, err)
 	}
-	s.publisher.PublishStock(s.Topics["stockCreate"], st)
+	st.Data = &stock.Strain_Data{
+		Type: "strain",
+		Id:   m.Key,
+		Attributes: &stock.StrainAttributes{
+			CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+			UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+			CreatedBy:       m.CreatedBy,
+			UpdatedBy:       m.UpdatedBy,
+			Summary:         m.Summary,
+			EditableSummary: m.EditableSummary,
+			Depositor:       m.Depositor,
+			Genes:           m.Genes,
+			Dbxrefs:         m.Dbxrefs,
+			Publications:    m.Publications,
+			SystematicName:  m.StrainProperties.SystematicName,
+			Label:           m.StrainProperties.Label,
+			Species:         m.StrainProperties.Species,
+			Plasmid:         m.StrainProperties.Plasmid,
+			Parent:          m.StrainProperties.Parent,
+			Names:           m.StrainProperties.Names,
+		},
+	}
+	s.publisher.PublishStrain(s.Topics["stockCreate"], st)
+	return st, nil
+}
+
+// LoadPlasmid loads plasmids with existing IDs into the database
+func (s *StockService) LoadPlasmid(ctx context.Context, r *stock.ExistingPlasmid) (*stock.Plasmid, error) {
+	st := &stock.Plasmid{}
+	if err := r.Validate(); err != nil {
+		return st, aphgrpc.HandleInvalidParamError(ctx, err)
+	}
+	id := r.Data.Id
+
+	m, err := s.repo.LoadPlasmid(id, r)
+	if err != nil {
+		return st, aphgrpc.HandleInsertError(ctx, err)
+	}
+	st.Data = &stock.Plasmid_Data{
+		Type: "plasmid",
+		Id:   m.Key,
+		Attributes: &stock.PlasmidAttributes{
+			CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+			UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+			CreatedBy:       m.CreatedBy,
+			UpdatedBy:       m.UpdatedBy,
+			Summary:         m.Summary,
+			EditableSummary: m.EditableSummary,
+			Depositor:       m.Depositor,
+			Genes:           m.Genes,
+			Dbxrefs:         m.Dbxrefs,
+			Publications:    m.Publications,
+			ImageMap:        m.PlasmidProperties.ImageMap,
+			Sequence:        m.PlasmidProperties.Sequence,
+			Name:            m.PlasmidProperties.Name,
+		},
+	}
+
+	s.publisher.PublishPlasmid(s.Topics["stockCreate"], st)
 	return st, nil
 }
 

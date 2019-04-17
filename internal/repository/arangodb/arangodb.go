@@ -196,8 +196,8 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, err
 	m := &model.StockDoc{}
 	var stmt string
 	var bindVars map[string]interface{}
-	if len(ns.Data.Attributes.StrainProperties.Parent) > 0 { // in case parent is present
-		p := ns.Data.Attributes.StrainProperties.Parent
+	if len(ns.Data.Attributes.Parent) > 0 { // in case parent is present
+		p := ns.Data.Attributes.Parent
 		pVars := map[string]interface{}{
 			"@stock_collection": ar.stock.Name(),
 			"id":                p,
@@ -279,7 +279,7 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 	bindStVars := getUpdatableStrainPropBindParams(us.Data.Attributes)
 	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindStVars}...)
 	var stmt string
-	parent := us.Data.Attributes.StrainProperties.Parent
+	parent := us.Data.Attributes.Parent
 	if len(parent) > 0 { // in case parent is present
 		// parent -> relation -> child
 		//   obj  ->  pred    -> sub
@@ -315,7 +315,7 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 		} else {
 			stmt = statement.StrainWithNewParentUpd
 		}
-		cmBindVars["parent"] = us.Data.Attributes.StrainProperties.Parent
+		cmBindVars["parent"] = us.Data.Attributes.Parent
 		cmBindVars["stock_collection"] = ar.stock.Name()
 		cmBindVars["@parent_strain_collection"] = ar.parentStrain.Name()
 		m.StrainProperties = &model.StrainProperties{Parent: parent}
@@ -368,20 +368,13 @@ func (ar *arangorepository) EditPlasmid(us *stock.PlasmidUpdate) (*model.StockDo
 	bindVars := getUpdatablePlasmidBindParams(us.Data.Attributes)
 	bindPlVars := getUpdatablePlasmidPropBindParams(us.Data.Attributes)
 	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindPlVars}...)
-	if len(bindPlVars) > 0 { // plasmid with optional attributes
-		stmt = fmt.Sprintf(
-			statement.PlasmidUpd,
-			genAQLDocExpression(bindVars),
-			genAQLDocExpression(bindPlVars),
-		)
-		cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
-		cmBindVars["propkey"] = propKey
-	} else {
-		stmt = fmt.Sprintf(
-			statement.StockUpd,
-			genAQLDocExpression(bindVars),
-		)
-	}
+	stmt = fmt.Sprintf(
+		statement.PlasmidUpd,
+		genAQLDocExpression(bindVars),
+		genAQLDocExpression(bindPlVars),
+	)
+	cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
+	cmBindVars["propkey"] = propKey
 	cmBindVars["@stock_collection"] = ar.stock.Name()
 	cmBindVars["key"] = us.Data.Id
 	rupd, err := ar.database.DoRun(stmt, cmBindVars)
@@ -539,68 +532,70 @@ func (ar *arangorepository) RemoveStock(id string) error {
 	return nil
 }
 
-// LoadStock will insert existing stock data into the database.
-// It receives the already existing stock ID and the data to go with it.
-func (ar *arangorepository) LoadStock(id string, es *stock.ExistingStock) (*model.StockDoc, error) {
+// LoadStrain will insert existing strain data into the database.
+// It receives the already existing strain ID and the data to go with it.
+func (ar *arangorepository) LoadStrain(id string, es *stock.ExistingStrain) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	var stmt string
 	var bindVars map[string]interface{}
-	if id[:3] == "DBS" {
-		if len(es.Data.Attributes.StrainProperties.Parent) > 0 { // in case parent is present
-			p := es.Data.Attributes.StrainProperties.Parent
-			pVars := map[string]interface{}{
-				"@stock_collection": ar.stock.Name(),
-				"id":                p,
-			}
-			r, err := ar.database.GetRow(statement.StockFindQ, pVars)
-			if err != nil {
-				return m, fmt.Errorf("error in searching for parent %s %s", p, err)
-			}
-			if r.IsEmpty() {
-				return m, fmt.Errorf("parent %s is not found", p)
-			}
-			var pid string
-			if err := r.Read(&pid); err != nil {
-				return m, fmt.Errorf("error in scanning the value %s %s", p, err)
-			}
-			stmt = statement.StockStrainWithParentLoad
-			bindVars = existingStrainBindParams(es.Data.Attributes)
-			bindVars["stock_id"] = id
-			bindVars["pid"] = pid
-			bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
-			m.StrainProperties = &model.StrainProperties{Parent: p}
-		} else {
-			bindVars = existingStrainBindParams(es.Data.Attributes)
-			bindVars["stock_id"] = id
-			stmt = statement.StockStrainLoad
+	if len(es.Data.Attributes.Parent) > 0 { // in case parent is present
+		p := es.Data.Attributes.Parent
+		pVars := map[string]interface{}{
+			"@stock_collection": ar.stock.Name(),
+			"id":                p,
 		}
-		bindVars["@stock_collection"] = ar.stock.Name()
-		bindVars["@stock_properties_collection"] = ar.stockProp.Name()
-		bindVars["@stock_type_collection"] = ar.stockType.Name()
-		r, err := ar.database.DoRun(stmt, bindVars)
+		r, err := ar.database.GetRow(statement.StockFindQ, pVars)
 		if err != nil {
-			return m, err
+			return m, fmt.Errorf("error in searching for parent %s %s", p, err)
 		}
-		if err := r.Read(m); err != nil {
-			return m, err
+		if r.IsEmpty() {
+			return m, fmt.Errorf("parent %s is not found", p)
 		}
-		return m, nil
-	}
-	if id[:3] == "DBP" {
-		attr := es.Data.Attributes
-		bindVars = existingPlasmidBindParams(attr)
-		bindVars["@stock_collection"] = ar.stock.Name()
-		bindVars["@stock_type_collection"] = ar.stockType.Name()
-		bindVars["@stock_properties_collection"] = ar.stockProp.Name()
+		var pid string
+		if err := r.Read(&pid); err != nil {
+			return m, fmt.Errorf("error in scanning the value %s %s", p, err)
+		}
+		stmt = statement.StockStrainWithParentLoad
+		bindVars = existingStrainBindParams(es.Data.Attributes)
 		bindVars["stock_id"] = id
-		r, err := ar.database.DoRun(statement.StockPlasmidLoad, bindVars)
-		if err != nil {
-			return m, err
-		}
-		if err := r.Read(m); err != nil {
-			return m, err
-		}
-		return m, nil
+		bindVars["pid"] = pid
+		bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
+		m.StrainProperties = &model.StrainProperties{Parent: p}
+	} else {
+		bindVars = existingStrainBindParams(es.Data.Attributes)
+		bindVars["stock_id"] = id
+		stmt = statement.StockStrainLoad
+	}
+	bindVars["@stock_collection"] = ar.stock.Name()
+	bindVars["@stock_properties_collection"] = ar.stockProp.Name()
+	bindVars["@stock_type_collection"] = ar.stockType.Name()
+	r, err := ar.database.DoRun(stmt, bindVars)
+	if err != nil {
+		return m, err
+	}
+	if err := r.Read(m); err != nil {
+		return m, err
+	}
+	return m, nil
+}
+
+// LoadPlasmid will insert existing plasmid data into the database.
+// It receives the already existing plasmid ID and the data to go with it.
+func (ar *arangorepository) LoadPlasmid(id string, ep *stock.ExistingPlasmid) (*model.StockDoc, error) {
+	m := &model.StockDoc{}
+	var bindVars map[string]interface{}
+	attr := ep.Data.Attributes
+	bindVars = existingPlasmidBindParams(attr)
+	bindVars["@stock_collection"] = ar.stock.Name()
+	bindVars["@stock_type_collection"] = ar.stockType.Name()
+	bindVars["@stock_properties_collection"] = ar.stockProp.Name()
+	bindVars["stock_id"] = id
+	r, err := ar.database.DoRun(statement.StockPlasmidLoad, bindVars)
+	if err != nil {
+		return m, err
+	}
+	if err := r.Read(m); err != nil {
+		return m, err
 	}
 	return m, nil
 }
@@ -623,12 +618,9 @@ func addablePlasmidBindParams(attr *stock.NewPlasmidAttributes) map[string]inter
 		"genes":            normalizeSliceBindParam(attr.Genes),
 		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
 		"publications":     normalizeSliceBindParam(attr.Publications),
-		"image_map":        "",
-		"sequence":         "",
-	}
-	if attr.PlasmidProperties != nil {
-		bindVars["image_map"] = normalizeStrBindParam(attr.PlasmidProperties.ImageMap)
-		bindVars["sequence"] = normalizeStrBindParam(attr.PlasmidProperties.Sequence)
+		"image_map":        normalizeStrBindParam(attr.ImageMap),
+		"sequence":         normalizeStrBindParam(attr.Sequence),
+		"name":             attr.Name,
 	}
 	return bindVars
 }
@@ -640,18 +632,18 @@ func addableStrainBindParams(attr *stock.NewStrainAttributes) map[string]interfa
 		"genes":            normalizeSliceBindParam(attr.Genes),
 		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
 		"publications":     normalizeSliceBindParam(attr.Publications),
-		"plasmid":          normalizeStrBindParam(attr.StrainProperties.Plasmid),
-		"names":            normalizeSliceBindParam(attr.StrainProperties.Names),
+		"plasmid":          normalizeStrBindParam(attr.Plasmid),
+		"names":            normalizeSliceBindParam(attr.Names),
 		"depositor":        attr.Depositor,
-		"systematic_name":  attr.StrainProperties.SystematicName,
-		"label":            attr.StrainProperties.Label,
-		"species":          attr.StrainProperties.Species,
+		"systematic_name":  attr.SystematicName,
+		"label":            attr.Label,
+		"species":          attr.Species,
 		"created_by":       attr.CreatedBy,
 		"updated_by":       attr.UpdatedBy,
 	}
 }
 
-func existingPlasmidBindParams(attr *stock.ExistingStockAttributes) map[string]interface{} {
+func existingPlasmidBindParams(attr *stock.ExistingPlasmidAttributes) map[string]interface{} {
 	bindVars := map[string]interface{}{
 		"created_at":       ptypes.TimestampString(attr.CreatedAt),
 		"updated_at":       ptypes.TimestampString(attr.UpdatedAt),
@@ -663,29 +655,26 @@ func existingPlasmidBindParams(attr *stock.ExistingStockAttributes) map[string]i
 		"genes":            normalizeSliceBindParam(attr.Genes),
 		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
 		"publications":     normalizeSliceBindParam(attr.Publications),
-		"image_map":        "",
-		"sequence":         "",
-	}
-	if attr.PlasmidProperties != nil {
-		bindVars["image_map"] = normalizeStrBindParam(attr.PlasmidProperties.ImageMap)
-		bindVars["sequence"] = normalizeStrBindParam(attr.PlasmidProperties.Sequence)
+		"image_map":        normalizeStrBindParam(attr.ImageMap),
+		"sequence":         normalizeStrBindParam(attr.Sequence),
+		"name":             attr.Name,
 	}
 	return bindVars
 }
 
-func existingStrainBindParams(attr *stock.ExistingStockAttributes) map[string]interface{} {
+func existingStrainBindParams(attr *stock.ExistingStrainAttributes) map[string]interface{} {
 	return map[string]interface{}{
 		"summary":          normalizeStrBindParam(attr.Summary),
 		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
 		"genes":            normalizeSliceBindParam(attr.Genes),
 		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
 		"publications":     normalizeSliceBindParam(attr.Publications),
-		"plasmid":          normalizeStrBindParam(attr.StrainProperties.Plasmid),
-		"names":            normalizeSliceBindParam(attr.StrainProperties.Names),
+		"plasmid":          normalizeStrBindParam(attr.Plasmid),
+		"names":            normalizeSliceBindParam(attr.Names),
 		"depositor":        attr.Depositor,
-		"systematic_name":  attr.StrainProperties.SystematicName,
-		"label":            attr.StrainProperties.Label,
-		"species":          attr.StrainProperties.Species,
+		"systematic_name":  attr.SystematicName,
+		"label":            attr.Label,
+		"species":          attr.Species,
 		"created_by":       attr.CreatedBy,
 		"updated_by":       attr.UpdatedBy,
 		"created_at":       ptypes.TimestampString(attr.CreatedAt),
@@ -759,33 +748,34 @@ func getUpdatableStrainBindParams(attr *stock.StrainUpdateAttributes) map[string
 
 func getUpdatableStrainPropBindParams(attr *stock.StrainUpdateAttributes) map[string]interface{} {
 	bindVars := make(map[string]interface{})
-	if len(attr.StrainProperties.SystematicName) > 0 {
-		bindVars["systematic_name"] = attr.StrainProperties.SystematicName
+	if len(attr.SystematicName) > 0 {
+		bindVars["systematic_name"] = attr.SystematicName
 	}
-	if len(attr.StrainProperties.Label) > 0 {
-		bindVars["label"] = attr.StrainProperties.Label
+	if len(attr.Label) > 0 {
+		bindVars["label"] = attr.Label
 	}
-	if len(attr.StrainProperties.Species) > 0 {
-		bindVars["species"] = attr.StrainProperties.Species
+	if len(attr.Species) > 0 {
+		bindVars["species"] = attr.Species
 	}
-	if len(attr.StrainProperties.Plasmid) > 0 {
-		bindVars["plasmid"] = attr.StrainProperties.Plasmid
+	if len(attr.Plasmid) > 0 {
+		bindVars["plasmid"] = attr.Plasmid
 	}
-	if len(attr.StrainProperties.Names) > 0 {
-		bindVars["names"] = attr.StrainProperties.Names
+	if len(attr.Names) > 0 {
+		bindVars["names"] = attr.Names
 	}
 	return bindVars
 }
 
 func getUpdatablePlasmidPropBindParams(attr *stock.PlasmidUpdateAttributes) map[string]interface{} {
 	bindVars := make(map[string]interface{})
-	if attr.PlasmidProperties != nil {
-		if len(attr.PlasmidProperties.ImageMap) > 0 {
-			bindVars["image_map"] = attr.PlasmidProperties.ImageMap
-		}
-		if len(attr.PlasmidProperties.Sequence) > 0 {
-			bindVars["sequence"] = attr.PlasmidProperties.Sequence
-		}
+	if len(attr.ImageMap) > 0 {
+		bindVars["image_map"] = attr.ImageMap
+	}
+	if len(attr.Sequence) > 0 {
+		bindVars["sequence"] = attr.Sequence
+	}
+	if len(attr.Name) > 0 {
+		bindVars["name"] = attr.Name
 	}
 	return bindVars
 }
