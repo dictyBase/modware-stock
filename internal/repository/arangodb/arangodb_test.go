@@ -57,11 +57,9 @@ func newUpdatableTestStrain(createdby string) *stock.NewStrain {
 				EditableSummary: "Radiation-sensitive mutant.",
 				Genes:           []string{"DDB_G0348394", "DDB_G098058933"},
 				Publications:    []string{"48428304983", "83943", "839434936743"},
-				StrainProperties: &stock.StrainProperties{
-					SystematicName: "yS13",
-					Label:          "yS13",
-					Species:        "Dictyostelium discoideum",
-				},
+				SystematicName:  "yS13",
+				Label:           "yS13",
+				Species:         "Dictyostelium discoideum",
 			},
 		},
 	}
@@ -80,13 +78,11 @@ func newTestStrain(createdby string) *stock.NewStrain {
 				Dbxrefs:         []string{"5466867", "4536935", "d2578", "d0319", "d2020/1033268", "d2580"},
 				Genes:           []string{"DDB_G0348394", "DDB_G098058933"},
 				Publications:    []string{"4849343943", "48394394"},
-				StrainProperties: &stock.StrainProperties{
-					SystematicName: "yS13",
-					Label:          "yS13",
-					Species:        "Dictyostelium discoideum",
-					Plasmid:        "DBP0000027",
-					Names:          []string{"gammaS13", "gammaS-13", "γS-13"},
-				},
+				SystematicName:  "yS13",
+				Label:           "yS13",
+				Species:         "Dictyostelium discoideum",
+				Plasmid:         "DBP0000027",
+				Names:           []string{"gammaS13", "gammaS-13", "γS-13"},
 			},
 		},
 	}
@@ -103,12 +99,10 @@ func newTestParentStrain(createdby string) *stock.NewStrain {
 				Summary:         "Remi-mutant strain",
 				EditableSummary: "Remi-mutant strain.",
 				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
-				StrainProperties: &stock.StrainProperties{
-					SystematicName: "AK40107",
-					Label:          "egeB/DDB_G0270724_ps-REMI",
-					Species:        "Dictyostelium discoideum",
-					Names:          []string{"gammaS13", "BCN149086"},
-				},
+				SystematicName:  "AK40107",
+				Label:           "egeB/DDB_G0270724_ps-REMI",
+				Species:         "Dictyostelium discoideum",
+				Names:           []string{"gammaS13", "BCN149086"},
 			},
 		},
 	}
@@ -131,22 +125,6 @@ func newUpdatableTestPlasmid(createdby string) *stock.NewPlasmid {
 	}
 }
 
-func newTestPlasmidWithoutProp(createdby string) *stock.NewPlasmid {
-	return &stock.NewPlasmid{
-		Data: &stock.NewPlasmid_Data{
-			Type: "plasmid",
-			Attributes: &stock.NewPlasmidAttributes{
-				CreatedBy:       createdby,
-				UpdatedBy:       createdby,
-				Depositor:       createdby,
-				Summary:         "this is a test plasmid",
-				EditableSummary: "this is a test plasmid",
-				Publications:    []string{"1348970"},
-			},
-		},
-	}
-}
-
 func newTestPlasmid(createdby string) *stock.NewPlasmid {
 	return &stock.NewPlasmid{
 		Data: &stock.NewPlasmid_Data{
@@ -158,10 +136,9 @@ func newTestPlasmid(createdby string) *stock.NewPlasmid {
 				Summary:         "this is a test plasmid",
 				EditableSummary: "this is a test plasmid",
 				Publications:    []string{"1348970"},
-				PlasmidProperties: &stock.PlasmidProperties{
-					ImageMap: "http://dictybase.org/data/plasmid/images/87.jpg",
-					Sequence: "tttttyyyyjkausadaaaavvvvvv",
-				},
+				ImageMap:        "http://dictybase.org/data/plasmid/images/87.jpg",
+				Sequence:        "tttttyyyyjkausadaaaavvvvvv",
+				Name:            "p123456",
 			},
 		},
 	}
@@ -216,11 +193,9 @@ func TestEditStrain(t *testing.T) {
 				EditableSummary: "updated strain",
 				Genes:           []string{"DDB_G120987", "DDB_G45098234"},
 				Dbxrefs:         []string{"FGBD9493483", "4536935", "d2578", "d0319"},
-				StrainProperties: &stock.StrainUpdateProperties{
-					Label:   "Ax3-pspD/lacZ",
-					Plasmid: "DBP0398713",
-					Names:   []string{"SP87", "AX3-PL3/gal", "AX3PL31"},
-				},
+				Label:           "Ax3-pspD/lacZ",
+				Plasmid:         "DBP0398713",
+				Names:           []string{"SP87", "AX3-PL3/gal", "AX3PL31"},
 			},
 		},
 	}
@@ -265,17 +240,17 @@ func TestEditStrain(t *testing.T) {
 	)
 	assert.Equal(
 		um.StrainProperties.Label,
-		us.Data.Attributes.StrainProperties.Label,
+		us.Data.Attributes.Label,
 		"should have updated strain descriptor",
 	)
 	assert.Equal(
 		um.StrainProperties.Plasmid,
-		us.Data.Attributes.StrainProperties.Plasmid,
+		us.Data.Attributes.Plasmid,
 		"should have updated plasmid name",
 	)
 	assert.ElementsMatch(
 		um.StrainProperties.Names,
-		us.Data.Attributes.StrainProperties.Names,
+		us.Data.Attributes.Names,
 		"should have updated list of strain names",
 	)
 
@@ -289,13 +264,11 @@ func TestEditStrain(t *testing.T) {
 			Type: ns.Data.Type,
 			Id:   um.StockID,
 			Attributes: &stock.StrainUpdateAttributes{
-				UpdatedBy: "mario@snes.org",
-				Depositor: "mario@snes.org",
-				StrainProperties: &stock.StrainUpdateProperties{
-					Parent:         pm.StockID,
-					SystematicName: "y99",
-					Species:        "updated species",
-				},
+				UpdatedBy:      "mario@snes.org",
+				Depositor:      "mario@snes.org",
+				Parent:         pm.StockID,
+				SystematicName: "y99",
+				Species:        "updated species",
 			},
 		},
 	}
@@ -339,11 +312,11 @@ func TestEditStrain(t *testing.T) {
 	)
 	assert.Equal(
 		um2.StrainProperties.Parent,
-		us2.Data.Attributes.StrainProperties.Parent,
+		us2.Data.Attributes.Parent,
 		"should have updated parent",
 	)
-	assert.Equal(um2.StrainProperties.SystematicName, us2.Data.Attributes.StrainProperties.SystematicName, "systematic name should be updated")
-	assert.Equal(um2.StrainProperties.Species, us2.Data.Attributes.StrainProperties.Species, "species should be updated")
+	assert.Equal(um2.StrainProperties.SystematicName, us2.Data.Attributes.SystematicName, "systematic name should be updated")
+	assert.Equal(um2.StrainProperties.Species, us2.Data.Attributes.Species, "species should be updated")
 
 	// add another new strain, let's make this one a parent
 	// so we can test updating parent if one already exists
@@ -357,9 +330,7 @@ func TestEditStrain(t *testing.T) {
 			Id:   um.StockID,
 			Attributes: &stock.StrainUpdateAttributes{
 				UpdatedBy: "mario@snes.org",
-				StrainProperties: &stock.StrainUpdateProperties{
-					Parent: pu.StockID,
-				},
+				Parent:    pu.StockID,
 			},
 		},
 	}
@@ -369,7 +340,7 @@ func TestEditStrain(t *testing.T) {
 	}
 	assert.Equal(
 		um3.StrainProperties.Parent,
-		us3.Data.Attributes.StrainProperties.Parent,
+		us3.Data.Attributes.Parent,
 		"should have updated parent",
 	)
 	assert.Equal(um.StockID, um3.StockID, "should have same stock ID")
@@ -405,15 +376,15 @@ func TestAddStrain(t *testing.T) {
 	assert.ElementsMatch(m.Dbxrefs, nsp.Data.Attributes.Dbxrefs, "should match dbxrefs")
 	assert.Empty(m.Genes, "should not be tied to any genes")
 	assert.Empty(m.Publications, "should not be tied to any publications")
-	assert.Equal(m.StrainProperties.SystematicName, nsp.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
-	assert.Equal(m.StrainProperties.Label, nsp.Data.Attributes.StrainProperties.Label, "should match descriptor")
-	assert.Equal(m.StrainProperties.Species, nsp.Data.Attributes.StrainProperties.Species, "should match species")
-	assert.ElementsMatch(m.StrainProperties.Names, nsp.Data.Attributes.StrainProperties.Names, "should match names")
+	assert.Equal(m.StrainProperties.SystematicName, nsp.Data.Attributes.SystematicName, "should match systematic_name")
+	assert.Equal(m.StrainProperties.Label, nsp.Data.Attributes.Label, "should match descriptor")
+	assert.Equal(m.StrainProperties.Species, nsp.Data.Attributes.Species, "should match species")
+	assert.ElementsMatch(m.StrainProperties.Names, nsp.Data.Attributes.Names, "should match names")
 	assert.Empty(m.StrainProperties.Plasmid, "should not have any plasmid")
 	assert.Empty(m.StrainProperties.Parent, "should not have any parent")
 
 	ns := newTestStrain("pennypacker@penny.com")
-	ns.Data.Attributes.StrainProperties.Parent = m.StockID
+	ns.Data.Attributes.Parent = m.StockID
 	m2, err := repo.AddStrain(ns)
 	if err != nil {
 		t.Fatalf("error in adding strain: %s", err)
@@ -434,74 +405,34 @@ func TestAddStrain(t *testing.T) {
 	)
 	assert.Equal(
 		m2.StrainProperties.SystematicName,
-		ns.Data.Attributes.StrainProperties.SystematicName,
+		ns.Data.Attributes.SystematicName,
 		"should match systematic_name",
 	)
 	assert.Equal(
 		m2.StrainProperties.Label,
-		ns.Data.Attributes.StrainProperties.Label,
+		ns.Data.Attributes.Label,
 		"should match descriptor",
 	)
 	assert.Equal(
 		m2.StrainProperties.Species,
-		ns.Data.Attributes.StrainProperties.Species,
+		ns.Data.Attributes.Species,
 		"should match species",
 	)
 	assert.ElementsMatch(
 		m2.StrainProperties.Names,
-		ns.Data.Attributes.StrainProperties.Names,
+		ns.Data.Attributes.Names,
 		"should match names",
 	)
 	assert.Equal(
 		m2.StrainProperties.Plasmid,
-		ns.Data.Attributes.StrainProperties.Plasmid,
+		ns.Data.Attributes.Plasmid,
 		"should match plasmid entry",
 	)
 	assert.Equal(
 		m2.StrainProperties.Parent,
-		ns.Data.Attributes.StrainProperties.Parent,
+		ns.Data.Attributes.Parent,
 		"should match parent entry",
 	)
-}
-
-func TestAddPlasmidWithoutProp(t *testing.T) {
-	connP := getConnectParams()
-	collP := getCollectionParams()
-	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
-	defer func() {
-		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
-	}()
-	ns := newTestPlasmidWithoutProp("george@costanza.com")
-	m, err := repo.AddPlasmid(ns)
-	if err != nil {
-		t.Fatalf("error in adding plasmid: %s", err)
-	}
-	assert := assert.New(t)
-	assert.Regexp(regexp.MustCompile(`^DBP0\d{6,}$`), m.StockID, "should have a plasmid stock id")
-	assert.Equal(m.Key, m.StockID, "should have identical key and stock ID")
-	assert.Equal(m.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
-	assert.Equal(m.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
-	assert.Equal(m.Summary, ns.Data.Attributes.Summary, "should match summary")
-	assert.Equal(
-		m.EditableSummary,
-		ns.Data.Attributes.EditableSummary,
-		"should match editable_summary",
-	)
-	assert.Equal(m.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
-	assert.Empty(m.Genes, "should have empty genes field")
-	assert.Empty(m.Dbxrefs, "should have empty dbxrefs field")
-	assert.ElementsMatch(
-		m.Publications,
-		ns.Data.Attributes.Publications,
-		"should match publications",
-	)
-	assert.Empty(m.PlasmidProperties, "should have empty plasmid properties field")
 }
 
 func TestAddPlasmid(t *testing.T) {
@@ -543,14 +474,15 @@ func TestAddPlasmid(t *testing.T) {
 	)
 	assert.Equal(
 		m.PlasmidProperties.ImageMap,
-		ns.Data.Attributes.PlasmidProperties.ImageMap,
+		ns.Data.Attributes.ImageMap,
 		"should match image_map",
 	)
 	assert.Equal(
 		m.PlasmidProperties.Sequence,
-		ns.Data.Attributes.PlasmidProperties.Sequence,
+		ns.Data.Attributes.Sequence,
 		"should match sequence",
 	)
+	assert.Equal(m.PlasmidProperties.Name, ns.Data.Attributes.Name, "should match name")
 }
 
 func TestEditPlasmid(t *testing.T) {
@@ -581,9 +513,7 @@ func TestEditPlasmid(t *testing.T) {
 				EditableSummary: "updated plasmid",
 				Publications:    []string{"8394839", "583989343", "853983948"},
 				Genes:           []string{"DDB_G0270724", "DDB_G027489343"},
-				PlasmidProperties: &stock.PlasmidProperties{
-					ImageMap: "http://dictybase.org/data/plasmid/images/87.jpg",
-				},
+				ImageMap:        "http://dictybase.org/data/plasmid/images/87.jpg",
 			},
 		},
 	}
@@ -611,7 +541,8 @@ func TestEditPlasmid(t *testing.T) {
 		ns.Data.Attributes.Dbxrefs,
 		"dbxrefs should remain unchanged",
 	)
-	assert.Equal(um.PlasmidProperties.ImageMap, us.Data.Attributes.PlasmidProperties.ImageMap, "should match image map")
+	assert.Equal(um.PlasmidProperties.ImageMap, us.Data.Attributes.ImageMap, "should match image map")
+	assert.Equal(um.PlasmidProperties.Name, us.Data.Attributes.Name, "should match name")
 	us2 := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
 			Type: ns.Data.Type,
@@ -619,9 +550,7 @@ func TestEditPlasmid(t *testing.T) {
 			Attributes: &stock.PlasmidUpdateAttributes{
 				UpdatedBy: "puddy@seinfeld.org",
 				Genes:     []string{"DDB_G0270851", "DDB_G02748", "DDB_G7392222"},
-				PlasmidProperties: &stock.PlasmidProperties{
-					Sequence: "atgctagagaagacttt",
-				},
+				Sequence:  "atgctagagaagacttt",
 			},
 		},
 	}
@@ -645,7 +574,7 @@ func TestEditPlasmid(t *testing.T) {
 	)
 	assert.Equal(
 		um2.PlasmidProperties.Sequence,
-		us2.Data.Attributes.PlasmidProperties.Sequence,
+		us2.Data.Attributes.Sequence,
 		"sequence plasmid property should have been updated",
 	)
 	us3 := &stock.PlasmidUpdate{
@@ -704,19 +633,19 @@ func TestGetStrain(t *testing.T) {
 	assert.Equal(g.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
 	assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
 	assert.ElementsMatch(g.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
-	assert.ElementsMatch(g.StrainProperties.Names, ns.Data.Attributes.StrainProperties.Names, "should match names")
+	assert.ElementsMatch(g.StrainProperties.Names, ns.Data.Attributes.Names, "should match names")
 	assert.ElementsMatch(g.Genes, ns.Data.Attributes.Genes, "should match genes")
-	assert.Equal(g.StrainProperties.SystematicName, ns.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
-	assert.Equal(g.StrainProperties.Label, ns.Data.Attributes.StrainProperties.Label, "should match descriptor")
-	assert.Equal(g.StrainProperties.Species, ns.Data.Attributes.StrainProperties.Species, "should match species")
-	assert.Equal(g.StrainProperties.Plasmid, ns.Data.Attributes.StrainProperties.Plasmid, "should match plasmid")
+	assert.Equal(g.StrainProperties.SystematicName, ns.Data.Attributes.SystematicName, "should match systematic_name")
+	assert.Equal(g.StrainProperties.Label, ns.Data.Attributes.Label, "should match descriptor")
+	assert.Equal(g.StrainProperties.Species, ns.Data.Attributes.Species, "should match species")
+	assert.Equal(g.StrainProperties.Plasmid, ns.Data.Attributes.Plasmid, "should match plasmid")
 	assert.Empty(g.StrainProperties.Parent, "should not have parent")
 	assert.Len(g.Dbxrefs, 6, "should match length of six dbxrefs")
 	assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
 	assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
 
 	ns2 := newTestStrain("dead@cells.com")
-	ns2.Data.Attributes.StrainProperties.Parent = m.StockID
+	ns2.Data.Attributes.Parent = m.StockID
 	m2, err := repo.AddStrain(ns2)
 	if err != nil {
 		t.Fatalf("error in adding strain %s", err)
@@ -767,8 +696,9 @@ func TestGetPlasmid(t *testing.T) {
 	assert.Equal(g.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
 	assert.Equal(g.Summary, ns.Data.Attributes.Summary, "should match summary")
 	assert.Equal(g.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
-	assert.Equal(g.PlasmidProperties.ImageMap, ns.Data.Attributes.PlasmidProperties.ImageMap, "should match image_map")
-	assert.Equal(g.PlasmidProperties.Sequence, ns.Data.Attributes.PlasmidProperties.Sequence, "should match sequence")
+	assert.Equal(g.PlasmidProperties.ImageMap, ns.Data.Attributes.ImageMap, "should match image_map")
+	assert.Equal(g.PlasmidProperties.Sequence, ns.Data.Attributes.Sequence, "should match sequence")
+	assert.Equal(g.PlasmidProperties.Name, ns.Data.Attributes.Name, "should match name")
 	assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
 	assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
 
@@ -1024,11 +954,11 @@ func TestLoadStockWithStrains(t *testing.T) {
 		}
 	}()
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
-	nsp := &stock.ExistingStock{
-		Data: &stock.ExistingStock_Data{
+	nsp := &stock.ExistingStrain{
+		Data: &stock.ExistingStrain_Data{
 			Type: "strain",
 			Id:   "DBS0252873",
-			Attributes: &stock.ExistingStockAttributes{
+			Attributes: &stock.ExistingStrainAttributes{
 				CreatedAt:       aphgrpc.TimestampProto(tm),
 				UpdatedAt:       aphgrpc.TimestampProto(tm),
 				CreatedBy:       "wizard_of_loneliness@testemail.org",
@@ -1037,16 +967,14 @@ func TestLoadStockWithStrains(t *testing.T) {
 				Summary:         "Remi-mutant strain",
 				EditableSummary: "Remi-mutant strain.",
 				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
-				StrainProperties: &stock.StrainProperties{
-					SystematicName: "AK40107",
-					Label:          "egeB/DDB_G0270724_ps-REMI",
-					Species:        "Dictyostelium discoideum",
-					Names:          []string{"gammaS13", "BCN149086"},
-				},
+				SystematicName:  "AK40107",
+				Label:           "egeB/DDB_G0270724_ps-REMI",
+				Species:         "Dictyostelium discoideum",
+				Names:           []string{"gammaS13", "BCN149086"},
 			},
 		},
 	}
-	m, err := repo.LoadStock("DBS0252873", nsp)
+	m, err := repo.LoadStrain("DBS0252873", nsp)
 	if err != nil {
 		t.Fatalf("error in adding strain: %s", err)
 	}
@@ -1062,18 +990,18 @@ func TestLoadStockWithStrains(t *testing.T) {
 	assert.ElementsMatch(m.Dbxrefs, nsp.Data.Attributes.Dbxrefs, "should match dbxrefs")
 	assert.Empty(m.Genes, "should not be tied to any genes")
 	assert.Empty(m.Publications, "should not be tied to any publications")
-	assert.Equal(m.StrainProperties.SystematicName, nsp.Data.Attributes.StrainProperties.SystematicName, "should match systematic_name")
-	assert.Equal(m.StrainProperties.Label, nsp.Data.Attributes.StrainProperties.Label, "should match descriptor")
-	assert.Equal(m.StrainProperties.Species, nsp.Data.Attributes.StrainProperties.Species, "should match species")
-	assert.ElementsMatch(m.StrainProperties.Names, nsp.Data.Attributes.StrainProperties.Names, "should match names")
+	assert.Equal(m.StrainProperties.SystematicName, nsp.Data.Attributes.SystematicName, "should match systematic_name")
+	assert.Equal(m.StrainProperties.Label, nsp.Data.Attributes.Label, "should match descriptor")
+	assert.Equal(m.StrainProperties.Species, nsp.Data.Attributes.Species, "should match species")
+	assert.ElementsMatch(m.StrainProperties.Names, nsp.Data.Attributes.Names, "should match names")
 	assert.Empty(m.StrainProperties.Plasmid, "should not have any plasmid")
 	assert.Empty(m.StrainProperties.Parent, "should not have any parent")
 
-	ns := &stock.ExistingStock{
-		Data: &stock.ExistingStock_Data{
+	ns := &stock.ExistingStrain{
+		Data: &stock.ExistingStrain_Data{
 			Type: "strain",
 			Id:   "DBS0252873",
-			Attributes: &stock.ExistingStockAttributes{
+			Attributes: &stock.ExistingStrainAttributes{
 				CreatedAt:       aphgrpc.TimestampProto(tm),
 				UpdatedAt:       aphgrpc.TimestampProto(tm),
 				CreatedBy:       "wizard_of_loneliness@testemail.org",
@@ -1082,17 +1010,15 @@ func TestLoadStockWithStrains(t *testing.T) {
 				Summary:         "Remi-mutant strain",
 				EditableSummary: "Remi-mutant strain.",
 				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
-				StrainProperties: &stock.StrainProperties{
-					SystematicName: "AK40107",
-					Label:          "egeB/DDB_G0270724_ps-REMI",
-					Species:        "Dictyostelium discoideum",
-					Names:          []string{"gammaS13", "BCN149086"},
-				},
+				SystematicName:  "AK40107",
+				Label:           "egeB/DDB_G0270724_ps-REMI",
+				Species:         "Dictyostelium discoideum",
+				Names:           []string{"gammaS13", "BCN149086"},
 			},
 		},
 	}
-	ns.Data.Attributes.StrainProperties.Parent = m.StockID
-	m2, err := repo.LoadStock("DBS0235412", ns)
+	ns.Data.Attributes.Parent = m.StockID
+	m2, err := repo.LoadStrain("DBS0235412", ns)
 	if err != nil {
 		t.Fatalf("error in adding strain: %s", err)
 	}
@@ -1112,32 +1038,32 @@ func TestLoadStockWithStrains(t *testing.T) {
 	)
 	assert.Equal(
 		m2.StrainProperties.SystematicName,
-		ns.Data.Attributes.StrainProperties.SystematicName,
+		ns.Data.Attributes.SystematicName,
 		"should match systematic_name",
 	)
 	assert.Equal(
 		m2.StrainProperties.Label,
-		ns.Data.Attributes.StrainProperties.Label,
+		ns.Data.Attributes.Label,
 		"should match descriptor",
 	)
 	assert.Equal(
 		m2.StrainProperties.Species,
-		ns.Data.Attributes.StrainProperties.Species,
+		ns.Data.Attributes.Species,
 		"should match species",
 	)
 	assert.ElementsMatch(
 		m2.StrainProperties.Names,
-		ns.Data.Attributes.StrainProperties.Names,
+		ns.Data.Attributes.Names,
 		"should match names",
 	)
 	assert.Equal(
 		m2.StrainProperties.Plasmid,
-		ns.Data.Attributes.StrainProperties.Plasmid,
+		ns.Data.Attributes.Plasmid,
 		"should match plasmid entry",
 	)
 	assert.Equal(
 		m2.StrainProperties.Parent,
-		ns.Data.Attributes.StrainProperties.Parent,
+		ns.Data.Attributes.Parent,
 		"should match parent entry",
 	)
 }
@@ -1156,11 +1082,11 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 		}
 	}()
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
-	ns := &stock.ExistingStock{
-		Data: &stock.ExistingStock_Data{
+	ns := &stock.ExistingPlasmid{
+		Data: &stock.ExistingPlasmid_Data{
 			Type: "plasmid",
 			Id:   "DBP0000098",
-			Attributes: &stock.ExistingStockAttributes{
+			Attributes: &stock.ExistingPlasmidAttributes{
 				CreatedAt:       aphgrpc.TimestampProto(tm),
 				UpdatedAt:       aphgrpc.TimestampProto(tm),
 				CreatedBy:       "george@costanza.com",
@@ -1169,14 +1095,13 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 				Summary:         "this is a test plasmid",
 				EditableSummary: "this is a test plasmid",
 				Publications:    []string{"1348970"},
-				PlasmidProperties: &stock.PlasmidProperties{
-					ImageMap: "http://dictybase.org/data/plasmid/images/87.jpg",
-					Sequence: "tttttyyyyjkausadaaaavvvvvv",
-				},
+				ImageMap:        "http://dictybase.org/data/plasmid/images/87.jpg",
+				Sequence:        "tttttyyyyjkausadaaaavvvvvv",
+				Name:            "p9999",
 			},
 		},
 	}
-	m, err := repo.LoadStock("DBP0000098", ns)
+	m, err := repo.LoadPlasmid("DBP0000098", ns)
 	if err != nil {
 		t.Fatalf("error in adding plasmid: %s", err)
 	}
@@ -1201,12 +1126,12 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 	)
 	assert.Equal(
 		m.PlasmidProperties.ImageMap,
-		ns.Data.Attributes.PlasmidProperties.ImageMap,
+		ns.Data.Attributes.ImageMap,
 		"should match image_map",
 	)
 	assert.Equal(
 		m.PlasmidProperties.Sequence,
-		ns.Data.Attributes.PlasmidProperties.Sequence,
+		ns.Data.Attributes.Sequence,
 		"should match sequence",
 	)
 }

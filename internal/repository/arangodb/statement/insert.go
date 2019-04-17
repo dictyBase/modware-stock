@@ -169,7 +169,7 @@ const (
 			INSERT {
 				image_map: @image_map,
 				sequence: @sequence,
-				name: @name,
+				name: @name
 			} INTO @@stock_properties_collection RETURN NEW
 		)
 		INSERT { _from: n[0]._id, _to: o[0]._id, type: 'plasmid' } INTO @@stock_type_collection
@@ -201,7 +201,7 @@ const (
 			INSERT {
 				image_map: @image_map,
 				sequence: @sequence,
-				name: @name,
+				name: @name
 			} INTO @@stock_properties_collection RETURN NEW
 		)
 		INSERT { _from: n[0]._id, _to: o[0]._id, type: 'plasmid' } INTO @@stock_type_collection

@@ -64,7 +64,7 @@ const (
 						plasmid_properties: {
 							image_map: v.image_map,
 							sequence: v.sequence,
-							name: v.name,
+							name: v.name
 						}
 					}
 				)
@@ -165,7 +165,7 @@ const (
 						plasmid_properties: { 
 							image_map: v.image_map,
 							sequence: v.sequence,
-							name: v.name,
+							name: v.name
 						} 
 					}
 				)	
@@ -183,7 +183,7 @@ const (
 						plasmid_properties: { 
 							image_map: v.image_map,
 							sequence: v.sequence,
-							name: v.name,
+							name: v.name
 						} 
 					}
 				)
@@ -201,7 +201,7 @@ const (
 						plasmid_properties: { 
 							image_map: v.image_map,
 							sequence: v.sequence,
-							name: v.name,
+							name: v.name
 						} 
 					}
 				)		
@@ -220,7 +220,7 @@ const (
 						plasmid_properties: { 
 							image_map: v.image_map,
 							sequence: v.sequence,
-							name: v.name,
+							name: v.name
 						} 
 					}
 				)
