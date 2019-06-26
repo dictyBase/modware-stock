@@ -1,11 +1,13 @@
-FROM golang:1.11.5-alpine3.8
+FROM golang:1.11.10-alpine3.9
 LABEL maintainer="Siddhartha Basu <siddhartha-basu@northwestern.edu>"
 RUN apk add --no-cache git build-base
 RUN mkdir -p /modware-stock
 WORKDIR /modware-stock
-COPY go.mod cmd/modware-stock/main.go ./
+ADD cmd cmd
 ADD internal internal
-RUN go get ./... && go mod tidy && go build -o app
+COPY go.mod go.sum ./
+RUN go get ./...
+RUN go build -o app cmd/modware-stock/main.go
 
 FROM alpine:3.7
 RUN apk --no-cache add ca-certificates
