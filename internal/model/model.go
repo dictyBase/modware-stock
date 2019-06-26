@@ -27,12 +27,11 @@ type StockDoc struct {
 
 // StrainProperties is the data structure for strain properties
 type StrainProperties struct {
-	SystematicName string   `json:"systematic_name"`
-	Label          string   `json:"label"`
-	Species        string   `json:"species"`
-	Plasmid        string   `json:"plasmid,omitempty"`
-	Parent         string   `json:"parent,omitempty"`
-	Names          []string `json:"names,omitempty"`
+	Label   string   `json:"label"`
+	Species string   `json:"species"`
+	Plasmid string   `json:"plasmid,omitempty"`
+	Parent  string   `json:"parent,omitempty"`
+	Names   []string `json:"names,omitempty"`
 }
 
 // PlasmidProperties is the data structure for plasmid properties
