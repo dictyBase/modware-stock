@@ -23,7 +23,6 @@ const (
 		)
 		LET o = (
 			INSERT {
-				systematic_name: @systematic_name,
 				label: @label,
 				species: @species,
 				plasmid: @plasmid,
@@ -60,7 +59,6 @@ const (
 		)
 		LET o = (
 			INSERT {
-				systematic_name: @systematic_name,
 				label: @label,
 				species: @species,
 				plasmid: @plasmid,
@@ -95,7 +93,6 @@ const (
 		)
 		LET o = (
 			INSERT {
-				systematic_name: @systematic_name,
 				label: @label,
 				species: @species,
 				plasmid: @plasmid,
@@ -129,7 +126,6 @@ const (
 		)
 		LET o = (
 			INSERT {
-				systematic_name: @systematic_name,
 				label: @label,
 				species: @species,
 				plasmid: @plasmid,

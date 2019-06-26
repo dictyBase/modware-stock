@@ -635,7 +635,6 @@ func addableStrainBindParams(attr *stock.NewStrainAttributes) map[string]interfa
 		"plasmid":          normalizeStrBindParam(attr.Plasmid),
 		"names":            normalizeSliceBindParam(attr.Names),
 		"depositor":        attr.Depositor,
-		"systematic_name":  attr.SystematicName,
 		"label":            attr.Label,
 		"species":          attr.Species,
 		"created_by":       attr.CreatedBy,
@@ -672,7 +671,6 @@ func existingStrainBindParams(attr *stock.ExistingStrainAttributes) map[string]i
 		"plasmid":          normalizeStrBindParam(attr.Plasmid),
 		"names":            normalizeSliceBindParam(attr.Names),
 		"depositor":        attr.Depositor,
-		"systematic_name":  attr.SystematicName,
 		"label":            attr.Label,
 		"species":          attr.Species,
 		"created_by":       attr.CreatedBy,
@@ -748,9 +746,6 @@ func getUpdatableStrainBindParams(attr *stock.StrainUpdateAttributes) map[string
 
 func getUpdatableStrainPropBindParams(attr *stock.StrainUpdateAttributes) map[string]interface{} {
 	bindVars := make(map[string]interface{})
-	if len(attr.SystematicName) > 0 {
-		bindVars["systematic_name"] = attr.SystematicName
-	}
 	if len(attr.Label) > 0 {
 		bindVars["label"] = attr.Label
 	}
