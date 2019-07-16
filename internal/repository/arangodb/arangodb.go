@@ -81,6 +81,7 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 		collP.StockKeyGenerator,
 		&driver.CreateCollectionOptions{
 			KeyOptions: &driver.CollectionKeyOptions{
+				Type:      "autoincrement",
 				Increment: 1,
 				Offset:    collP.KeyOffset,
 			},

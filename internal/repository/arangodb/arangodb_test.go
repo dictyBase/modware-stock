@@ -41,7 +41,7 @@ func getCollectionParams() *CollectionParams {
 		ParentStrain:       "parent_strain",
 		StockPropTypeGraph: "stockprop_type",
 		Strain2ParentGraph: "strain2parent",
-		KeyOffset:          270000,
+		KeyOffset:          370000,
 	}
 }
 
