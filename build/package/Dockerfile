@@ -8,6 +8,7 @@ COPY go.sum ./
 RUN go mod download
 ADD cmd cmd
 ADD internal internal
+RUN go build -o app cmd/modware-stock/main.go
 
 FROM alpine:3.9
 RUN apk --no-cache add ca-certificates
