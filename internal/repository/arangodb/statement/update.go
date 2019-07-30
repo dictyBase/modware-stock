@@ -16,7 +16,6 @@ const (
 			IN @@stock_properties_collection
 			RETURN {
 				strain_properties: {
-					systematic_name: NEW.systematic_name,
 					label: NEW.label,
 					species: NEW.species,
 					plasmid: NEW.plasmid,
@@ -36,7 +35,6 @@ const (
 			IN @@stock_properties_collection
 			RETURN {
 				strain_properties: {
-					systematic_name: NEW.systematic_name,
 					label: NEW.label,
 					species: NEW.species,
 					plasmid: NEW.plasmid,
@@ -61,7 +59,6 @@ const (
 			IN @@stock_properties_collection
 			RETURN {
 				strain_properties: {
-					systematic_name: NEW.systematic_name,
 					label: NEW.label,
 					species: NEW.species,
 					plasmid: NEW.plasmid,

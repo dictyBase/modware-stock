@@ -41,7 +41,7 @@ func getCollectionParams() *CollectionParams {
 		ParentStrain:       "parent_strain",
 		StockPropTypeGraph: "stockprop_type",
 		Strain2ParentGraph: "strain2parent",
-		KeyOffset:          270000,
+		KeyOffset:          370000,
 	}
 }
 
@@ -57,7 +57,6 @@ func newUpdatableTestStrain(createdby string) *stock.NewStrain {
 				EditableSummary: "Radiation-sensitive mutant.",
 				Genes:           []string{"DDB_G0348394", "DDB_G098058933"},
 				Publications:    []string{"48428304983", "83943", "839434936743"},
-				SystematicName:  "yS13",
 				Label:           "yS13",
 				Species:         "Dictyostelium discoideum",
 			},
@@ -78,7 +77,6 @@ func newTestStrain(createdby string) *stock.NewStrain {
 				Dbxrefs:         []string{"5466867", "4536935", "d2578", "d0319", "d2020/1033268", "d2580"},
 				Genes:           []string{"DDB_G0348394", "DDB_G098058933"},
 				Publications:    []string{"4849343943", "48394394"},
-				SystematicName:  "yS13",
 				Label:           "yS13",
 				Species:         "Dictyostelium discoideum",
 				Plasmid:         "DBP0000027",
@@ -99,7 +97,6 @@ func newTestParentStrain(createdby string) *stock.NewStrain {
 				Summary:         "Remi-mutant strain",
 				EditableSummary: "Remi-mutant strain.",
 				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
-				SystematicName:  "AK40107",
 				Label:           "egeB/DDB_G0270724_ps-REMI",
 				Species:         "Dictyostelium discoideum",
 				Names:           []string{"gammaS13", "BCN149086"},
@@ -229,11 +226,6 @@ func TestEditStrain(t *testing.T) {
 		"publications list should remain unchanged",
 	)
 	assert.Equal(
-		um.StrainProperties.SystematicName,
-		m.StrainProperties.SystematicName,
-		"systematic name should remain unchanged",
-	)
-	assert.Equal(
 		um.StrainProperties.Species,
 		m.StrainProperties.Species,
 		"species name should remain unchanged",
@@ -264,11 +256,10 @@ func TestEditStrain(t *testing.T) {
 			Type: ns.Data.Type,
 			Id:   um.StockID,
 			Attributes: &stock.StrainUpdateAttributes{
-				UpdatedBy:      "mario@snes.org",
-				Depositor:      "mario@snes.org",
-				Parent:         pm.StockID,
-				SystematicName: "y99",
-				Species:        "updated species",
+				UpdatedBy: "mario@snes.org",
+				Depositor: "mario@snes.org",
+				Parent:    pm.StockID,
+				Species:   "updated species",
 			},
 		},
 	}
@@ -315,7 +306,6 @@ func TestEditStrain(t *testing.T) {
 		us2.Data.Attributes.Parent,
 		"should have updated parent",
 	)
-	assert.Equal(um2.StrainProperties.SystematicName, us2.Data.Attributes.SystematicName, "systematic name should be updated")
 	assert.Equal(um2.StrainProperties.Species, us2.Data.Attributes.Species, "species should be updated")
 
 	// add another new strain, let's make this one a parent
@@ -376,7 +366,6 @@ func TestAddStrain(t *testing.T) {
 	assert.ElementsMatch(m.Dbxrefs, nsp.Data.Attributes.Dbxrefs, "should match dbxrefs")
 	assert.Empty(m.Genes, "should not be tied to any genes")
 	assert.Empty(m.Publications, "should not be tied to any publications")
-	assert.Equal(m.StrainProperties.SystematicName, nsp.Data.Attributes.SystematicName, "should match systematic_name")
 	assert.Equal(m.StrainProperties.Label, nsp.Data.Attributes.Label, "should match descriptor")
 	assert.Equal(m.StrainProperties.Species, nsp.Data.Attributes.Species, "should match species")
 	assert.ElementsMatch(m.StrainProperties.Names, nsp.Data.Attributes.Names, "should match names")
@@ -402,11 +391,6 @@ func TestAddStrain(t *testing.T) {
 		m2.Publications,
 		ns.Data.Attributes.Publications,
 		"should match list of publications",
-	)
-	assert.Equal(
-		m2.StrainProperties.SystematicName,
-		ns.Data.Attributes.SystematicName,
-		"should match systematic_name",
 	)
 	assert.Equal(
 		m2.StrainProperties.Label,
@@ -635,7 +619,6 @@ func TestGetStrain(t *testing.T) {
 	assert.ElementsMatch(g.Dbxrefs, ns.Data.Attributes.Dbxrefs, "should match dbxrefs")
 	assert.ElementsMatch(g.StrainProperties.Names, ns.Data.Attributes.Names, "should match names")
 	assert.ElementsMatch(g.Genes, ns.Data.Attributes.Genes, "should match genes")
-	assert.Equal(g.StrainProperties.SystematicName, ns.Data.Attributes.SystematicName, "should match systematic_name")
 	assert.Equal(g.StrainProperties.Label, ns.Data.Attributes.Label, "should match descriptor")
 	assert.Equal(g.StrainProperties.Species, ns.Data.Attributes.Species, "should match species")
 	assert.Equal(g.StrainProperties.Plasmid, ns.Data.Attributes.Plasmid, "should match plasmid")
@@ -967,7 +950,6 @@ func TestLoadStockWithStrains(t *testing.T) {
 				Summary:         "Remi-mutant strain",
 				EditableSummary: "Remi-mutant strain.",
 				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
-				SystematicName:  "AK40107",
 				Label:           "egeB/DDB_G0270724_ps-REMI",
 				Species:         "Dictyostelium discoideum",
 				Names:           []string{"gammaS13", "BCN149086"},
@@ -990,7 +972,6 @@ func TestLoadStockWithStrains(t *testing.T) {
 	assert.ElementsMatch(m.Dbxrefs, nsp.Data.Attributes.Dbxrefs, "should match dbxrefs")
 	assert.Empty(m.Genes, "should not be tied to any genes")
 	assert.Empty(m.Publications, "should not be tied to any publications")
-	assert.Equal(m.StrainProperties.SystematicName, nsp.Data.Attributes.SystematicName, "should match systematic_name")
 	assert.Equal(m.StrainProperties.Label, nsp.Data.Attributes.Label, "should match descriptor")
 	assert.Equal(m.StrainProperties.Species, nsp.Data.Attributes.Species, "should match species")
 	assert.ElementsMatch(m.StrainProperties.Names, nsp.Data.Attributes.Names, "should match names")
@@ -1010,7 +991,6 @@ func TestLoadStockWithStrains(t *testing.T) {
 				Summary:         "Remi-mutant strain",
 				EditableSummary: "Remi-mutant strain.",
 				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
-				SystematicName:  "AK40107",
 				Label:           "egeB/DDB_G0270724_ps-REMI",
 				Species:         "Dictyostelium discoideum",
 				Names:           []string{"gammaS13", "BCN149086"},
@@ -1035,11 +1015,6 @@ func TestLoadStockWithStrains(t *testing.T) {
 		m2.Publications,
 		ns.Data.Attributes.Publications,
 		"should match list of publications",
-	)
-	assert.Equal(
-		m2.StrainProperties.SystematicName,
-		ns.Data.Attributes.SystematicName,
-		"should match systematic_name",
 	)
 	assert.Equal(
 		m2.StrainProperties.Label,

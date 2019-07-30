@@ -28,7 +28,6 @@ const (
 						s,
 						{
 							strain_properties: {
-							systematic_name: v.systematic_name,
 							label: v.label,
 							species: v.species,
 							plasmid: v.plasmid,
@@ -43,7 +42,6 @@ const (
 			{
 				strain_properties: {
 						parent: a[0],
-						systematic_name: b[0].strain_properties.systematic_name,
 						label: b[0].strain_properties.label,
 						species: b[0].strain_properties.species,
 						plasmid: b[0].strain_properties.plasmid,
@@ -83,7 +81,6 @@ const (
 					s,
 					{
 						strain_properties: { 
-							systematic_name: v.systematic_name, 
 							label: v.label, 
 							species: v.species, 
 							plasmid: v.plasmid, 
@@ -103,7 +100,6 @@ const (
 					s,
 					{
 						strain_properties: { 
-							systematic_name: v.systematic_name, 
 							label: v.label, 
 							species: v.species, 
 							plasmid: v.plasmid, 
@@ -123,7 +119,6 @@ const (
 					s,
 					{
 						strain_properties: { 
-							systematic_name: v.systematic_name, 
 							label: v.label, 
 							species: v.species, 
 							plasmid: v.plasmid, 
@@ -144,7 +139,6 @@ const (
 					s,
 					{
 						strain_properties: { 
-							systematic_name: v.systematic_name, 
 							label: v.label, 
 							species: v.species, 
 							plasmid: v.plasmid, 
