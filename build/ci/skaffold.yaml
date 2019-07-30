@@ -1,0 +1,20 @@
+apiVersion: skaffold/v1beta10
+kind: Config
+build:
+    tagPolicy:
+        envTemplate:
+            template: "{{.IMAGE_NAME}}:{{.IMAGE_TAG}}"
+    artifacts:
+        - image: dictybase/modware-stock
+          docker:
+            dockerfile: build/package/Dockerfile
+    local: {}
+deploy:
+    helm:
+        releases: 
+        - name: stock-api-server
+          chartPath: deployments/charts/stock-api-server
+          namespace : dictybase
+          setValueTemplates:
+              image.tag: "{{.IMAGE_TAG}}"
+        
