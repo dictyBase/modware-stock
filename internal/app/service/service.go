@@ -3,15 +3,15 @@ package service
 import (
 	"context"
 	"fmt"
-	"strconv"
-
-	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
+	"time"
 
 	"github.com/dictyBase/apihelpers/aphgrpc"
 	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/message"
 	"github.com/dictyBase/modware-stock/internal/repository"
+	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
 )
 
@@ -575,19 +575,13 @@ func (s *StockService) LoadPlasmid(ctx context.Context, r *stock.ExistingPlasmid
 }
 
 func genNextStrainCursorVal(scd *stock.StrainCollection_Data) int64 {
-	tint, _ := strconv.ParseInt(
-		fmt.Sprintf("%d%d", scd.Attributes.CreatedAt.GetSeconds(), scd.Attributes.CreatedAt.GetNanos()),
-		10,
-		64,
-	)
-	return tint / 1000000
+	ts := ptypes.TimestampString(scd.Attributes.CreatedAt)
+	t, _ := time.Parse("2006-01-02T15:04:05Z", ts)
+	return t.UnixNano() / 1000000
 }
 
 func genNextPlasmidCursorVal(pcd *stock.PlasmidCollection_Data) int64 {
-	tint, _ := strconv.ParseInt(
-		fmt.Sprintf("%d%d", pcd.Attributes.CreatedAt.GetSeconds(), pcd.Attributes.CreatedAt.GetNanos()),
-		10,
-		64,
-	)
-	return tint / 1000000
+	ts := ptypes.TimestampString(pcd.Attributes.CreatedAt)
+	t, _ := time.Parse("2006-01-02T15:04:05Z", ts)
+	return t.UnixNano() / 1000000
 }
