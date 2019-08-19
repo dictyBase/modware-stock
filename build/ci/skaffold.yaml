@@ -9,12 +9,3 @@ build:
           docker:
             dockerfile: build/package/Dockerfile
     local: {}
-deploy:
-    helm:
-        releases: 
-        - name: stock-api-server
-          chartPath: deployments/charts/stock-api-server
-          namespace : dictybase
-          setValueTemplates:
-              image.tag: "{{.IMAGE_TAG}}"
-        
