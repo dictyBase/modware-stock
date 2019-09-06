@@ -807,16 +807,19 @@ func TestListStrainsWithFilter(t *testing.T) {
 		}
 	}
 	assert := assert.New(t)
-	filterOne := `FILTER s.depositor == 'george@costanza.com'`
 
+	filterOne := `FILTER s.depositor == 'george@costanza.com'`
 	sf, err := repo.ListStrains(&stock.StockParameters{Limit: 10, Filter: filterOne})
 	if err != nil {
 		t.Fatalf("error in getting list of strains with depositor george@costanza.com %s", err)
 	}
 	assert.Len(sf, 10, "should list ten strains")
+	for _, m := range sf {
+		assert.Equal(m.Summary, "Radiation-sensitive mutant.", "should match summary")
+		assert.Equal(m.StrainProperties.Label, "yS13", "should match label")
+	}
 
 	filterTwo := `FILTER s.depositor == 'george@costanza.com' AND s.depositor == 'rg@gmail.com'`
-
 	n, err := repo.ListStrains(&stock.StockParameters{Limit: 100, Filter: filterTwo})
 	if err != nil {
 		t.Fatalf("error in getting list of stocks with two depositors with AND logic %s", err)
@@ -827,7 +830,7 @@ func TestListStrainsWithFilter(t *testing.T) {
 						FILTER 'gammaS13' IN s.names 
 						RETURN 1
 					)`
-		// do a check for array filter
+	// do a check for array filter
 	as, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: filterThree})
 	if err != nil {
 		t.Fatalf("error in getting list of stocks with cursor and filter %s", err)
@@ -835,12 +838,25 @@ func TestListStrainsWithFilter(t *testing.T) {
 	assert.Len(as, 5, "should list five strains")
 
 	filterFour := `FILTER s.created_at <= DATE_ISO8601('2019')`
-
 	da, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: filterFour})
 	if err != nil {
 		t.Fatalf("error in getting list of stocks with cursor and date filter %s", err)
 	}
 	assert.Len(da, 0, "should list no strains")
+
+	filterFive := `FILTER v.label =~ 'yS'`
+	ff, err := repo.ListStrains(&stock.StockParameters{Limit: 10, Filter: filterFive})
+	if err != nil {
+		t.Fatalf("error in getting list of strains with label substring %s", err)
+	}
+	assert.Len(ff, 10, "should list ten strains")
+
+	filterSix := `FILTER s.summary =~ 'mutant'`
+	fs, err := repo.ListStrains(&stock.StockParameters{Limit: 10, Filter: filterSix})
+	if err != nil {
+		t.Fatalf("error in getting list of strains with summary substring %s", err)
+	}
+	assert.Len(fs, 10, "should list ten strains")
 }
 
 func TestListPlasmids(t *testing.T) {
