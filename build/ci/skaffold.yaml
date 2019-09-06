@@ -1,11 +1,30 @@
-apiVersion: skaffold/v1beta10
+apiVersion: skaffold/v1beta13
 kind: Config
 build:
-    tagPolicy:
+  tagPolicy:
+    envTemplate:
+      template: "{{.IMAGE_NAME}}:{{.IMAGE_TAG}}"
+  artifacts:
+    - image: dictybase/modware-stock
+      docker:
+        dockerfile: build/package/Dockerfile
+  local: {}
+profiles:
+  - name: ericdev
+    build:
+      tagPolicy:
         envTemplate:
-            template: "{{.IMAGE_NAME}}:{{.IMAGE_TAG}}"
-    artifacts:
+          template: "{{.IMAGE_NAME}}:ericdev-{{.IMAGE_TAG}}"
+      artifacts:
         - image: dictybase/modware-stock
           docker:
             dockerfile: build/package/Dockerfile
-    local: {}
+  - name: devsidd
+    build:
+      tagPolicy:
+        envTemplate:
+          template: "{{.IMAGE_NAME}}:devsidd-{{.IMAGE_TAG}}"
+      artifacts:
+        - image: dictybase/modware-stock
+          docker:
+            dockerfile: build/package/Dockerfile

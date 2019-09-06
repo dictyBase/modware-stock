@@ -12,5 +12,5 @@ var FMap = map[string]string{
 	"parent":       "parent",
 	"plasmid_name": "name",
 	"id":           "stock_id",
-	"descriptor":   "label",
+	"label":        "label",
 }

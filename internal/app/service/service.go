@@ -255,239 +255,155 @@ func (s *StockService) UpdatePlasmid(ctx context.Context, r *stock.PlasmidUpdate
 // ListStrains lists all existing strains
 func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters) (*stock.StrainCollection, error) {
 	sc := &stock.StrainCollection{}
-	var l int64
-	c := r.Cursor
-	f := r.Filter
-	if r.Limit == 0 {
-		l = 10
-	} else {
-		l = r.Limit
+	limit := int64(10)
+	if r.Limit > 10 {
+		limit = r.Limit
 	}
-	if len(f) > 0 {
-		p, err := query.ParseFilterString(f)
+	var astmt string
+	if len(r.Filter) > 0 {
+		p, err := query.ParseFilterString(r.Filter)
 		if err != nil {
-			return sc, fmt.Errorf("error parsing filter string: %s", err)
+			return sc, aphgrpc.HandleInvalidParamError(
+				ctx,
+				fmt.Errorf("error in parsing filter string"),
+			)
 		}
 		str, err := query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Doc: "s", Vert: "v"})
 		if err != nil {
-			return sc, fmt.Errorf("error generating AQL filter statement: %s", err)
+			return sc, aphgrpc.HandleInvalidParamError(
+				ctx,
+				fmt.Errorf("error in generating AQL statement"),
+			)
 		}
 		// if the parsed statement is empty FILTER, just return empty string
 		if str == "FILTER " {
 			str = ""
 		}
-		mc, err := s.repo.ListStrains(&stock.StockParameters{Cursor: c, Limit: l, Filter: str})
-		if err != nil {
-			return sc, aphgrpc.HandleGetError(ctx, err)
-		}
-		if len(mc) == 0 {
-			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any strains"))
-		}
-		var scdata []*stock.StrainCollection_Data
-		for _, m := range mc {
-			scdata = append(scdata, &stock.StrainCollection_Data{
-				Type: "strain",
-				Id:   m.Key,
-				Attributes: &stock.StrainAttributes{
-					CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-					UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-					CreatedBy:       m.CreatedBy,
-					UpdatedBy:       m.UpdatedBy,
-					Summary:         m.Summary,
-					EditableSummary: m.EditableSummary,
-					Depositor:       m.Depositor,
-					Genes:           m.Genes,
-					Dbxrefs:         m.Dbxrefs,
-					Publications:    m.Publications,
-					Label:           m.StrainProperties.Label,
-					Species:         m.StrainProperties.Species,
-					Plasmid:         m.StrainProperties.Plasmid,
-					Parent:          m.StrainProperties.Parent,
-					Names:           m.StrainProperties.Names,
-				},
-			})
-		}
-		if len(scdata) < int(l)-2 { // fewer results than limit
-			sc.Data = scdata
-			sc.Meta = &stock.Meta{
-				Limit:      l,
-				NextCursor: genNextStrainCursorVal(scdata[len(scdata)-1]),
-				Total:      int64(len(scdata)),
-			}
-			return sc, nil
-		}
-		sc.Data = scdata[:len(scdata)-1]
+		astmt = str
+	}
+	mc, err := s.repo.ListStrains(&stock.StockParameters{Cursor: r.Cursor, Limit: limit, Filter: astmt})
+	if err != nil {
+		return sc, aphgrpc.HandleGetError(ctx, err)
+	}
+	if len(mc) == 0 {
+		return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any strains"))
+	}
+	var sdata []*stock.StrainCollection_Data
+	for _, m := range mc {
+		sdata = append(sdata, &stock.StrainCollection_Data{
+			Type: "strain",
+			Id:   m.Key,
+			Attributes: &stock.StrainAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+				CreatedBy:       m.CreatedBy,
+				UpdatedBy:       m.UpdatedBy,
+				Summary:         m.Summary,
+				EditableSummary: m.EditableSummary,
+				Depositor:       m.Depositor,
+				Genes:           m.Genes,
+				Dbxrefs:         m.Dbxrefs,
+				Publications:    m.Publications,
+				Label:           m.StrainProperties.Label,
+				Species:         m.StrainProperties.Species,
+				Plasmid:         m.StrainProperties.Plasmid,
+				Parent:          m.StrainProperties.Parent,
+				Names:           m.StrainProperties.Names,
+			},
+		})
+	}
+	if len(sdata) < int(limit)-2 { // fewer results than limit
+		sc.Data = sdata
 		sc.Meta = &stock.Meta{
-			Limit:      l,
-			NextCursor: genNextStrainCursorVal(scdata[len(scdata)-1]),
-			Total:      int64(len(scdata)),
+			Limit:      limit,
+			NextCursor: genNextStrainCursorVal(sdata[len(sdata)-1]),
+			Total:      int64(len(sdata)),
 		}
-	} else {
-		mc, err := s.repo.ListStrains(&stock.StockParameters{Cursor: c, Limit: l})
-		if err != nil {
-			return sc, aphgrpc.HandleGetError(ctx, err)
-		}
-		if len(mc) == 0 {
-			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any strains"))
-		}
-		var scdata []*stock.StrainCollection_Data
-		for _, m := range mc {
-			scdata = append(scdata, &stock.StrainCollection_Data{
-				Type: "strain",
-				Id:   m.Key,
-				Attributes: &stock.StrainAttributes{
-					CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-					UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-					CreatedBy:       m.CreatedBy,
-					UpdatedBy:       m.UpdatedBy,
-					Summary:         m.Summary,
-					EditableSummary: m.EditableSummary,
-					Depositor:       m.Depositor,
-					Genes:           m.Genes,
-					Dbxrefs:         m.Dbxrefs,
-					Publications:    m.Publications,
-					Label:           m.StrainProperties.Label,
-					Species:         m.StrainProperties.Species,
-					Plasmid:         m.StrainProperties.Plasmid,
-					Parent:          m.StrainProperties.Parent,
-					Names:           m.StrainProperties.Names,
-				},
-			})
-		}
-		if len(scdata) < int(l)-2 { // fewer results than limit
-			sc.Data = scdata
-			sc.Meta = &stock.Meta{
-				Limit:      l,
-				NextCursor: genNextStrainCursorVal(scdata[len(scdata)-1]),
-				Total:      int64(len(scdata)),
-			}
-			return sc, nil
-		}
-		sc.Data = scdata[:len(scdata)-1]
-		sc.Meta = &stock.Meta{
-			Limit:      l,
-			NextCursor: genNextStrainCursorVal(scdata[len(scdata)-1]),
-			Total:      int64(len(scdata)),
-		}
+		return sc, nil
+	}
+	sc.Data = sdata[:len(sdata)-1]
+	sc.Meta = &stock.Meta{
+		Limit:      limit,
+		NextCursor: genNextStrainCursorVal(sdata[len(sdata)-1]),
+		Total:      int64(len(sdata)),
 	}
 	return sc, nil
 }
 
 // ListPlasmids lists all existing plasmids
 func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameters) (*stock.PlasmidCollection, error) {
-	sc := &stock.PlasmidCollection{}
-	var l int64
-	c := r.Cursor
-	f := r.Filter
-	if r.Limit == 0 {
-		l = 10
-	} else {
-		l = r.Limit
+	pc := &stock.PlasmidCollection{}
+	limit := int64(10)
+	if r.Limit > 10 {
+		limit = r.Limit
 	}
-	if len(f) > 0 {
-		p, err := query.ParseFilterString(f)
+	var astmt string
+	if len(r.Filter) > 0 {
+		p, err := query.ParseFilterString(r.Filter)
 		if err != nil {
-			return sc, fmt.Errorf("error parsing filter string: %s", err)
+			return pc, aphgrpc.HandleInvalidParamError(
+				ctx,
+				fmt.Errorf("error in parsing filter string"),
+			)
 		}
 		str, err := query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Doc: "s", Vert: "v"})
 		if err != nil {
-			return sc, fmt.Errorf("error generating AQL filter statement: %s", err)
+			return pc, aphgrpc.HandleInvalidParamError(
+				ctx,
+				fmt.Errorf("error in generating AQL statement"),
+			)
 		}
 		// if the parsed statement is empty FILTER, just return empty string
 		if str == "FILTER " {
 			str = ""
 		}
-		mc, err := s.repo.ListPlasmids(&stock.StockParameters{Cursor: c, Limit: l, Filter: str})
-		if err != nil {
-			return sc, aphgrpc.HandleGetError(ctx, err)
-		}
-		if len(mc) == 0 {
-			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any plasmids"))
-		}
-		var scdata []*stock.PlasmidCollection_Data
-		for _, m := range mc {
-			scdata = append(scdata, &stock.PlasmidCollection_Data{
-				Type: "plasmid",
-				Id:   m.Key,
-				Attributes: &stock.PlasmidAttributes{
-					CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-					UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-					CreatedBy:       m.CreatedBy,
-					UpdatedBy:       m.UpdatedBy,
-					Summary:         m.Summary,
-					EditableSummary: m.EditableSummary,
-					Depositor:       m.Depositor,
-					Genes:           m.Genes,
-					Dbxrefs:         m.Dbxrefs,
-					Publications:    m.Publications,
-					ImageMap:        m.PlasmidProperties.ImageMap,
-					Sequence:        m.PlasmidProperties.Sequence,
-					Name:            m.PlasmidProperties.Name,
-				},
-			})
-		}
-		if len(scdata) < int(l)-2 { // fewer results than limit
-			sc.Data = scdata
-			sc.Meta = &stock.Meta{
-				Limit:      l,
-				NextCursor: genNextPlasmidCursorVal(scdata[len(scdata)-1]),
-				Total:      int64(len(scdata)),
-			}
-			return sc, nil
-		}
-		sc.Data = scdata[:len(scdata)-1]
-		sc.Meta = &stock.Meta{
-			Limit:      l,
-			NextCursor: genNextPlasmidCursorVal(scdata[len(scdata)-1]),
-			Total:      int64(len(scdata)),
-		}
-	} else {
-		mc, err := s.repo.ListPlasmids(&stock.StockParameters{Cursor: c, Limit: l})
-		if err != nil {
-			return sc, aphgrpc.HandleGetError(ctx, err)
-		}
-		if len(mc) == 0 {
-			return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any plasmids"))
-		}
-		var scdata []*stock.PlasmidCollection_Data
-		for _, m := range mc {
-			scdata = append(scdata, &stock.PlasmidCollection_Data{
-				Type: "plasmid",
-				Id:   m.Key,
-				Attributes: &stock.PlasmidAttributes{
-					CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-					UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-					CreatedBy:       m.CreatedBy,
-					UpdatedBy:       m.UpdatedBy,
-					Summary:         m.Summary,
-					EditableSummary: m.EditableSummary,
-					Depositor:       m.Depositor,
-					Genes:           m.Genes,
-					Dbxrefs:         m.Dbxrefs,
-					Publications:    m.Publications,
-					ImageMap:        m.PlasmidProperties.ImageMap,
-					Sequence:        m.PlasmidProperties.Sequence,
-					Name:            m.PlasmidProperties.Name,
-				},
-			})
-		}
-		if len(scdata) < int(l)-2 { // fewer results than limit
-			sc.Data = scdata
-			sc.Meta = &stock.Meta{
-				Limit:      l,
-				NextCursor: genNextPlasmidCursorVal(scdata[len(scdata)-1]),
-				Total:      int64(len(scdata)),
-			}
-			return sc, nil
-		}
-		sc.Data = scdata[:len(scdata)-1]
-		sc.Meta = &stock.Meta{
-			Limit:      l,
-			NextCursor: genNextPlasmidCursorVal(scdata[len(scdata)-1]),
-			Total:      int64(len(scdata)),
-		}
+		astmt = str
 	}
-	return sc, nil
+	mc, err := s.repo.ListPlasmids(&stock.StockParameters{Cursor: r.Cursor, Limit: limit, Filter: astmt})
+	if err != nil {
+		return pc, aphgrpc.HandleGetError(ctx, err)
+	}
+	if len(mc) == 0 {
+		return pc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any plasmids"))
+	}
+	var pdata []*stock.PlasmidCollection_Data
+	for _, m := range mc {
+		pdata = append(pdata, &stock.PlasmidCollection_Data{
+			Type: "plasmid",
+			Id:   m.Key,
+			Attributes: &stock.PlasmidAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+				CreatedBy:       m.CreatedBy,
+				UpdatedBy:       m.UpdatedBy,
+				Summary:         m.Summary,
+				EditableSummary: m.EditableSummary,
+				Depositor:       m.Depositor,
+				Genes:           m.Genes,
+				Dbxrefs:         m.Dbxrefs,
+				Publications:    m.Publications,
+				ImageMap:        m.PlasmidProperties.ImageMap,
+				Sequence:        m.PlasmidProperties.Sequence,
+				Name:            m.PlasmidProperties.Name,
+			},
+		})
+	}
+	if len(pdata) < int(limit)-2 { // fewer results than limit
+		pc.Data = pdata
+		pc.Meta = &stock.Meta{
+			Limit:      limit,
+			NextCursor: genNextPlasmidCursorVal(pdata[len(pdata)-1]),
+			Total:      int64(len(pdata)),
+		}
+		return pc, nil
+	}
+	pc.Data = pdata[:len(pdata)-1]
+	pc.Meta = &stock.Meta{
+		Limit:      limit,
+		NextCursor: genNextPlasmidCursorVal(pdata[len(pdata)-1]),
+		Total:      int64(len(pdata)),
+	}
+	return pc, nil
 }
 
 // RemoveStock removes an existing stock
