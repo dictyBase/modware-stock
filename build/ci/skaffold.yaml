@@ -16,15 +16,15 @@ profiles:
         envTemplate:
           template: "{{.IMAGE_NAME}}:ericdev-{{.IMAGE_TAG}}"
       artifacts:
-        - image: dictybase/dicty-stock-center
+        - image: dictybase/modware-stock
           docker:
-            dockerfile: docker/eric-dev/Dockerfile
+            dockerfile: build/package/Dockerfile
   - name: devsidd
     build:
       tagPolicy:
         envTemplate:
           template: "{{.IMAGE_NAME}}:devsidd-{{.IMAGE_TAG}}"
       artifacts:
-        - image: dictybase/dicty-stock-center
+        - image: dictybase/modware-stock
           docker:
-            dockerfile: docker/sidd-dev/Dockerfile
+            dockerfile: build/package/Dockerfile
