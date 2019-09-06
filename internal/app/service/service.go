@@ -260,7 +260,9 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		limit = r.Limit
 	}
 	var astmt string
+	var vert bool
 	if len(r.Filter) > 0 {
+		// need to check if filter contains an item found in strain properties
 		p, err := query.ParseFilterString(r.Filter)
 		if err != nil {
 			return sc, aphgrpc.HandleInvalidParamError(
@@ -268,18 +270,32 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 				fmt.Errorf("error in parsing filter string"),
 			)
 		}
-		str, err := query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Doc: "s", Vert: "v"})
-		if err != nil {
-			return sc, aphgrpc.HandleInvalidParamError(
-				ctx,
-				fmt.Errorf("error in generating AQL statement"),
-			)
+		for _, n := range p {
+			if isInStockProp(n.Field) {
+				vert = true
+			}
+		}
+		if vert {
+			astmt, err = query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Vert: "v"})
+			if err != nil {
+				return sc, aphgrpc.HandleInvalidParamError(
+					ctx,
+					fmt.Errorf("error in generating AQL statement"),
+				)
+			}
+		} else {
+			astmt, err = query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Doc: "s"})
+			if err != nil {
+				return sc, aphgrpc.HandleInvalidParamError(
+					ctx,
+					fmt.Errorf("error in generating AQL statement"),
+				)
+			}
 		}
 		// if the parsed statement is empty FILTER, just return empty string
-		if str == "FILTER " {
-			str = ""
+		if astmt == "FILTER " {
+			astmt = ""
 		}
-		astmt = str
 	}
 	mc, err := s.repo.ListStrains(&stock.StockParameters{Cursor: r.Cursor, Limit: limit, Filter: astmt})
 	if err != nil {
@@ -338,6 +354,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 		limit = r.Limit
 	}
 	var astmt string
+	var vert bool
 	if len(r.Filter) > 0 {
 		p, err := query.ParseFilterString(r.Filter)
 		if err != nil {
@@ -346,18 +363,32 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 				fmt.Errorf("error in parsing filter string"),
 			)
 		}
-		str, err := query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Doc: "s", Vert: "v"})
-		if err != nil {
-			return pc, aphgrpc.HandleInvalidParamError(
-				ctx,
-				fmt.Errorf("error in generating AQL statement"),
-			)
+		for _, n := range p {
+			if isInStockProp(n.Field) {
+				vert = true
+			}
+		}
+		if vert {
+			astmt, err = query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Vert: "v"})
+			if err != nil {
+				return pc, aphgrpc.HandleInvalidParamError(
+					ctx,
+					fmt.Errorf("error in generating AQL statement"),
+				)
+			}
+		} else {
+			astmt, err = query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Doc: "s"})
+			if err != nil {
+				return pc, aphgrpc.HandleInvalidParamError(
+					ctx,
+					fmt.Errorf("error in generating AQL statement"),
+				)
+			}
 		}
 		// if the parsed statement is empty FILTER, just return empty string
-		if str == "FILTER " {
-			str = ""
+		if astmt == "FILTER " {
+			astmt = ""
 		}
-		astmt = str
 	}
 	mc, err := s.repo.ListPlasmids(&stock.StockParameters{Cursor: r.Cursor, Limit: limit, Filter: astmt})
 	if err != nil {
@@ -500,4 +531,20 @@ func genNextPlasmidCursorVal(pcd *stock.PlasmidCollection_Data) int64 {
 	ts := ptypes.TimestampString(pcd.Attributes.CreatedAt)
 	t, _ := time.Parse("2006-01-02T15:04:05Z", ts)
 	return t.UnixNano() / 1000000
+}
+
+func isInStockProp(property string) bool {
+	switch property {
+	case
+		"label",
+		"species",
+		"plasmid",
+		"parent",
+		"name",
+		"image_map",
+		"sequence",
+		"plasmid_name":
+		return true
+	}
+	return false
 }
