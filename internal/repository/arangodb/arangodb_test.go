@@ -765,12 +765,6 @@ func TestListStrains(t *testing.T) {
 	}
 	assert.Len(sf, 10, "should list ten strains")
 
-	n, err := repo.ListStrains(&stock.StockParameters{Limit: 100, Filter: convertFilterToQuery("depositor===george@costanza.com;depositor===rg@gmail.com")})
-	if err != nil {
-		t.Fatalf("error in getting list of stocks with two depositors with AND logic %s", err)
-	}
-	assert.Len(n, 0, "should list no strains")
-
 	cs, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[4].CreatedAt), Limit: 10})
 	if err != nil {
 		t.Fatalf("error in getting list of strains with cursor %s", err)
@@ -785,6 +779,64 @@ func TestListStrains(t *testing.T) {
 	assert.Len(as, 5, "should list five strains")
 
 	da, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: convertFilterToQuery("created_at$<=2019")})
+	if err != nil {
+		t.Fatalf("error in getting list of stocks with cursor and date filter %s", err)
+	}
+	assert.Len(da, 0, "should list no strains")
+}
+
+func TestListStrainsWithFilter(t *testing.T) {
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	if err != nil {
+		t.Fatalf("error in connecting to stock repository %s", err)
+	}
+	defer func() {
+		err := repo.ClearStocks()
+		if err != nil {
+			t.Fatalf("error in clearing stocks %s", err)
+		}
+	}()
+	// add 10 new test strains
+	for i := 1; i <= 10; i++ {
+		ns := newTestStrain(fmt.Sprintf("%s@kramericaindustries.com", RandString(10)))
+		_, err := repo.AddStrain(ns)
+		if err != nil {
+			t.Fatalf("error in adding strain %s", err)
+		}
+	}
+	assert := assert.New(t)
+	filterOne := `FILTER s.depositor == 'george@costanza.com'`
+
+	sf, err := repo.ListStrains(&stock.StockParameters{Limit: 10, Filter: filterOne})
+	if err != nil {
+		t.Fatalf("error in getting list of strains with depositor george@costanza.com %s", err)
+	}
+	assert.Len(sf, 10, "should list ten strains")
+
+	filterTwo := `FILTER s.depositor == 'george@costanza.com' AND s.depositor == 'rg@gmail.com'`
+
+	n, err := repo.ListStrains(&stock.StockParameters{Limit: 100, Filter: filterTwo})
+	if err != nil {
+		t.Fatalf("error in getting list of stocks with two depositors with AND logic %s", err)
+	}
+	assert.Len(n, 0, "should list no strains")
+
+	filterThree := `LET x = (
+						FILTER 'gammaS13' IN s.names 
+						RETURN 1
+					)`
+		// do a check for array filter
+	as, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: filterThree})
+	if err != nil {
+		t.Fatalf("error in getting list of stocks with cursor and filter %s", err)
+	}
+	assert.Len(as, 5, "should list five strains")
+
+	filterFour := `FILTER s.created_at <= DATE_ISO8601('2019')`
+
+	da, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: filterFour})
 	if err != nil {
 		t.Fatalf("error in getting list of stocks with cursor and date filter %s", err)
 	}
