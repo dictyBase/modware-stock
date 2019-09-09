@@ -262,7 +262,6 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 	var astmt string
 	var vert bool
 	if len(r.Filter) > 0 {
-		// need to check if filter contains an item found in strain properties
 		p, err := query.ParseFilterString(r.Filter)
 		if err != nil {
 			return sc, aphgrpc.HandleInvalidParamError(
@@ -270,6 +269,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 				fmt.Errorf("error in parsing filter string"),
 			)
 		}
+		// need to check if filter contains an item found in strain properties
 		for _, n := range p {
 			if isInStockProp(n.Field) {
 				vert = true

@@ -19,6 +19,8 @@ github.com/dictyBase/arangomanager v0.0.0-20190211195628-971aad3cbd68 h1:9tMcTXG
 github.com/dictyBase/arangomanager v0.0.0-20190211195628-971aad3cbd68/go.mod h1:ZKfo7JHpT9KfmJEJwZLhwoyCRBxIPW+IeX+13eUEIlg=
 github.com/dictyBase/arangomanager v0.0.0-20190906210819-64a1b541df58 h1:wrqypMENkK6AUyVef3Sl9RyFf5WB9bXNC9qaGqs3Fjk=
 github.com/dictyBase/arangomanager v0.0.0-20190906210819-64a1b541df58/go.mod h1:ZKfo7JHpT9KfmJEJwZLhwoyCRBxIPW+IeX+13eUEIlg=
+github.com/dictyBase/arangomanager v0.0.0-20190909184546-9e5e84e6ca31 h1:gUQL4D3CEaoSU5FYfEjpC6bwABBoEl1eykY53LejeqI=
+github.com/dictyBase/arangomanager v0.0.0-20190909184546-9e5e84e6ca31/go.mod h1:ZKfo7JHpT9KfmJEJwZLhwoyCRBxIPW+IeX+13eUEIlg=
 github.com/dictyBase/go-genproto v0.0.0-20190731000734-94f1379d56f1 h1:WIbEbucOJksFAXtZzRQ6+6MCTzW3kqchPWX2KVEydB0=
 github.com/dictyBase/go-genproto v0.0.0-20190731000734-94f1379d56f1/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
 github.com/emirpasic/gods v1.12.0 h1:QAUIPSaCu4G+POclxeqb3F+WPpdKqFGlw36+yOzGlrg=
