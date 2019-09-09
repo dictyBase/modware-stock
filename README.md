@@ -1,3 +1,5 @@
+https://img.shields.io/github/license/dictyBase/modware-stock?style=for-the-badge
+
 # modware-stock
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/dictybase/modware-stock)](https://goreportcard.com/report/github.com/dictybase/modware-stock)
