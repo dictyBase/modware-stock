@@ -1,4 +1,4 @@
-https://img.shields.io/github/license/dictyBase/modware-stock?style=for-the-badge
+[![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](LICENSE)
 
 # modware-stock
 
