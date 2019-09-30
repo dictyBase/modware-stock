@@ -33,7 +33,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	google.golang.org/grpc v1.17.0
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
-	gopkg.in/go-playground/validator.v9 v9.26.0
+	gopkg.in/go-playground/validator.v9 v9.30.0
 	gopkg.in/mgutz/dat.v2 v2.0.0-20171004160617-d76e4f81c4ef // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0
 )
