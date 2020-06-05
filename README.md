@@ -1,14 +1,34 @@
-[![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](LICENSE)
-
 # modware-stock
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/dictybase/modware-stock)](https://goreportcard.com/report/github.com/dictybase/modware-stock)
+[![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](LICENSE)  
+![GitHub action](https://github.com/dictyBase/modware-stock/workflows/Build/badge.svg)
+[![codecov](https://codecov.io/gh/dictyBase/modware-stock/branch/develop/graph/badge.svg)](https://codecov.io/gh/dictyBase/modware-stock)  
+[![Technical debt](https://badgen.net/codeclimate/tech-debt/dictyBase/modware-stock)](https://codeclimate.com/github/dictyBase/modware-stock/trends/technical_debt)
+[![Issues](https://badgen.net/codeclimate/issues/dictyBase/modware-stock)](https://codeclimate.com/github/dictyBase/modware-stock/issues)
+[![Maintainability](https://api.codeclimate.com/v1/badges/30e9b0421a28b8e0d941/maintainability)](https://codeclimate.com/github/dictyBase/modware-stock/maintainability)
+[![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=dictyBase/modware-stock)](https://dependabot.com)  
+![Issues](https://badgen.net/github/issues/dictyBase/modware-stock)
+![Open Issues](https://badgen.net/github/open-issues/dictyBase/modware-stock)
+![Closed Issues](https://badgen.net/github/closed-issues/dictyBase/modware-stock)  
+![Total PRS](https://badgen.net/github/prs/dictyBase/modware-stock)
+![Open PRS](https://badgen.net/github/open-prs/dictyBase/modware-stock)
+![Closed PRS](https://badgen.net/github/closed-prs/dictyBase/modware-stock)
+![Merged PRS](https://badgen.net/github/merged-prs/dictyBase/modware-stock)  
+![Commits](https://badgen.net/github/commits/dictyBase/modware-stock/develop)
+![Last commit](https://badgen.net/github/last-commit/dictyBase/modware-stock/develop)
+![Branches](https://badgen.net/github/branches/dictyBase/modware-stock)
+![Tags](https://badgen.net/github/tags/dictyBase/modware-stock/?color=cyan)  
+![GitHub repo size](https://img.shields.io/github/repo-size/dictyBase/modware-stock?style=plastic)
+![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/dictyBase/modware-stock?style=plastic)
+[![Lines of Code](https://badgen.net/codeclimate/loc/dictyBase/modware-stock)](https://codeclimate.com/github/dictyBase/modware-stock/code)  
+[![Funding](https://badgen.net/badge/NIGMS/Rex%20L%20Chisholm,dictyBase/yellow?list=|)](https://projectreporter.nih.gov/project_info_description.cfm?aid=9476993)
+[![Funding](https://badgen.net/badge/NIGMS/Rex%20L%20Chisholm,DSC/yellow?list=|)](https://projectreporter.nih.gov/project_info_description.cfm?aid=9438930)
 
 dictyBase API server to manage biological stocks. The API server supports gRPC protocol for data exchange.
 
 ## Usage
 
-```
+```bash
 NAME:
    modware-stock - cli for modware-stock microservice
 
@@ -31,7 +51,7 @@ GLOBAL OPTIONS:
 
 ## Subcommand
 
-```
+```bash
 NAME:
    modware-stock start-server - starts the modware-stock microservice with grpc backends
 
@@ -60,25 +80,30 @@ OPTIONS:
 
 ## Default Names
 
-**Collections**
+### Collections
 
 - stock
 - stockprop
 - stock_key_generator
 
-**Edge Collections**
+### Edge Collections
 
 - parent_strain
 - stock_type
 
-**Graphs**
+### Graphs
 
 - stockprop_type
 - strain2parent
 
-# API
+## API
 
 ### gRPC
 
 The protocol buffer definitions and service apis are documented
 [here](https://github.com/dictyBase/dictybaseapis/blob/master/dictybase/stock/stock.proto).
+
+## Active Developers
+
+<a href="https://sourcerer.io/cybersiddhu"><img src="https://sourcerer.io/assets/avatar/cybersiddhu" height="80px" alt="Sourcerer"></a>
+<a href="https://sourcerer.io/wildlifehexagon"><img src="https://sourcerer.io/assets/avatar/wildlifehexagon" height="80px" alt="Sourcerer"></a>
