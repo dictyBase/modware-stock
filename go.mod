@@ -23,7 +23,7 @@ require (
 	github.com/mgutz/to v1.0.0 // indirect
 	github.com/mwitkow/go-proto-validators v0.0.0-20180403085117-0950a7990007 // indirect
 	github.com/nats-io/gnatsd v1.4.0 // indirect
-	github.com/nats-io/go-nats v1.7.0
+	github.com/nats-io/go-nats v1.7.2
 	github.com/nats-io/nkeys v0.0.2 // indirect
 	github.com/nats-io/nuid v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
