@@ -13,6 +13,7 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 // StockService is the container for managing stock service
@@ -331,16 +332,15 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 	if len(sdata) < int(limit)-2 { // fewer results than limit
 		sc.Data = sdata
 		sc.Meta = &stock.Meta{
-			Limit:      limit,
-			NextCursor: genNextStrainCursorVal(sdata[len(sdata)-1]),
-			Total:      int64(len(sdata)),
+			Limit: limit,
+			Total: int64(len(sdata)),
 		}
 		return sc, nil
 	}
 	sc.Data = sdata[:len(sdata)-1]
 	sc.Meta = &stock.Meta{
 		Limit:      limit,
-		NextCursor: genNextStrainCursorVal(sdata[len(sdata)-1]),
+		NextCursor: genNextStrainCursorVal(sdata[len(sdata)-1].Attributes.CreatedAt),
 		Total:      int64(len(sdata)),
 	}
 	return sc, nil
@@ -422,16 +422,15 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 	if len(pdata) < int(limit)-2 { // fewer results than limit
 		pc.Data = pdata
 		pc.Meta = &stock.Meta{
-			Limit:      limit,
-			NextCursor: genNextPlasmidCursorVal(pdata[len(pdata)-1]),
-			Total:      int64(len(pdata)),
+			Limit: limit,
+			Total: int64(len(pdata)),
 		}
 		return pc, nil
 	}
 	pc.Data = pdata[:len(pdata)-1]
 	pc.Meta = &stock.Meta{
 		Limit:      limit,
-		NextCursor: genNextPlasmidCursorVal(pdata[len(pdata)-1]),
+		NextCursor: genNextPlasmidCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt),
 		Total:      int64(len(pdata)),
 	}
 	return pc, nil
@@ -521,14 +520,14 @@ func (s *StockService) LoadPlasmid(ctx context.Context, r *stock.ExistingPlasmid
 	return st, nil
 }
 
-func genNextStrainCursorVal(scd *stock.StrainCollection_Data) int64 {
-	ts := ptypes.TimestampString(scd.Attributes.CreatedAt)
+func genNextStrainCursorVal(c *timestamp.Timestamp) int64 {
+	ts := ptypes.TimestampString(c)
 	t, _ := time.Parse("2006-01-02T15:04:05Z", ts)
 	return t.UnixNano() / 1000000
 }
 
-func genNextPlasmidCursorVal(pcd *stock.PlasmidCollection_Data) int64 {
-	ts := ptypes.TimestampString(pcd.Attributes.CreatedAt)
+func genNextPlasmidCursorVal(c *timestamp.Timestamp) int64 {
+	ts := ptypes.TimestampString(c)
 	t, _ := time.Parse("2006-01-02T15:04:05Z", ts)
 	return t.UnixNano() / 1000000
 }
