@@ -162,23 +162,18 @@ func TestMain(m *testing.M) {
 }
 
 func TestEditStrain(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	ns := newUpdatableTestStrain("todd@gagg.com")
 	m, err := repo.AddStrain(ns)
-	if err != nil {
-		t.Fatalf("error in adding strain: %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	us := &stock.StrainUpdate{
 		Data: &stock.StrainUpdate_Data{
 			Type: ns.Data.Type,
@@ -196,10 +191,7 @@ func TestEditStrain(t *testing.T) {
 		},
 	}
 	um, err := repo.EditStrain(us)
-	if err != nil {
-		t.Fatalf("error in updating strain id %s: %s", m.StockID, err)
-	}
-	assert := assert.New(t)
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um.StockID, m.StockID, "should match the stock id")
 	assert.Equal(um.UpdatedBy, us.Data.Attributes.UpdatedBy, "should match updatedby")
 	assert.Equal(um.Depositor, m.Depositor, "depositor name should not be updated")
@@ -247,9 +239,7 @@ func TestEditStrain(t *testing.T) {
 
 	// test by adding parent strain
 	pm, err := repo.AddStrain(newTestParentStrain("tim@watley.org"))
-	if err != nil {
-		t.Fatalf("error in adding parent strain %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	us2 := &stock.StrainUpdate{
 		Data: &stock.StrainUpdate_Data{
 			Type: ns.Data.Type,
@@ -263,9 +253,7 @@ func TestEditStrain(t *testing.T) {
 		},
 	}
 	um2, err := repo.EditStrain(us2)
-	if err != nil {
-		t.Fatalf("error in updating strain id %s: %s", um.StockID, err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um2.StockID, um.StockID, "should match their id")
 	assert.Equal(um2.Depositor, us2.Data.Attributes.Depositor, "depositor name should be updated")
 	assert.Equal(um2.CreatedBy, m.CreatedBy, "created by should not be updated")
@@ -310,9 +298,7 @@ func TestEditStrain(t *testing.T) {
 	// add another new strain, let's make this one a parent
 	// so we can test updating parent if one already exists
 	pu, err := repo.AddStrain(newUpdatableTestStrain("castle@vania.org"))
-	if err != nil {
-		t.Fatalf("error in adding strain: %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	us3 := &stock.StrainUpdate{
 		Data: &stock.StrainUpdate_Data{
 			Type: ns.Data.Type,
@@ -324,9 +310,7 @@ func TestEditStrain(t *testing.T) {
 		},
 	}
 	um3, err := repo.EditStrain(us3)
-	if err != nil {
-		t.Fatalf("error in updating strain id %s: %s", um.StockID, err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
 		um3.StrainProperties.Parent,
 		us3.Data.Attributes.Parent,
@@ -337,24 +321,18 @@ func TestEditStrain(t *testing.T) {
 }
 
 func TestAddStrain(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	nsp := newTestParentStrain("todd@gagg.com")
 	m, err := repo.AddStrain(nsp)
-	if err != nil {
-		t.Fatalf("error in adding strain: %s", err)
-	}
-	assert := assert.New(t)
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), m.StockID, "should have a stock id")
 	assert.Equal(m.Key, m.StockID, "should have identical key and stock ID")
 	assert.Equal(m.CreatedBy, nsp.Data.Attributes.CreatedBy, "should match created_by id")
@@ -374,9 +352,7 @@ func TestAddStrain(t *testing.T) {
 	ns := newTestStrain("pennypacker@penny.com")
 	ns.Data.Attributes.Parent = m.StockID
 	m2, err := repo.AddStrain(ns)
-	if err != nil {
-		t.Fatalf("error in adding strain: %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), m2.StockID, "should have a stock id")
 	assert.Equal(m2.Key, m2.StockID, "should have identical key and stock ID")
 	assert.Equal(m2.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
@@ -419,24 +395,18 @@ func TestAddStrain(t *testing.T) {
 }
 
 func TestAddPlasmid(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	ns := newTestPlasmid("george@costanza.com")
 	m, err := repo.AddPlasmid(ns)
-	if err != nil {
-		t.Fatalf("error in adding plasmid: %s", err)
-	}
-	assert := assert.New(t)
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Regexp(regexp.MustCompile(`^DBP0\d{6,}$`), m.StockID, "should have a plasmid stock id")
 	assert.Equal(m.Key, m.StockID, "should have identical key and stock ID")
 	assert.Equal(m.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
@@ -469,23 +439,18 @@ func TestAddPlasmid(t *testing.T) {
 }
 
 func TestEditPlasmid(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	ns := newUpdatableTestPlasmid("art@vandelay.org")
 	m, err := repo.AddPlasmid(ns)
-	if err != nil {
-		t.Fatalf("error in adding plasmid: %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	us := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
 			Type: ns.Data.Type,
@@ -501,10 +466,7 @@ func TestEditPlasmid(t *testing.T) {
 		},
 	}
 	um, err := repo.EditPlasmid(us)
-	if err != nil {
-		t.Fatalf("error in updating plasmid %s", err)
-	}
-	assert := assert.New(t)
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um.StockID, m.StockID, "should match the stock id")
 	assert.Equal(um.UpdatedBy, us.Data.Attributes.UpdatedBy, "should match updatedby")
 	assert.Equal(um.Depositor, ns.Data.Attributes.Depositor, "depositor name should not be updated")
@@ -538,9 +500,7 @@ func TestEditPlasmid(t *testing.T) {
 		},
 	}
 	um2, err := repo.EditPlasmid(us2)
-	if err != nil {
-		t.Fatalf("error in reupdating the plasmid %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um2.StockID, um.StockID, "should match the previous stock id")
 	assert.Equal(um2.UpdatedBy, us2.Data.Attributes.UpdatedBy, "should have updated the updatedby field")
 	assert.ElementsMatch(um2.Genes, us2.Data.Attributes.Genes, "should have the genes list")
@@ -572,9 +532,7 @@ func TestEditPlasmid(t *testing.T) {
 		},
 	}
 	um3, err := repo.EditPlasmid(us3)
-	if err != nil {
-		t.Fatalf("error in reupdating the plasmid %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um3.StockID, um.StockID, "should match the original stock id")
 	assert.Equal(um3.UpdatedBy, us3.Data.Attributes.UpdatedBy, "should have updated the updatedby field")
 	assert.Equal(um3.Summary, us3.Data.Attributes.Summary, "should have updated the summary field")
@@ -587,28 +545,20 @@ func TestEditPlasmid(t *testing.T) {
 }
 
 func TestGetStrain(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	ns := newTestStrain("george@costanza.com")
 	m, err := repo.AddStrain(ns)
-	if err != nil {
-		t.Fatalf("error in adding strain %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	g, err := repo.GetStrain(m.StockID)
-	if err != nil {
-		t.Fatalf("error in getting stock %s with ID %s", m.StockID, err)
-	}
-	assert := assert.New(t)
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), g.StockID, "should have a strain stock id")
 	assert.Equal(g.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
 	assert.Equal(g.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
@@ -629,49 +579,30 @@ func TestGetStrain(t *testing.T) {
 	ns2 := newTestStrain("dead@cells.com")
 	ns2.Data.Attributes.Parent = m.StockID
 	m2, err := repo.AddStrain(ns2)
-	if err != nil {
-		t.Fatalf("error in adding strain %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	g2, err := repo.GetStrain(m2.StockID)
-	if err != nil {
-		t.Fatalf("error in getting stock %s with ID %s", m2.StockID, err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(g2.StrainProperties.Parent, m.StockID, "should match parent")
-
 	ne, err := repo.GetStrain("DBS01")
-	if err != nil {
-		t.Fatalf(
-			"error in fetching stock %s with ID %s",
-			"DBS01",
-			err,
-		)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.True(ne.NotFound, "entry should not exist")
 }
 
 func TestGetPlasmid(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	ns := newTestPlasmid("george@costanza.com")
 	m, err := repo.AddPlasmid(ns)
-	if err != nil {
-		t.Fatalf("error in adding strain %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	g, err := repo.GetPlasmid(m.StockID)
-	if err != nil {
-		t.Fatalf("error in getting stock %s with ID %s", m.StockID, err)
-	}
-	assert := assert.New(t)
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Regexp(regexp.MustCompile(`^DBP0\d{6,}$`), g.StockID, "should have a plasmid stock id")
 	assert.Equal(g.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
 	assert.Equal(g.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
@@ -685,43 +616,29 @@ func TestGetPlasmid(t *testing.T) {
 	assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
 
 	ne, err := repo.GetPlasmid("DBP01")
-	if err != nil {
-		t.Fatalf(
-			"error in fetching stock %s with ID %s",
-			"DBP01",
-			err,
-		)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.True(ne.NotFound, "entry should not exist")
 }
 
 func TestListStrains(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	// add 10 new test strains
 	for i := 1; i <= 10; i++ {
 		ns := newTestStrain(fmt.Sprintf("%s@kramericaindustries.com", RandString(10)))
 		_, err := repo.AddStrain(ns)
-		if err != nil {
-			t.Fatalf("error in adding strain %s", err)
-		}
+		assert.NoErrorf(err, "expect no error adding strain, received %s", err)
 	}
 	// get first five results
 	ls, err := repo.ListStrains(&stock.StockParameters{Limit: 4})
-	if err != nil {
-		t.Fatalf("error in getting first five stocks %s", err)
-	}
-	assert := assert.New(t)
+	assert.NoErrorf(err, "expect no error in getting first five stocks, received %s", err)
 	assert.Len(ls, 5, "should match the provided limit number + 1")
 
 	for _, stock := range ls {
@@ -736,9 +653,7 @@ func TestListStrains(t *testing.T) {
 
 	// get next five results (5-9)
 	ls2, err := repo.ListStrains(&stock.StockParameters{Cursor: ti, Limit: 4})
-	if err != nil {
-		t.Fatalf("error in getting stocks 5-9 %s", err)
-	}
+	assert.NoErrorf(err, "expect no error in getting stocks 5-9, received %s", err)
 	assert.Len(ls2, 5, "should match the provided limit number + 1")
 	assert.Exactly(ls2[0], ls[len(ls)-1], "last item from first five results and first item from next five results should be the same")
 	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different created_by fields")
@@ -747,9 +662,7 @@ func TestListStrains(t *testing.T) {
 	ti2 := toTimestamp(ls2[len(ls2)-1].CreatedAt)
 	// get last results (9-10)
 	ls3, err := repo.ListStrains(&stock.StockParameters{Cursor: ti2, Limit: 4})
-	if err != nil {
-		t.Fatalf("error in getting stocks 9-10 %s", err)
-	}
+	assert.NoErrorf(err, "expect no error in getting stocks 9-10, received %s", err)
 	assert.Len(ls3, 2, "should retrieve the last two results")
 	assert.Exactly(ls3[0], ls2[len(ls2)-1], "last item from previous five results and first item from next five results should be the same")
 
@@ -760,46 +673,33 @@ func TestListStrains(t *testing.T) {
 
 	filter := `FILTER s.depositor == 'george@costanza.com'`
 	sf, err := repo.ListStrains(&stock.StockParameters{Limit: 10, Filter: filter})
-	if err != nil {
-		t.Fatalf("error in getting list of strains with depositor george@costanza.com %s", err)
-	}
+	assert.NoErrorf(err, "expect no error in getting list of strains with depositor george@costanza.com, received %s", err)
 	assert.Len(sf, 10, "should list ten strains")
 
 	cs, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[4].CreatedAt), Limit: 10})
-	if err != nil {
-		t.Fatalf("error in getting list of strains with cursor %s", err)
-	}
+	assert.NoErrorf(err, "expect no error getting list of strains with cursor, received %s", err)
 	assert.Len(cs, 6, "should list six strains")
 }
 
 func TestListStrainsWithFilter(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	// add 10 new test strains
 	for i := 1; i <= 10; i++ {
 		ns := newTestStrain(fmt.Sprintf("%s@kramericaindustries.com", RandString(10)))
 		_, err := repo.AddStrain(ns)
-		if err != nil {
-			t.Fatalf("error in adding strain %s", err)
-		}
+		assert.NoErrorf(err, "expect no error adding strain, received %s", err)
 	}
-	assert := assert.New(t)
-
 	filterOne := `FILTER s.depositor == 'george@costanza.com'`
 	sf, err := repo.ListStrains(&stock.StockParameters{Limit: 10, Filter: filterOne})
-	if err != nil {
-		t.Fatalf("error in getting list of strains with depositor george@costanza.com %s", err)
-	}
+	assert.NoErrorf(err, "expect no error getting list of strains, received %s", err)
 	assert.Len(sf, 10, "should list ten strains")
 	for _, m := range sf {
 		assert.Equal(m.Summary, "Radiation-sensitive mutant.", "should match summary")
@@ -808,9 +708,7 @@ func TestListStrainsWithFilter(t *testing.T) {
 
 	filterTwo := `FILTER s.depositor == 'george@costanza.com' AND s.depositor == 'rg@gmail.com'`
 	n, err := repo.ListStrains(&stock.StockParameters{Limit: 100, Filter: filterTwo})
-	if err != nil {
-		t.Fatalf("error in getting list of stocks with two depositors with AND logic %s", err)
-	}
+	assert.NoErrorf(err, "expect no error getting list of stocks with two depositors with AND logic, received %s", err)
 	assert.Len(n, 0, "should list no strains")
 
 	filterThree := `LET x = (
@@ -819,60 +717,44 @@ func TestListStrainsWithFilter(t *testing.T) {
 					)`
 	// do a check for array filter
 	as, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: filterThree})
-	if err != nil {
-		t.Fatalf("error in getting list of stocks with cursor and filter %s", err)
-	}
+	assert.NoErrorf(err, "expect no error getting list of stocks with cursor and filter, received %s", err)
 	assert.Len(as, 5, "should list five strains")
 
 	filterFour := `FILTER s.created_at <= DATE_ISO8601('2019')`
 	da, err := repo.ListStrains(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: filterFour})
-	if err != nil {
-		t.Fatalf("error in getting list of stocks with cursor and date filter %s", err)
-	}
+	assert.NoErrorf(err, "expect no error getting list of stocks with cursor and date filter, received %s", err)
 	assert.Len(da, 0, "should list no strains")
 
 	filterFive := `FILTER v.label =~ 'yS'`
 	ff, err := repo.ListStrains(&stock.StockParameters{Limit: 10, Filter: filterFive})
-	if err != nil {
-		t.Fatalf("error in getting list of strains with label substring %s", err)
-	}
+	assert.NoErrorf(err, "expect no error getting list of strains with label substring, received %s", err)
 	assert.Len(ff, 10, "should list ten strains")
 
 	filterSix := `FILTER s.summary =~ 'mutant'`
 	fs, err := repo.ListStrains(&stock.StockParameters{Limit: 10, Filter: filterSix})
-	if err != nil {
-		t.Fatalf("error in getting list of strains with summary substring %s", err)
-	}
+	assert.NoErrorf(err, "expect no error getting list of strains with summary substring, received %s", err)
 	assert.Len(fs, 10, "should list ten strains")
 }
 
 func TestListPlasmids(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	// add ten new test plasmids
 	for i := 1; i <= 10; i++ {
 		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
 		_, err := repo.AddPlasmid(np)
-		if err != nil {
-			t.Fatalf("error in adding plasmid %s", err)
-		}
+		assert.NoErrorf(err, "expect no error adding plasmid, received %s", err)
 	}
 	// get first five results
 	ls, err := repo.ListPlasmids(&stock.StockParameters{Limit: 4})
-	if err != nil {
-		t.Fatalf("error in getting first five plasmids %s", err)
-	}
-	assert := assert.New(t)
+	assert.NoErrorf(err, "expect no error getting first five plasmids, received %s", err)
 	assert.Len(ls, 5, "should match the provided limit number + 1")
 
 	for _, stock := range ls {
@@ -887,9 +769,7 @@ func TestListPlasmids(t *testing.T) {
 
 	// get next five results (5-9)
 	ls2, err := repo.ListPlasmids(&stock.StockParameters{Cursor: ti, Limit: 4})
-	if err != nil {
-		t.Fatalf("error in getting plasmids 5-9 %s", err)
-	}
+	assert.NoErrorf(err, "expect no error getting plasmids 5-9, received %s", err)
 	assert.Len(ls2, 5, "should match the provided limit number + 1")
 	assert.Exactly(ls2[0], ls[len(ls)-1], "last item from first five results and first item from next five results should be the same")
 	assert.NotEqual(ls2[0].CreatedBy, ls2[1].CreatedBy, "should have different created_by fields")
@@ -898,9 +778,7 @@ func TestListPlasmids(t *testing.T) {
 	ti2 := toTimestamp(ls2[len(ls2)-1].CreatedAt)
 	// get last results (9-10)
 	ls3, err := repo.ListPlasmids(&stock.StockParameters{Cursor: ti2, Limit: 4})
-	if err != nil {
-		t.Fatalf("error in getting plasmids 9-10 %s", err)
-	}
+	assert.NoErrorf(err, "expect no error getting plasmids 9-10, received %s", err)
 	assert.Len(ls3, 2, "should retrieve the last two results")
 	assert.Exactly(ls3[0].CreatedBy, ls2[len(ls2)-1].CreatedBy, "last item from previous five results and first item from next five results should be the same")
 
@@ -910,46 +788,33 @@ func TestListPlasmids(t *testing.T) {
 
 	filter := `FILTER s.depositor == 'george@costanza.com'`
 	sf, err := repo.ListPlasmids(&stock.StockParameters{Limit: 100, Filter: filter})
-	if err != nil {
-		t.Fatalf("error in getting list of plasmids with depositor george@costanza.com %s", err)
-	}
+	assert.NoErrorf(err, "expect no error getting list of plasmids, received %s", err)
 	assert.Len(sf, 10, "should list ten plasmids")
 
 	cs, err := repo.ListPlasmids(&stock.StockParameters{Cursor: toTimestamp(sf[4].CreatedAt), Limit: 10})
-	if err != nil {
-		t.Fatalf("error in getting list of plasmids with cursor %s", err)
-	}
+	assert.NoErrorf(err, "expect no error getting list of plasmids with cursor, received %s", err)
 	assert.Len(cs, 6, "should list six plasmids")
 }
 
 func TestListPlasmidsWithFilter(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	// add 10 new test plasmids
 	for i := 1; i <= 10; i++ {
 		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
 		_, err := repo.AddPlasmid(np)
-		if err != nil {
-			t.Fatalf("error in adding plasmid %s", err)
-		}
+		assert.NoErrorf(err, "expect no error, received %s", err)
 	}
-	assert := assert.New(t)
-
 	filterOne := `FILTER s.depositor == 'george@costanza.com'`
 	sf, err := repo.ListPlasmids(&stock.StockParameters{Limit: 10, Filter: filterOne})
-	if err != nil {
-		t.Fatalf("error in getting list of plasmids with depositor george@costanza.com %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(sf, 10, "should list ten plasmids")
 	for _, m := range sf {
 		assert.Equal(m.Summary, "this is a test plasmid", "should match summary")
@@ -958,9 +823,7 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 
 	filterTwo := `FILTER s.depositor == 'george@costanza.com' AND s.depositor == 'rg@gmail.com'`
 	n, err := repo.ListPlasmids(&stock.StockParameters{Limit: 100, Filter: filterTwo})
-	if err != nil {
-		t.Fatalf("error in getting list of stocks with two depositors with AND logic %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(n, 0, "should list no plasmids")
 
 	filterThree := `LET x = (
@@ -969,73 +832,47 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 					)`
 	// do a check for array filter
 	as, err := repo.ListPlasmids(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: filterThree})
-	if err != nil {
-		t.Fatalf("error in getting list of stocks with cursor and filter %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(as, 5, "should list five plasmids")
 
 	filterFour := `FILTER s.created_at <= DATE_ISO8601('2019')`
 	da, err := repo.ListPlasmids(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: filterFour})
-	if err != nil {
-		t.Fatalf("error in getting list of stocks with cursor and date filter %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(da, 0, "should list no plasmids")
 
 	filterFive := `FILTER v.sequence =~ 'ttttt'`
 	ff, err := repo.ListPlasmids(&stock.StockParameters{Limit: 10, Filter: filterFive})
-	if err != nil {
-		t.Fatalf("error in getting list of plasmids with sequence substring %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(ff, 10, "should list ten plasmids")
 
 	filterSix := `FILTER s.summary =~ 'test'`
 	fs, err := repo.ListPlasmids(&stock.StockParameters{Limit: 10, Filter: filterSix})
-	if err != nil {
-		t.Fatalf("error in getting list of plasmids with summary substring %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(fs, 10, "should list ten plasmids")
 
 	filterSeven := `FILTER s.depositor == 'george@costanza.com' OR v.name == 'gammaS13'`
 	fv, err := repo.ListPlasmids(&stock.StockParameters{Cursor: toTimestamp(sf[5].CreatedAt), Limit: 10, Filter: filterSeven})
-	if err != nil {
-		t.Fatalf("error in getting list of plasmids with cursor and OR filter %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(fv, 5, "should list five plasmids")
 }
 
 func TestRemoveStock(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	ns := newTestStrain("george@costanza.com")
 	m, err := repo.AddStrain(ns)
-	if err != nil {
-		t.Fatalf("error in adding strain: %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	err = repo.RemoveStock(m.Key)
-	if err != nil {
-		t.Fatalf("error in removing stock %s with key %s",
-			m.Key,
-			err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	ne, err := repo.GetStrain(m.Key)
-	if err != nil {
-		t.Fatalf(
-			"error in fetching stock %s with ID %s",
-			m.Key,
-			err,
-		)
-	}
-	assert := assert.New(t)
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.True(ne.NotFound, "entry should not exist")
 	// try removing nonexistent stock
 	e := repo.RemoveStock("xyz")
@@ -1043,17 +880,14 @@ func TestRemoveStock(t *testing.T) {
 }
 
 func TestLoadStockWithStrains(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
 	nsp := &stock.ExistingStrain{
@@ -1076,10 +910,7 @@ func TestLoadStockWithStrains(t *testing.T) {
 		},
 	}
 	m, err := repo.LoadStrain("DBS0252873", nsp)
-	if err != nil {
-		t.Fatalf("error in adding strain: %s", err)
-	}
-	assert := assert.New(t)
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.True(m.CreatedAt.Equal(tm), "should match created_at")
 	assert.Equal("DBS0252873", m.StockID, "should match given stock id")
 	assert.Equal(m.Key, m.StockID, "should have identical key and stock ID")
@@ -1118,9 +949,7 @@ func TestLoadStockWithStrains(t *testing.T) {
 	}
 	ns.Data.Attributes.Parent = m.StockID
 	m2, err := repo.LoadStrain("DBS0235412", ns)
-	if err != nil {
-		t.Fatalf("error in adding strain: %s", err)
-	}
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal("DBS0235412", m2.StockID, "should match given stock id")
 	assert.Equal(m2.Key, m2.StockID, "should have identical key and stock ID")
 	assert.Equal(m2.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
@@ -1163,17 +992,14 @@ func TestLoadStockWithStrains(t *testing.T) {
 }
 
 func TestLoadStockWithPlasmids(t *testing.T) {
+	assert := assert.New(t)
 	connP := getConnectParams()
 	collP := getCollectionParams()
 	repo, err := NewStockRepo(connP, collP)
-	if err != nil {
-		t.Fatalf("error in connecting to stock repository %s", err)
-	}
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 	defer func() {
 		err := repo.ClearStocks()
-		if err != nil {
-			t.Fatalf("error in clearing stocks %s", err)
-		}
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
 	}()
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
 	ns := &stock.ExistingPlasmid{
@@ -1196,10 +1022,7 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 		},
 	}
 	m, err := repo.LoadPlasmid("DBP0000098", ns)
-	if err != nil {
-		t.Fatalf("error in adding plasmid: %s", err)
-	}
-	assert := assert.New(t)
+	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal("DBP0000098", m.StockID, "should match given plasmid stock id")
 	assert.Equal(m.Key, m.StockID, "should have identical key and stock ID")
 	assert.Equal(m.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
@@ -1271,4 +1094,3 @@ func RandString(length int) string {
 func toTimestamp(t time.Time) int64 {
 	return t.UnixNano() / 1000000
 }
-
