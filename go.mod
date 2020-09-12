@@ -9,7 +9,7 @@ require (
 	github.com/dictyBase/go-genproto v0.0.0-20190731000734-94f1379d56f1
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/golang/protobuf v1.4.2
-	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/grpc-gateway v1.7.0 // indirect
 	github.com/jmoiron/sqlx v1.2.0 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
