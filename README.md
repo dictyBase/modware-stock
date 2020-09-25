@@ -1,12 +1,11 @@
 # modware-stock
 
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](LICENSE)  
-![GitHub action](https://github.com/dictyBase/modware-stock/workflows/Build/badge.svg)
+![GitHub action](https://github.com/dictyBase/modware-stock/workflows/Continuous%20integration/badge.svg)
 [![codecov](https://codecov.io/gh/dictyBase/modware-stock/branch/develop/graph/badge.svg)](https://codecov.io/gh/dictyBase/modware-stock)  
 [![Technical debt](https://badgen.net/codeclimate/tech-debt/dictyBase/modware-stock)](https://codeclimate.com/github/dictyBase/modware-stock/trends/technical_debt)
 [![Issues](https://badgen.net/codeclimate/issues/dictyBase/modware-stock)](https://codeclimate.com/github/dictyBase/modware-stock/issues)
-[![Maintainability](https://api.codeclimate.com/v1/badges/30e9b0421a28b8e0d941/maintainability)](https://codeclimate.com/github/dictyBase/modware-stock/maintainability)
-[![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=dictyBase/modware-stock)](https://dependabot.com)  
+[![Maintainability](https://api.codeclimate.com/v1/badges/30e9b0421a28b8e0d941/maintainability)](https://codeclimate.com/github/dictyBase/modware-stock/maintainability)  
 ![Issues](https://badgen.net/github/issues/dictyBase/modware-stock)
 ![Open Issues](https://badgen.net/github/open-issues/dictyBase/modware-stock)
 ![Closed Issues](https://badgen.net/github/closed-issues/dictyBase/modware-stock)  
