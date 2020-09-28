@@ -12,13 +12,8 @@ image:
 #
 # connection endpoint http or https(ssl)
 endpoint: https
-##
-# credentials for connection
-# database:
-# name:
-# user:
-# password:
-  
+
+# values for database
 dictybaseConfiguration:
   configMap:
     name: dictybase-configuration
