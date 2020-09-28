@@ -18,6 +18,15 @@ endpoint: https
 # name:
 # user:
 # password:
+  
+dictybaseConfiguration:
+  configMap:
+    name: dictybase-configuration
+    user: arangodb.user
+    database: arangodb.modware-stock
+  secrets:
+    name: dictybase-configuration
+    password: arangodb.password
 
 service:
   name: stock-api
