@@ -17,7 +17,6 @@ require (
 	google.golang.org/grpc v1.33.2
 	gopkg.in/go-playground/validator.v9 v9.31.0
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
-	gopkg.in/urfave/cli.v1 v1.20.0
 )
 
 go 1.13
