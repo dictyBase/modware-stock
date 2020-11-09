@@ -298,6 +298,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 			astmt = ""
 		}
 	}
+	fmt.Printf("got statement %s\n", astmt)
 	mc, err := s.repo.ListStrains(&stock.StockParameters{Cursor: r.Cursor, Limit: limit, Filter: astmt})
 	if err != nil {
 		return sc, aphgrpc.HandleGetError(ctx, err)
