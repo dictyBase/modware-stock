@@ -1,13 +1,13 @@
 module github.com/dictyBase/modware-stock
 
 require (
-	github.com/arangodb/go-driver v0.0.0-20190123094303-4da7b19c6d72
-	github.com/arangodb/go-velocypack v0.0.0-20190129082528-7896a965b4ad // indirect
+	github.com/arangodb/go-driver v0.0.0-20201106193344-56ae8fd24510
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
 	github.com/dictyBase/apihelpers v0.0.0-20181218160245-dce81474776f
-	github.com/dictyBase/arangomanager v0.0.0-20190909184546-9e5e84e6ca31
+	github.com/dictyBase/arangomanager v0.2.2
 	github.com/dictyBase/go-genproto v0.0.0-20190731000734-94f1379d56f1
 	github.com/garyburd/redigo v1.6.0 // indirect
+	github.com/go-playground/validator/v10 v10.4.1 // indirect
 	github.com/golang/protobuf v1.4.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/grpc-gateway v1.7.0 // indirect
@@ -29,8 +29,11 @@ require (
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
+	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
+	golang.org/x/sys v0.0.0-20201109165425-215b40eba54c // indirect
 	google.golang.org/grpc v1.33.2
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
+	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.31.0
 	gopkg.in/mgutz/dat.v2 v2.0.0-20171004160617-d76e4f81c4ef // indirect
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
