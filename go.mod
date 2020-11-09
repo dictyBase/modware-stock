@@ -2,40 +2,20 @@ module github.com/dictyBase/modware-stock
 
 require (
 	github.com/arangodb/go-driver v0.0.0-20201106193344-56ae8fd24510
-	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
-	github.com/dictyBase/apihelpers v0.0.0-20181218160245-dce81474776f
+	github.com/dictyBase/apihelpers v0.0.0-20191119134328-9ff59ee4c896
 	github.com/dictyBase/arangomanager v0.2.2
 	github.com/dictyBase/go-genproto v0.0.0-20190731000734-94f1379d56f1
-	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
 	github.com/golang/protobuf v1.4.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
-	github.com/grpc-ecosystem/grpc-gateway v1.7.0 // indirect
-	github.com/jmoiron/sqlx v1.2.0 // indirect
-	github.com/kr/pretty v0.1.0 // indirect
-	github.com/mattn/go-colorable v0.1.0 // indirect
-	github.com/mattn/go-isatty v0.0.4 // indirect
-	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
-	github.com/mgutz/jo v1.1.0 // indirect
-	github.com/mgutz/logxi v0.0.0-20161027140823-aebf8a7d67ab // indirect
-	github.com/mgutz/str v1.2.0 // indirect
-	github.com/mgutz/to v1.0.0 // indirect
-	github.com/mwitkow/go-proto-validators v0.0.0-20180403085117-0950a7990007 // indirect
-	github.com/nats-io/gnatsd v1.4.0 // indirect
 	github.com/nats-io/go-nats v1.7.2
-	github.com/nats-io/nkeys v0.0.2 // indirect
-	github.com/nats-io/nuid v1.0.0 // indirect
-	github.com/pmylund/go-cache v2.1.0+incompatible // indirect
-	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
+	github.com/urfave/cli v1.22.4
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
 	golang.org/x/sys v0.0.0-20201109165425-215b40eba54c // indirect
 	google.golang.org/grpc v1.33.2
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
-	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.31.0
-	gopkg.in/mgutz/dat.v2 v2.0.0-20171004160617-d76e4f81c4ef // indirect
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0
 )
