@@ -7,7 +7,7 @@ import (
 	arangoflag "github.com/dictyBase/arangomanager/command/flag"
 	"github.com/dictyBase/modware-stock/internal/app/server"
 	"github.com/dictyBase/modware-stock/internal/app/validate"
-	cli "gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 func main() {

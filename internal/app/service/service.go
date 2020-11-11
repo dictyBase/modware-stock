@@ -16,6 +16,17 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
+var stockProp = map[string]int{
+	"label":        1,
+	"species":      1,
+	"plasmid":      1,
+	"parent":       1,
+	"name":         1,
+	"image_map":    1,
+	"sequence":     1,
+	"plasmid_name": 1,
+}
+
 // StockService is the container for managing stock service
 // definition
 type StockService struct {
@@ -272,8 +283,9 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		}
 		// need to check if filter contains an item found in strain properties
 		for _, n := range p {
-			if isInStockProp(n.Field) {
+			if _, ok := stockProp[n.Field]; ok {
 				vert = true
+				break
 			}
 		}
 		if vert {
@@ -340,7 +352,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 	sc.Data = sdata[:len(sdata)-1]
 	sc.Meta = &stock.Meta{
 		Limit:      limit,
-		NextCursor: genNextStrainCursorVal(sdata[len(sdata)-1].Attributes.CreatedAt),
+		NextCursor: genNextCursorVal(sdata[len(sdata)-1].Attributes.CreatedAt),
 		Total:      int64(len(sdata)),
 	}
 	return sc, nil
@@ -364,8 +376,9 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 			)
 		}
 		for _, n := range p {
-			if isInStockProp(n.Field) {
+			if _, ok := stockProp[n.Field]; ok {
 				vert = true
+				break
 			}
 		}
 		if vert {
@@ -430,7 +443,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 	pc.Data = pdata[:len(pdata)-1]
 	pc.Meta = &stock.Meta{
 		Limit:      limit,
-		NextCursor: genNextPlasmidCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt),
+		NextCursor: genNextCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt),
 		Total:      int64(len(pdata)),
 	}
 	return pc, nil
@@ -520,30 +533,8 @@ func (s *StockService) LoadPlasmid(ctx context.Context, r *stock.ExistingPlasmid
 	return st, nil
 }
 
-func genNextStrainCursorVal(c *timestamp.Timestamp) int64 {
+func genNextCursorVal(c *timestamp.Timestamp) int64 {
 	ts := ptypes.TimestampString(c)
 	t, _ := time.Parse("2006-01-02T15:04:05Z", ts)
 	return t.UnixNano() / 1000000
-}
-
-func genNextPlasmidCursorVal(c *timestamp.Timestamp) int64 {
-	ts := ptypes.TimestampString(c)
-	t, _ := time.Parse("2006-01-02T15:04:05Z", ts)
-	return t.UnixNano() / 1000000
-}
-
-func isInStockProp(property string) bool {
-	switch property {
-	case
-		"label",
-		"species",
-		"plasmid",
-		"parent",
-		"name",
-		"image_map",
-		"sequence",
-		"plasmid_name":
-		return true
-	}
-	return false
 }
