@@ -352,7 +352,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 	sc.Data = sdata[:len(sdata)-1]
 	sc.Meta = &stock.Meta{
 		Limit:      limit,
-		NextCursor: genNextStrainCursorVal(sdata[len(sdata)-1].Attributes.CreatedAt),
+		NextCursor: genNextCursorVal(sdata[len(sdata)-1].Attributes.CreatedAt),
 		Total:      int64(len(sdata)),
 	}
 	return sc, nil
@@ -443,7 +443,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 	pc.Data = pdata[:len(pdata)-1]
 	pc.Meta = &stock.Meta{
 		Limit:      limit,
-		NextCursor: genNextPlasmidCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt),
+		NextCursor: genNextCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt),
 		Total:      int64(len(pdata)),
 	}
 	return pc, nil
@@ -533,13 +533,7 @@ func (s *StockService) LoadPlasmid(ctx context.Context, r *stock.ExistingPlasmid
 	return st, nil
 }
 
-func genNextStrainCursorVal(c *timestamp.Timestamp) int64 {
-	ts := ptypes.TimestampString(c)
-	t, _ := time.Parse("2006-01-02T15:04:05Z", ts)
-	return t.UnixNano() / 1000000
-}
-
-func genNextPlasmidCursorVal(c *timestamp.Timestamp) int64 {
+func genNextCursorVal(c *timestamp.Timestamp) int64 {
 	ts := ptypes.TimestampString(c)
 	t, _ := time.Parse("2006-01-02T15:04:05Z", ts)
 	return t.UnixNano() / 1000000
