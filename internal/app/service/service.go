@@ -376,8 +376,9 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 			)
 		}
 		for _, n := range p {
-			if isInStockProp(n.Field) {
+			if _, ok := stockProp[n.Field]; ok {
 				vert = true
+				break
 			}
 		}
 		if vert {
