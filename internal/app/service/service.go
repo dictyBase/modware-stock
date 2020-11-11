@@ -16,6 +16,17 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
+var stockProp = map[string]int{
+	"label":        1,
+	"species":      1,
+	"plasmid":      1,
+	"parent":       1,
+	"name":         1,
+	"image_map":    1,
+	"sequence":     1,
+	"plasmid_name": 1,
+}
+
 // StockService is the container for managing stock service
 // definition
 type StockService struct {
@@ -272,8 +283,9 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		}
 		// need to check if filter contains an item found in strain properties
 		for _, n := range p {
-			if isInStockProp(n.Field) {
+			if _, ok := stockProp[n.Field]; ok {
 				vert = true
+				break
 			}
 		}
 		if vert {
@@ -298,7 +310,6 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 			astmt = ""
 		}
 	}
-	fmt.Printf("got statement %s\n", astmt)
 	mc, err := s.repo.ListStrains(&stock.StockParameters{Cursor: r.Cursor, Limit: limit, Filter: astmt})
 	if err != nil {
 		return sc, aphgrpc.HandleGetError(ctx, err)
@@ -531,20 +542,4 @@ func genNextPlasmidCursorVal(c *timestamp.Timestamp) int64 {
 	ts := ptypes.TimestampString(c)
 	t, _ := time.Parse("2006-01-02T15:04:05Z", ts)
 	return t.UnixNano() / 1000000
-}
-
-func isInStockProp(property string) bool {
-	switch property {
-	case
-		"label",
-		"species",
-		"plasmid",
-		"parent",
-		"name",
-		"image_map",
-		"sequence",
-		"plasmid_name":
-		return true
-	}
-	return false
 }
