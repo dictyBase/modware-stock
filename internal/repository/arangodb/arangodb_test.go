@@ -649,6 +649,10 @@ func TestListStrainsByIds(t *testing.T) {
 		assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), stock.StockID, "should have a strain stock id")
 	}
 	assert.NotEqual(ls[0].CreatedBy, ls[1].CreatedBy, "should have different created_by")
+	// Non-existing ids
+	els, err := repo.ListStrainsByIds(&stock.StockIdList{Id: []string{"DBN589343", "DBN48473232"}})
+	assert.NoErrorf(err, "expect no error in getting first five stocks, received %s", err)
+	assert.Len(els, 0, "should get empty list of strain")
 }
 
 func TestListStrains(t *testing.T) {
