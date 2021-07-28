@@ -620,6 +620,37 @@ func TestGetPlasmid(t *testing.T) {
 	assert.True(ne.NotFound, "entry should not exist")
 }
 
+func TestListStrainsByIds(t *testing.T) {
+	assert := assert.New(t)
+	connP := getConnectParams()
+	collP := getCollectionParams()
+	repo, err := NewStockRepo(connP, collP)
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
+	defer func() {
+		err := repo.ClearStocks()
+		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
+	}()
+	// add 10 new test strains
+	ids := make([]string, 0)
+	for i := 1; i <= 30; i++ {
+		ns := newTestStrain(fmt.Sprintf("%s@kramericaindustries.com", RandString(10)))
+		m, err := repo.AddStrain(ns)
+		assert.NoErrorf(err, "expect no error adding strain, received %s", err)
+		ids = append(ids, m.StockID)
+	}
+	// get first five results
+	ls, err := repo.ListStrainsByIds(&stock.StockIdList{Id: ids})
+	assert.NoErrorf(err, "expect no error in getting first five stocks, received %s", err)
+	assert.Len(ls, 30, "should match the provided limit number")
+
+	for _, stock := range ls {
+		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
+		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
+		assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), stock.StockID, "should have a strain stock id")
+	}
+	assert.NotEqual(ls[0].CreatedBy, ls[1].CreatedBy, "should have different created_by")
+}
+
 func TestListStrains(t *testing.T) {
 	assert := assert.New(t)
 	connP := getConnectParams()
