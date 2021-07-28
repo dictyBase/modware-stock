@@ -34,8 +34,8 @@ github.com/dictyBase/apihelpers v0.0.0-20191119134328-9ff59ee4c896/go.mod h1:3q5
 github.com/dictyBase/arangomanager v0.2.4 h1:ANsr8OeKBC3uFBXnQ7w2sDcNUnjSHffRavvho9g6kBQ=
 github.com/dictyBase/arangomanager v0.2.4/go.mod h1:ExB9EOy+9v1aXDvisyfLGWnXcTQYNIbKOpv5x4VlTaE=
 github.com/dictyBase/go-genproto v0.0.0-20190419013406-7b67707bd07a/go.mod h1:uvt0ErfvhRMAzfRo4y/99/XVhM1EduGOLxTZ9SYetRY=
-github.com/dictyBase/go-genproto v0.0.0-20210728151747-2a68e97f3d29 h1:VChr27lb1f6JqRttU/eSdl3da3j4gv4SiaZqybfdM/c=
-github.com/dictyBase/go-genproto v0.0.0-20210728151747-2a68e97f3d29/go.mod h1:KY6iUqXl1lLq81WTW9u5DfZE58xM61PsGLSLwwtePlk=
+github.com/dictyBase/go-genproto v0.0.0-20210728232706-b7a70ac1e3c1 h1:yFNHs6N7BXONcl7VZJLR+igORHOHl9peNMvKWAoLz0w=
+github.com/dictyBase/go-genproto v0.0.0-20210728232706-b7a70ac1e3c1/go.mod h1:KY6iUqXl1lLq81WTW9u5DfZE58xM61PsGLSLwwtePlk=
 github.com/dictyBase/go-middlewares v0.0.0-20180704154106-0fd6848b3e92/go.mod h1:DPbz2QP7K7kHh9pCuStlQ6qDEwYyUiWNS6WGCdgb3Nk=
 github.com/dictyBase/modware v0.0.0-20170217231152-2cb30c5dad06/go.mod h1:5UIC4wA98D3LXkV8EzGJtmxx+S1iMq54JfGvtpLVykQ=
 github.com/docker/distribution v2.7.1+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
