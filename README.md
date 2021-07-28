@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/dictyBase/modware-stock/branch/develop/graph/badge.svg)](https://codecov.io/gh/dictyBase/modware-stock)
 [![Maintainability](https://api.codeclimate.com/v1/badges/30e9b0421a28b8e0d941/maintainability)](https://codeclimate.com/github/dictyBase/modware-stock/maintainability)  
 ![Last commit](https://badgen.net/github/last-commit/dictyBase/modware-stock/develop)   
-[![Funding](https://badgen.net/badge/Funding/Rex%20L%20Chisholm,dictyBase,DCR/yellow?list=|)](https://projectreporter.nih.gov/project_info_description.cfm?aid=10024726&icde=0)
+[![Funding](https://badgen.net/badge/NIGMS/Rex%20L%20Chisholm,dictyBase,DCR/yellow?list=|)](https://reporter.nih.gov/project-details/10024726)
 
 dictyBase API server to manage biological stocks. The API server supports gRPC protocol for data exchange.
 
