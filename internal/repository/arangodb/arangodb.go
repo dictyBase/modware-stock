@@ -388,6 +388,36 @@ func (ar *arangorepository) EditPlasmid(us *stock.PlasmidUpdate) (*model.StockDo
 	return m, nil
 }
 
+func (ar *arangorepository) ListStrainsByIds(p *stock.StockIdList) ([]*model.StockDoc, error) {
+	ms := make([]*model.StockDoc, 0)
+	ids := make([]string, 0)
+	for _, v := range p.Id {
+		ids = append(ids, v)
+	}
+	bindVars := map[string]interface{}{
+		"ids":               ids,
+		"limit":             len(ids),
+		"stock_collection":  ar.stock.Name(),
+		"@stock_collection": ar.stock.Name(),
+		"prop_graph":        ar.stockPropType.Name(),
+	}
+	rs, err := ar.database.SearchRows(statement.StrainListFromIds, bindVars)
+	if err != nil {
+		return ms, err
+	}
+	if rs.IsEmpty() {
+		return ms, nil
+	}
+	for rs.Scan() {
+		m := &model.StockDoc{}
+		if err := rs.Read(m); err != nil {
+			return ms, err
+		}
+		ms = append(ms, m)
+	}
+	return ms, nil
+}
+
 // ListStrains provides a list of all strains
 func (ar *arangorepository) ListStrains(p *stock.StockParameters) ([]*model.StockDoc, error) {
 	var om []*model.StockDoc
