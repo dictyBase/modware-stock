@@ -71,6 +71,25 @@ const (
 		FOR v,e IN 1..1 INBOUND @strain_key GRAPH @parent_graph
 			RETURN e._key
 	`
+
+	StrainListFromIds = `
+		FOR id IN @ids
+			FOR v, e IN 1..1 OUTBOUND CONCAT(@stock_collection,"/",id) GRAPH @prop_graph
+				FILTER e.type == 'strain'
+				FOR s IN @@stock_collection
+					FILTER s.stock_id == id
+					LIMIT @limit
+					RETURN MERGE(s,{
+								strain_properties: {
+								label: v.label,
+								species: v.species,
+								plasmid: v.plasmid,
+								names: v.names
+							}
+						}
+					)
+	`
+
 	StrainList = `
 		FOR s IN %s
 			FOR v, e IN 1..1 OUTBOUND s GRAPH '%s'
