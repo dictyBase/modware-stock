@@ -33,6 +33,7 @@ type StockService struct {
 	*aphgrpc.Service
 	repo      repository.StockRepository
 	publisher message.Publisher
+	stock.UnimplementedStockServiceServer
 }
 
 func defaultOptions() *aphgrpc.ServiceOptions {
@@ -262,6 +263,47 @@ func (s *StockService) UpdatePlasmid(ctx context.Context, r *stock.PlasmidUpdate
 	}
 	s.publisher.PublishPlasmid(s.Topics["stockUpdate"], st)
 	return st, nil
+}
+
+// ListStrainsByIds gets a list of strains from a list of strain identifiers
+func (s *StockService) ListStrainsByIds(ctx context.Context, r *stock.StockIdList) (*stock.StrainList, error) {
+	sl := &stock.StrainList{}
+	if err := r.Validate(); err != nil {
+		return sl, aphgrpc.HandleInvalidParamError(ctx, err)
+	}
+	mc, err := s.repo.ListStrainsByIds(r)
+	if err != nil {
+		return sl, aphgrpc.HandleGetError(ctx, err)
+	}
+	if len(mc) == 0 {
+		return sl, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any strains"))
+	}
+	sdata := make([]*stock.StrainList_Data, 0)
+	for _, m := range mc {
+		sdata = append(sdata, &stock.StrainList_Data{
+			Type: "strain",
+			Id:   m.Key,
+			Attributes: &stock.StrainAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+				CreatedBy:       m.CreatedBy,
+				UpdatedBy:       m.UpdatedBy,
+				Summary:         m.Summary,
+				EditableSummary: m.EditableSummary,
+				Depositor:       m.Depositor,
+				Genes:           m.Genes,
+				Dbxrefs:         m.Dbxrefs,
+				Publications:    m.Publications,
+				Label:           m.StrainProperties.Label,
+				Species:         m.StrainProperties.Species,
+				Plasmid:         m.StrainProperties.Plasmid,
+				Parent:          m.StrainProperties.Parent,
+				Names:           m.StrainProperties.Names,
+			},
+		})
+	}
+	sl.Data = sdata
+	return sl, nil
 }
 
 // ListStrains lists all existing strains
