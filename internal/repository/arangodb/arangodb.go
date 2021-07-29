@@ -108,13 +108,11 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 	ar.parentStrain = parentc
 	sproptypeg, err := db.FindOrCreateGraph(
 		collP.StockPropTypeGraph,
-		[]driver.EdgeDefinition{
-			driver.EdgeDefinition{
-				Collection: stypec.Name(),
-				From:       []string{stockc.Name()},
-				To:         []string{spropc.Name()},
-			},
-		},
+		[]driver.EdgeDefinition{{
+			Collection: stypec.Name(),
+			From:       []string{stockc.Name()},
+			To:         []string{spropc.Name()},
+		}},
 	)
 	if err != nil {
 		return ar, err
@@ -122,13 +120,11 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 	ar.stockPropType = sproptypeg
 	strain2parentg, err := db.FindOrCreateGraph(
 		collP.Strain2ParentGraph,
-		[]driver.EdgeDefinition{
-			driver.EdgeDefinition{
-				Collection: parentc.Name(),
-				From:       []string{stockc.Name()},
-				To:         []string{stockc.Name()},
-			},
-		},
+		[]driver.EdgeDefinition{{
+			Collection: parentc.Name(),
+			From:       []string{stockc.Name()},
+			To:         []string{stockc.Name()},
+		}},
 	)
 	if err != nil {
 		return ar, err
