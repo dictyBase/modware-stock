@@ -2,7 +2,7 @@
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](LICENSE)  
 ![GitHub action](https://github.com/dictyBase/modware-stock/workflows/Continuous%20integration/badge.svg)
 [![codecov](https://codecov.io/gh/dictyBase/modware-stock/branch/develop/graph/badge.svg)](https://codecov.io/gh/dictyBase/modware-stock)
-[![Maintainability](https://api.codeclimate.com/v1/badges/30e9b0421a28b8e0d941/maintainability)](https://codeclimate.com/github/dictyBase/modware-stock/maintainability)  
+[![Maintainability](https://api.codeclimate.com/v1/badges/e3681c2f3f207955c305/maintainability)](https://codeclimate.com/github/dictyBase/modware-stock/maintainability)   
 ![Last commit](https://badgen.net/github/last-commit/dictyBase/modware-stock/develop)   
 [![Funding](https://badgen.net/badge/NIGMS/Rex%20L%20Chisholm,dictyBase,DCR/yellow?list=|)](https://reporter.nih.gov/project-details/10024726)
 
