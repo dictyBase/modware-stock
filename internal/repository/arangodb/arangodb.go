@@ -48,6 +48,91 @@ type arangorepository struct {
 	strain2Parent driver.Graph
 }
 
+func createGraphCollections(ar *arangorepository, collP *CollectionParams) error {
+	db := ar.database
+	stypec, err := db.FindOrCreateCollection(
+		collP.StockType,
+		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
+	)
+	if err != nil {
+		return err
+	}
+	parentc, err := db.FindOrCreateCollection(
+		collP.ParentStrain,
+		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
+	)
+	if err != nil {
+		return err
+	}
+	sproptypeg, err := db.FindOrCreateGraph(
+		collP.StockPropTypeGraph,
+		[]driver.EdgeDefinition{{
+			Collection: stypec.Name(),
+			From:       []string{ar.stock.Name()},
+			To:         []string{ar.stockProp.Name()},
+		}},
+	)
+	if err != nil {
+		return err
+	}
+	strain2parentg, err := db.FindOrCreateGraph(
+		collP.Strain2ParentGraph,
+		[]driver.EdgeDefinition{{
+			Collection: parentc.Name(),
+			From:       []string{ar.stock.Name()},
+			To:         []string{ar.stock.Name()},
+		}},
+	)
+	if err != nil {
+		return err
+	}
+	ar.stockPropType = sproptypeg
+	ar.strain2Parent = strain2parentg
+	ar.parentStrain = parentc
+	ar.stockType = stypec
+	return nil
+}
+
+func createCollections(ar *arangorepository, collP *CollectionParams) error {
+	db := ar.database
+	stockc, err := db.FindOrCreateCollection(
+		collP.Stock,
+		&driver.CreateCollectionOptions{},
+	)
+	if err != nil {
+		return err
+	}
+	spropc, err := db.FindOrCreateCollection(
+		collP.StockProp,
+		&driver.CreateCollectionOptions{},
+	)
+	if err != nil {
+		return err
+	}
+	stockkeyc, err := db.FindOrCreateCollection(
+		collP.StockKeyGenerator,
+		&driver.CreateCollectionOptions{
+			KeyOptions: &driver.CollectionKeyOptions{
+				Type:      "autoincrement",
+				Increment: 1,
+				Offset:    collP.KeyOffset,
+			}})
+	if err != nil {
+		return err
+	}
+	ar.stockProp = spropc
+	ar.stockKey = stockkeyc
+	ar.stock = stockc
+	return nil
+}
+
+func createDbStruct(ar *arangorepository, collP *CollectionParams) error {
+	if err := createCollections(ar, collP); err != nil {
+		return err
+	}
+	return createGraphCollections(ar, collP)
+}
+
 // NewStockRepo acts as constructor for database
 func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (repository.StockRepository, error) {
 	ar := &arangorepository{}
@@ -61,75 +146,9 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (reposi
 	}
 	ar.sess = sess
 	ar.database = db
-	stockc, err := db.FindOrCreateCollection(
-		collP.Stock,
-		&driver.CreateCollectionOptions{},
-	)
-	if err != nil {
+	if err := createDbStruct(ar, collP); err != nil {
 		return ar, err
 	}
-	ar.stock = stockc
-	spropc, err := db.FindOrCreateCollection(
-		collP.StockProp,
-		&driver.CreateCollectionOptions{},
-	)
-	if err != nil {
-		return ar, err
-	}
-	ar.stockProp = spropc
-	stockkeyc, err := db.FindOrCreateCollection(
-		collP.StockKeyGenerator,
-		&driver.CreateCollectionOptions{
-			KeyOptions: &driver.CollectionKeyOptions{
-				Type:      "autoincrement",
-				Increment: 1,
-				Offset:    collP.KeyOffset,
-			},
-		})
-	if err != nil {
-		return ar, err
-	}
-	ar.stockKey = stockkeyc
-	stypec, err := db.FindOrCreateCollection(
-		collP.StockType,
-		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
-	)
-	if err != nil {
-		return ar, err
-	}
-	ar.stockType = stypec
-	parentc, err := db.FindOrCreateCollection(
-		collP.ParentStrain,
-		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
-	)
-	if err != nil {
-		return ar, err
-	}
-	ar.parentStrain = parentc
-	sproptypeg, err := db.FindOrCreateGraph(
-		collP.StockPropTypeGraph,
-		[]driver.EdgeDefinition{{
-			Collection: stypec.Name(),
-			From:       []string{stockc.Name()},
-			To:         []string{spropc.Name()},
-		}},
-	)
-	if err != nil {
-		return ar, err
-	}
-	ar.stockPropType = sproptypeg
-	strain2parentg, err := db.FindOrCreateGraph(
-		collP.Strain2ParentGraph,
-		[]driver.EdgeDefinition{{
-			Collection: parentc.Name(),
-			From:       []string{stockc.Name()},
-			To:         []string{stockc.Name()},
-		}},
-	)
-	if err != nil {
-		return ar, err
-	}
-	ar.strain2Parent = strain2parentg
 	return ar, nil
 }
 
