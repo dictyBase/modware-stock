@@ -130,7 +130,22 @@ func createDbStruct(ar *arangorepository, collP *CollectionParams) error {
 	if err := createCollections(ar, collP); err != nil {
 		return err
 	}
-	return createGraphCollections(ar, collP)
+	if err := createGraphCollections(ar, collP); err != nil {
+		return err
+	}
+	return createIndex(ar)
+}
+
+func createIndex(ar *arangorepository) error {
+	_, _, err := ar.database.EnsurePersistentIndex(
+		ar.stock.Name(),
+		[]string{"stock_id"},
+		&driver.EnsurePersistentIndexOptions{
+			Unique:       true,
+			InBackground: true,
+			Name:         "stock_id_idx",
+		})
+	return err
 }
 
 // NewStockRepo acts as constructor for database
