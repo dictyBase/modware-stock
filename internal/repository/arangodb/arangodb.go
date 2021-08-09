@@ -430,6 +430,7 @@ func (ar *arangorepository) ListStrainsByIds(p *stock.StockIdList) ([]*model.Sto
 		"stock_collection":  ar.stock.Name(),
 		"@stock_collection": ar.stock.Name(),
 		"prop_graph":        ar.stockPropType.Name(),
+		"parent_graph":      ar.strain2Parent.Name(),
 	}
 	rs, err := ar.database.SearchRows(statement.StrainListFromIds, bindVars)
 	if err != nil {
