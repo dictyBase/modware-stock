@@ -640,15 +640,37 @@ func TestListStrainsByIds(t *testing.T) {
 	}
 	// get first five results
 	ls, err := repo.ListStrainsByIds(&stock.StockIdList{Id: ids})
-	assert.NoErrorf(err, "expect no error in getting first five stocks, received %s", err)
+	assert.NoErrorf(err, "expect no error in getting 30 stocks, received %s", err)
 	assert.Len(ls, 30, "should match the provided limit number")
 
 	for _, stock := range ls {
 		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
 		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
 		assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), stock.StockID, "should have a strain stock id")
+		assert.Empty(stock.StrainProperties.Parent, "parent field should be empty")
 	}
-	assert.NotEqual(ls[0].CreatedBy, ls[1].CreatedBy, "should have different created_by")
+	// strain with parents
+	pm, err := repo.AddStrain(newTestParentStrain("j@peterman.org"))
+	assert.NoErrorf(err, "expect no error in creating parent strain, received %s", err)
+	pids := make([]string, 0)
+	for i := 1; i <= 30; i++ {
+		ns := newTestStrain(fmt.Sprintf("%s@mailman.com", RandString(10)))
+		ns.Data.Attributes.Parent = pm.StockID
+		m, err := repo.AddStrain(ns)
+		assert.NoErrorf(err, "expect no error adding strain with parent, received %s", err)
+		pids = append(pids, m.StockID)
+	}
+	// get first five results
+	pls, err := repo.ListStrainsByIds(&stock.StockIdList{Id: pids})
+	assert.NoErrorf(err, "expect no error in getting 30 stocks with parents, received %s", err)
+	assert.Len(pls, 30, "should match the provided limit number")
+
+	for _, stock := range pls {
+		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
+		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
+		assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), stock.StockID, "should have a strain stock id")
+		assert.Equal(stock.StrainProperties.Parent, pm.StockID, "should match parent id")
+	}
 	// Non-existing ids
 	els, err := repo.ListStrainsByIds(&stock.StockIdList{Id: []string{"DBN589343", "DBN48473232"}})
 	assert.NoErrorf(err, "expect no error in getting first five stocks, received %s", err)
