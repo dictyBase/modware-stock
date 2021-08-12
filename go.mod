@@ -4,7 +4,7 @@ require (
 	github.com/arangodb/go-driver v0.0.0-20201106193344-56ae8fd24510
 	github.com/dictyBase/apihelpers v0.0.0-20191119134328-9ff59ee4c896
 	github.com/dictyBase/arangomanager v0.2.4
-	github.com/dictyBase/go-genproto v0.0.0-20210728232706-b7a70ac1e3c1
+	github.com/dictyBase/go-genproto v0.0.0-20210812210059-437a662da4f7
 	github.com/golang/protobuf v1.4.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/nats-io/go-nats v1.7.2
