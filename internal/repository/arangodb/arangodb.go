@@ -8,6 +8,7 @@ import (
 	driver "github.com/arangodb/go-driver"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	ontoarango "github.com/dictyBase/go-obograph/storage/arangodb"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
@@ -46,6 +47,28 @@ type arangorepository struct {
 	parentStrain  driver.Collection
 	stockPropType driver.Graph
 	strain2Parent driver.Graph
+	ontoc         *ontoarango.OntoCollection
+}
+
+// NewStockRepo acts as constructor for database
+func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams, ontoP *ontoarango.CollectionParams) (repository.StockRepository, error) {
+	ar := &arangorepository{}
+	validate := validator.New()
+	if err := validate.Struct(collP); err != nil {
+		return ar, err
+	}
+	sess, db, err := manager.NewSessionDb(connP)
+	if err != nil {
+		return ar, err
+	}
+	ar.sess = sess
+	ar.database = db
+	if err := createDbStruct(ar, collP); err != nil {
+		return ar, err
+	}
+	oc, err := ontoarango.CreateCollection(db, ontoP)
+	ar.ontoc = oc
+	return ar, err
 }
 
 func createGraphCollections(ar *arangorepository, collP *CollectionParams) error {
@@ -146,25 +169,6 @@ func createIndex(ar *arangorepository) error {
 			Name:         "stock_id_idx",
 		})
 	return err
-}
-
-// NewStockRepo acts as constructor for database
-func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams) (repository.StockRepository, error) {
-	ar := &arangorepository{}
-	validate := validator.New()
-	if err := validate.Struct(collP); err != nil {
-		return ar, err
-	}
-	sess, db, err := manager.NewSessionDb(connP)
-	if err != nil {
-		return ar, err
-	}
-	ar.sess = sess
-	ar.database = db
-	if err := createDbStruct(ar, collP); err != nil {
-		return ar, err
-	}
-	return ar, nil
 }
 
 // GetStrain retrieves a strain from the database
