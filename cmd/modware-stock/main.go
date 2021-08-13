@@ -75,6 +75,11 @@ func getServerFlags() []cli.Flag {
 				Value: "parent_strain",
 			},
 			cli.StringFlag{
+				Name:  "stock-term-edge",
+				Usage: "arangodb edge collection for connecting stock to ontology term",
+				Value: "stock_term",
+			},
+			cli.StringFlag{
 				Name:  "stockproptype-graph",
 				Usage: "arangodb named graph for managing relations between stocks and their properties",
 				Value: "stockprop_type",
@@ -83,6 +88,11 @@ func getServerFlags() []cli.Flag {
 				Name:  "strain2parent-graph",
 				Usage: "arangodb named graph for managing relations between strains and their parents",
 				Value: "strain2parent",
+			},
+			cli.StringFlag{
+				Name:  "stockonto-graph",
+				Usage: "arangodb named graph for managing stock and ontology",
+				Value: "stockonto",
 			},
 			cli.IntFlag{
 				Name:  "keyoffset",
