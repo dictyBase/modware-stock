@@ -4,7 +4,7 @@ import (
 	"os"
 
 	apiflag "github.com/dictyBase/apihelpers/command/flag"
-	arangoflag "github.com/dictyBase/arangomanager/command/flag"
+	oboflag "github.com/dictyBase/go-obograph/command/flag"
 	"github.com/dictyBase/modware-stock/internal/app/server"
 	"github.com/dictyBase/modware-stock/internal/app/validate"
 	"github.com/urfave/cli"
@@ -95,7 +95,7 @@ func getServerFlags() []cli.Flag {
 			},
 		}...,
 	)
-	f = append(f, arangoflag.ArangodbFlags()...)
+	f = append(f, oboflag.OntologyFlags()...)
 	f = append(f, apiflag.NatsFlag()...)
 	return f
 }

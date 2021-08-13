@@ -5,7 +5,7 @@ require (
 	github.com/dictyBase/apihelpers v0.0.0-20191119134328-9ff59ee4c896
 	github.com/dictyBase/arangomanager v0.3.1
 	github.com/dictyBase/go-genproto v0.0.0-20210812210059-437a662da4f7
-	github.com/dictyBase/go-obograph v1.2.0 // indirect
+	github.com/dictyBase/go-obograph v1.2.0
 	github.com/golang/protobuf v1.4.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/nats-io/go-nats v1.7.2
