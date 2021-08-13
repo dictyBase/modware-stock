@@ -37,9 +37,7 @@ type CollectionParams struct {
 	KeyOffset int `validate:"required"`
 }
 
-type arangorepository struct {
-	sess          *manager.Session
-	database      *manager.Database
+type stockc struct {
 	stock         driver.Collection
 	stockProp     driver.Collection
 	stockKey      driver.Collection
@@ -47,7 +45,13 @@ type arangorepository struct {
 	parentStrain  driver.Collection
 	stockPropType driver.Graph
 	strain2Parent driver.Graph
-	ontoc         *ontoarango.OntoCollection
+}
+
+type arangorepository struct {
+	sess     *manager.Session
+	database *manager.Database
+	ontoc    *ontoarango.OntoCollection
+	stockc   *stockc
 }
 
 // NewStockRepo acts as constructor for database
@@ -91,8 +95,8 @@ func createGraphCollections(ar *arangorepository, collP *CollectionParams) error
 		collP.StockPropTypeGraph,
 		[]driver.EdgeDefinition{{
 			Collection: stypec.Name(),
-			From:       []string{ar.stock.Name()},
-			To:         []string{ar.stockProp.Name()},
+			From:       []string{ar.stockc.stock.Name()},
+			To:         []string{ar.stockc.stockProp.Name()},
 		}},
 	)
 	if err != nil {
@@ -102,17 +106,17 @@ func createGraphCollections(ar *arangorepository, collP *CollectionParams) error
 		collP.Strain2ParentGraph,
 		[]driver.EdgeDefinition{{
 			Collection: parentc.Name(),
-			From:       []string{ar.stock.Name()},
-			To:         []string{ar.stock.Name()},
+			From:       []string{ar.stockc.stock.Name()},
+			To:         []string{ar.stockc.stock.Name()},
 		}},
 	)
 	if err != nil {
 		return err
 	}
-	ar.stockPropType = sproptypeg
-	ar.strain2Parent = strain2parentg
-	ar.parentStrain = parentc
-	ar.stockType = stypec
+	ar.stockc.stockPropType = sproptypeg
+	ar.stockc.strain2Parent = strain2parentg
+	ar.stockc.parentStrain = parentc
+	ar.stockc.stockType = stypec
 	return nil
 }
 
@@ -143,9 +147,9 @@ func createCollections(ar *arangorepository, collP *CollectionParams) error {
 	if err != nil {
 		return err
 	}
-	ar.stockProp = spropc
-	ar.stockKey = stockkeyc
-	ar.stock = stockc
+	ar.stockc.stockProp = spropc
+	ar.stockc.stockKey = stockkeyc
+	ar.stockc.stock = stockc
 	return nil
 }
 
@@ -161,7 +165,7 @@ func createDbStruct(ar *arangorepository, collP *CollectionParams) error {
 
 func createIndex(ar *arangorepository) error {
 	_, _, err := ar.database.EnsurePersistentIndex(
-		ar.stock.Name(),
+		ar.stockc.stock.Name(),
 		[]string{"stock_id"},
 		&driver.EnsurePersistentIndexOptions{
 			Unique:       true,
@@ -175,16 +179,16 @@ func createIndex(ar *arangorepository) error {
 func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	bindVars := map[string]interface{}{
-		"@stock_collection": ar.stock.Name(),
-		"stock_collection":  ar.stock.Name(),
+		"@stock_collection": ar.stockc.stock.Name(),
+		"stock_collection":  ar.stockc.stock.Name(),
 		"id":                id,
-		"parent_graph":      ar.strain2Parent.Name(),
-		"prop_graph":        ar.stockPropType.Name(),
+		"parent_graph":      ar.stockc.strain2Parent.Name(),
+		"prop_graph":        ar.stockc.stockPropType.Name(),
 	}
 	g, err := ar.database.GetRow(
 		statement.StockFindQ,
 		map[string]interface{}{
-			"@stock_collection": ar.stock.Name(),
+			"@stock_collection": ar.stockc.stock.Name(),
 			"id":                id,
 		})
 	if err != nil {
@@ -208,9 +212,9 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	bindVars := map[string]interface{}{
-		"@stock_collection": ar.stock.Name(),
+		"@stock_collection": ar.stockc.stock.Name(),
 		"id":                id,
-		"graph":             ar.stockPropType.Name(),
+		"graph":             ar.stockc.stockPropType.Name(),
 	}
 	r, err := ar.database.GetRow(statement.StockGetPlasmid, bindVars)
 	if err != nil {
@@ -234,7 +238,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, err
 	if len(ns.Data.Attributes.Parent) > 0 { // in case parent is present
 		p := ns.Data.Attributes.Parent
 		pVars := map[string]interface{}{
-			"@stock_collection": ar.stock.Name(),
+			"@stock_collection": ar.stockc.stock.Name(),
 			"id":                p,
 		}
 		r, err := ar.database.GetRow(statement.StockFindQ, pVars)
@@ -251,16 +255,16 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, err
 		stmt = statement.StockStrainWithParentsIns
 		bindVars = addableStrainBindParams(ns.Data.Attributes)
 		bindVars["pid"] = pid
-		bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
+		bindVars["@parent_strain_collection"] = ar.stockc.parentStrain.Name()
 		m.StrainProperties = &model.StrainProperties{Parent: p}
 	} else {
 		bindVars = addableStrainBindParams(ns.Data.Attributes)
 		stmt = statement.StockStrainIns
 	}
-	bindVars["@stock_collection"] = ar.stock.Name()
-	bindVars["@stock_key_generator"] = ar.stockKey.Name()
-	bindVars["@stock_properties_collection"] = ar.stockProp.Name()
-	bindVars["@stock_type_collection"] = ar.stockType.Name()
+	bindVars["@stock_collection"] = ar.stockc.stock.Name()
+	bindVars["@stock_key_generator"] = ar.stockc.stockKey.Name()
+	bindVars["@stock_properties_collection"] = ar.stockc.stockProp.Name()
+	bindVars["@stock_type_collection"] = ar.stockc.stockType.Name()
 	r, err := ar.database.DoRun(stmt, bindVars)
 	if err != nil {
 		return m, err
@@ -276,10 +280,10 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewPlasmid) (*model.StockDoc, e
 	m := &model.StockDoc{}
 	attr := ns.Data.Attributes
 	bindVars := addablePlasmidBindParams(attr)
-	bindVars["@stock_collection"] = ar.stock.Name()
-	bindVars["@stock_key_generator"] = ar.stockKey.Name()
-	bindVars["@stock_type_collection"] = ar.stockType.Name()
-	bindVars["@stock_properties_collection"] = ar.stockProp.Name()
+	bindVars["@stock_collection"] = ar.stockc.stock.Name()
+	bindVars["@stock_key_generator"] = ar.stockc.stockKey.Name()
+	bindVars["@stock_type_collection"] = ar.stockc.stockType.Name()
+	bindVars["@stock_properties_collection"] = ar.stockc.stockProp.Name()
 	r, err := ar.database.DoRun(statement.StockPlasmidIns, bindVars)
 	if err != nil {
 		return m, err
@@ -296,8 +300,8 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 	r, err := ar.database.GetRow(
 		statement.StockFindIdQ,
 		map[string]interface{}{
-			"stock_collection": ar.stock.Name(),
-			"graph":            ar.stockPropType.Name(),
+			"stock_collection": ar.stockc.stock.Name(),
+			"graph":            ar.stockc.stockPropType.Name(),
 			"stock_id":         us.Data.Id,
 		})
 	if err != nil {
@@ -322,7 +326,7 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 		// 2. Have to figure out if child(sub) has an existing relation
 		//    a) If relation exists, get and update the relation(pred)
 		//    b) If not, create the new relation(pred)
-		ok, err := ar.stock.DocumentExists(context.Background(), parent)
+		ok, err := ar.stockc.stock.DocumentExists(context.Background(), parent)
 		if err != nil {
 			return m, fmt.Errorf("error in checking for parent id %s %s", parent, err)
 		}
@@ -332,7 +336,7 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 		r, err := ar.database.GetRow(
 			statement.StrainGetParentRel,
 			map[string]interface{}{
-				"parent_graph": ar.strain2Parent.Name(),
+				"parent_graph": ar.stockc.strain2Parent.Name(),
 				"strain_key":   us.Data.Id,
 			})
 		if err != nil {
@@ -351,14 +355,14 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 			stmt = statement.StrainWithNewParentUpd
 		}
 		cmBindVars["parent"] = us.Data.Attributes.Parent
-		cmBindVars["stock_collection"] = ar.stock.Name()
-		cmBindVars["@parent_strain_collection"] = ar.parentStrain.Name()
+		cmBindVars["stock_collection"] = ar.stockc.stock.Name()
+		cmBindVars["@parent_strain_collection"] = ar.stockc.parentStrain.Name()
 		m.StrainProperties = &model.StrainProperties{Parent: parent}
 	} else {
 		stmt = statement.StrainUpd
 	}
-	cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
-	cmBindVars["@stock_collection"] = ar.stock.Name()
+	cmBindVars["@stock_properties_collection"] = ar.stockc.stockProp.Name()
+	cmBindVars["@stock_collection"] = ar.stockc.stock.Name()
 	cmBindVars["propkey"] = propKey
 	cmBindVars["key"] = us.Data.Id
 	q := fmt.Sprintf(
@@ -385,8 +389,8 @@ func (ar *arangorepository) EditPlasmid(us *stock.PlasmidUpdate) (*model.StockDo
 	r, err := ar.database.GetRow(
 		statement.StockFindIdQ,
 		map[string]interface{}{
-			"stock_collection": ar.stock.Name(),
-			"graph":            ar.stockPropType.Name(),
+			"stock_collection": ar.stockc.stock.Name(),
+			"graph":            ar.stockc.stockPropType.Name(),
 			"stock_id":         us.Data.Id,
 		})
 	if err != nil {
@@ -408,9 +412,9 @@ func (ar *arangorepository) EditPlasmid(us *stock.PlasmidUpdate) (*model.StockDo
 		genAQLDocExpression(bindVars),
 		genAQLDocExpression(bindPlVars),
 	)
-	cmBindVars["@stock_properties_collection"] = ar.stockProp.Name()
+	cmBindVars["@stock_properties_collection"] = ar.stockc.stockProp.Name()
 	cmBindVars["propkey"] = propKey
-	cmBindVars["@stock_collection"] = ar.stock.Name()
+	cmBindVars["@stock_collection"] = ar.stockc.stock.Name()
 	cmBindVars["key"] = us.Data.Id
 	rupd, err := ar.database.DoRun(stmt, cmBindVars)
 	if err != nil {
@@ -429,12 +433,12 @@ func (ar *arangorepository) ListStrainsByIds(p *stock.StockIdList) ([]*model.Sto
 		ids = append(ids, v)
 	}
 	bindVars := map[string]interface{}{
-		"ids":               ids,
-		"limit":             len(ids),
-		"stock_collection":  ar.stock.Name(),
-		"@stock_collection": ar.stock.Name(),
-		"prop_graph":        ar.stockPropType.Name(),
-		"parent_graph":      ar.strain2Parent.Name(),
+		"ids":                 ids,
+		"limit":               len(ids),
+		"stock_collection":    ar.stockc.stock.Name(),
+		"@stock_collection":   ar.stockc.stock.Name(),
+		"prop_graph":          ar.stockc.stockPropType.Name(),
+		"par.stockcent_graph": ar.stockc.strain2Parent.Name(),
 	}
 	rs, err := ar.database.SearchRows(statement.StrainListFromIds, bindVars)
 	if err != nil {
@@ -465,19 +469,17 @@ func (ar *arangorepository) ListStrains(p *stock.StockParameters) ([]*model.Stoc
 		if c == 0 { // no cursor so return first set of results with filter
 			stmt = fmt.Sprintf(
 				statement.StrainListFilter,
-				ar.stock.Name(),
-				ar.stockPropType.Name(),
+				ar.stockc.stock.Name(),
+				ar.stockc.stockPropType.Name(),
 				f,
 				l+1,
 			)
 		} else { // else include both filter and cursor
 			stmt = fmt.Sprintf(
 				statement.StrainListFilterWithCursor,
-				ar.stock.Name(),
-				ar.stockPropType.Name(),
-				f,
-				c,
-				l+1,
+				ar.stockc.stock.Name(),
+				ar.stockc.stockPropType.Name(),
+				f, c, l+1,
 			)
 		}
 	} else {
@@ -485,17 +487,16 @@ func (ar *arangorepository) ListStrains(p *stock.StockParameters) ([]*model.Stoc
 		if c == 0 { // no cursor so return first set of result
 			stmt = fmt.Sprintf(
 				statement.StrainList,
-				ar.stock.Name(),
-				ar.stockPropType.Name(),
+				ar.stockc.stock.Name(),
+				ar.stockc.stockPropType.Name(),
 				l+1,
 			)
 		} else { // add cursor if it exists
 			stmt = fmt.Sprintf(
 				statement.StrainListWithCursor,
-				ar.stock.Name(),
-				ar.stockPropType.Name(),
-				c,
-				l+1,
+				ar.stockc.stock.Name(),
+				ar.stockc.stockPropType.Name(),
+				c, l+1,
 			)
 		}
 	}
@@ -528,16 +529,15 @@ func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.Sto
 		if c == 0 { // no cursor so return first set of result
 			stmt = fmt.Sprintf(
 				statement.PlasmidListFilter,
-				ar.stock.Name(),
-				ar.stockPropType.Name(),
-				f,
-				l+1,
+				ar.stockc.stock.Name(),
+				ar.stockc.stockPropType.Name(),
+				f, l+1,
 			)
 		} else { // else include both filter and cursor
 			stmt = fmt.Sprintf(
 				statement.PlasmidListFilterWithCursor,
-				ar.stock.Name(),
-				ar.stockPropType.Name(),
+				ar.stockc.stock.Name(),
+				ar.stockc.stockPropType.Name(),
 				f,
 				c,
 				l+1,
@@ -548,17 +548,16 @@ func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.Sto
 		if c == 0 { // no cursor so return first set of result
 			stmt = fmt.Sprintf(
 				statement.PlasmidList,
-				ar.stock.Name(),
-				ar.stockPropType.Name(),
+				ar.stockc.stock.Name(),
+				ar.stockc.stockPropType.Name(),
 				l+1,
 			)
 		} else { // add cursor if it exists
 			stmt = fmt.Sprintf(
 				statement.PlasmidListWithCursor,
-				ar.stock.Name(),
-				ar.stockPropType.Name(),
-				c,
-				l+1,
+				ar.stockc.stock.Name(),
+				ar.stockc.stockPropType.Name(),
+				c, l+1,
 			)
 		}
 	}
@@ -581,14 +580,14 @@ func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.Sto
 
 // RemoveStock removes a stock
 func (ar *arangorepository) RemoveStock(id string) error {
-	found, err := ar.stock.DocumentExists(context.Background(), id)
+	found, err := ar.stockc.stock.DocumentExists(context.Background(), id)
 	if err != nil {
 		return fmt.Errorf("error in finding document with id %s %s", id, err)
 	}
 	if !found {
 		return fmt.Errorf("document not found %s", id)
 	}
-	_, err = ar.stock.RemoveDocument(
+	_, err = ar.stockc.stock.RemoveDocument(
 		driver.WithSilent(context.Background()),
 		id,
 	)
@@ -607,7 +606,7 @@ func (ar *arangorepository) LoadStrain(id string, es *stock.ExistingStrain) (*mo
 	if len(es.Data.Attributes.Parent) > 0 { // in case parent is present
 		p := es.Data.Attributes.Parent
 		pVars := map[string]interface{}{
-			"@stock_collection": ar.stock.Name(),
+			"@stock_collection": ar.stockc.stock.Name(),
 			"id":                p,
 		}
 		r, err := ar.database.GetRow(statement.StockFindQ, pVars)
@@ -625,16 +624,16 @@ func (ar *arangorepository) LoadStrain(id string, es *stock.ExistingStrain) (*mo
 		bindVars = existingStrainBindParams(es.Data.Attributes)
 		bindVars["stock_id"] = id
 		bindVars["pid"] = pid
-		bindVars["@parent_strain_collection"] = ar.parentStrain.Name()
+		bindVars["@parent_strain_collection"] = ar.stockc.parentStrain.Name()
 		m.StrainProperties = &model.StrainProperties{Parent: p}
 	} else {
 		bindVars = existingStrainBindParams(es.Data.Attributes)
 		bindVars["stock_id"] = id
 		stmt = statement.StockStrainLoad
 	}
-	bindVars["@stock_collection"] = ar.stock.Name()
-	bindVars["@stock_properties_collection"] = ar.stockProp.Name()
-	bindVars["@stock_type_collection"] = ar.stockType.Name()
+	bindVars["@stock_collection"] = ar.stockc.stock.Name()
+	bindVars["@stock_properties_collection"] = ar.stockc.stockProp.Name()
+	bindVars["@stock_type_collection"] = ar.stockc.stockType.Name()
 	r, err := ar.database.DoRun(stmt, bindVars)
 	if err != nil {
 		return m, err
@@ -652,9 +651,9 @@ func (ar *arangorepository) LoadPlasmid(id string, ep *stock.ExistingPlasmid) (*
 	var bindVars map[string]interface{}
 	attr := ep.Data.Attributes
 	bindVars = existingPlasmidBindParams(attr)
-	bindVars["@stock_collection"] = ar.stock.Name()
-	bindVars["@stock_type_collection"] = ar.stockType.Name()
-	bindVars["@stock_properties_collection"] = ar.stockProp.Name()
+	bindVars["@stock_collection"] = ar.stockc.stock.Name()
+	bindVars["@stock_type_collection"] = ar.stockc.stockType.Name()
+	bindVars["@stock_properties_collection"] = ar.stockc.stockProp.Name()
 	bindVars["stock_id"] = id
 	r, err := ar.database.DoRun(statement.StockPlasmidLoad, bindVars)
 	if err != nil {
@@ -668,7 +667,7 @@ func (ar *arangorepository) LoadPlasmid(id string, ep *stock.ExistingPlasmid) (*
 
 // ClearStocks clears all stocks from the repository datasource
 func (ar *arangorepository) ClearStocks() error {
-	if err := ar.stock.Truncate(context.Background()); err != nil {
+	if err := ar.stockc.stock.Truncate(context.Background()); err != nil {
 		return err
 	}
 	return nil
