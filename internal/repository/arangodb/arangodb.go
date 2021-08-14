@@ -16,37 +16,6 @@ import (
 	validator "gopkg.in/go-playground/validator.v9"
 )
 
-// CollectionParams are the arangodb collections required for storing stocks
-type CollectionParams struct {
-	// Stock is the collection for storing all stocks
-	Stock string `validate:"required"`
-	// Stockprop is the collection for storing stock properties
-	StockProp string `validate:"required"`
-	// StockKeyGenerator is the collection for generating unique stock IDs
-	StockKeyGenerator string `validate:"required"`
-	// StockType is the edge collection for connecting stocks to their types
-	StockType string `validate:"required"`
-	// ParentStrain is the edge collection for connecting strains to their parents
-	ParentStrain string `validate:"required"`
-	// StockPropTypeGraph is the named graph for connecting stock properties to types
-	StockPropTypeGraph string `validate:"required"`
-	// Strain2ParentGraph is the named graph for connecting strains to their parents
-	Strain2ParentGraph string `validate:"required"`
-	// KeyOffset is the initial offset for stock id generation. It is needed to
-	// maintain the previous stock identifiers.
-	KeyOffset int `validate:"required"`
-}
-
-type stockc struct {
-	stock         driver.Collection
-	stockProp     driver.Collection
-	stockKey      driver.Collection
-	stockType     driver.Collection
-	parentStrain  driver.Collection
-	stockPropType driver.Graph
-	strain2Parent driver.Graph
-}
-
 type arangorepository struct {
 	sess     *manager.Session
 	database *manager.Database
@@ -55,7 +24,10 @@ type arangorepository struct {
 }
 
 // NewStockRepo acts as constructor for database
-func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams, ontoP *ontoarango.CollectionParams) (repository.StockRepository, error) {
+func NewStockRepo(connP *manager.ConnectParams,
+	collP *CollectionParams,
+	ontoP *ontoarango.CollectionParams,
+) (repository.StockRepository, error) {
 	ar := &arangorepository{}
 	validate := validator.New()
 	if err := validate.Struct(collP); err != nil {
@@ -65,131 +37,32 @@ func NewStockRepo(connP *manager.ConnectParams, collP *CollectionParams, ontoP *
 	if err != nil {
 		return ar, err
 	}
-	ar.sess = sess
-	ar.database = db
-	if err := createDbStruct(ar, collP); err != nil {
+	oc, err := ontoarango.CreateCollection(db, ontoP)
+	if err != nil {
 		return ar, err
 	}
-	oc, err := ontoarango.CreateCollection(db, ontoP)
 	ar.ontoc = oc
+	ar.sess = sess
+	ar.database = db
+	err = createDbStruct(ar, collP)
 	return ar, err
-}
-
-func createGraphCollections(ar *arangorepository, collP *CollectionParams) error {
-	db := ar.database
-	stypec, err := db.FindOrCreateCollection(
-		collP.StockType,
-		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
-	)
-	if err != nil {
-		return err
-	}
-	parentc, err := db.FindOrCreateCollection(
-		collP.ParentStrain,
-		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
-	)
-	if err != nil {
-		return err
-	}
-	sproptypeg, err := db.FindOrCreateGraph(
-		collP.StockPropTypeGraph,
-		[]driver.EdgeDefinition{{
-			Collection: stypec.Name(),
-			From:       []string{ar.stockc.stock.Name()},
-			To:         []string{ar.stockc.stockProp.Name()},
-		}},
-	)
-	if err != nil {
-		return err
-	}
-	strain2parentg, err := db.FindOrCreateGraph(
-		collP.Strain2ParentGraph,
-		[]driver.EdgeDefinition{{
-			Collection: parentc.Name(),
-			From:       []string{ar.stockc.stock.Name()},
-			To:         []string{ar.stockc.stock.Name()},
-		}},
-	)
-	if err != nil {
-		return err
-	}
-	ar.stockc.stockPropType = sproptypeg
-	ar.stockc.strain2Parent = strain2parentg
-	ar.stockc.parentStrain = parentc
-	ar.stockc.stockType = stypec
-	return nil
-}
-
-func createCollections(ar *arangorepository, collP *CollectionParams) error {
-	db := ar.database
-	stockc, err := db.FindOrCreateCollection(
-		collP.Stock,
-		&driver.CreateCollectionOptions{},
-	)
-	if err != nil {
-		return err
-	}
-	spropc, err := db.FindOrCreateCollection(
-		collP.StockProp,
-		&driver.CreateCollectionOptions{},
-	)
-	if err != nil {
-		return err
-	}
-	stockkeyc, err := db.FindOrCreateCollection(
-		collP.StockKeyGenerator,
-		&driver.CreateCollectionOptions{
-			KeyOptions: &driver.CollectionKeyOptions{
-				Type:      "autoincrement",
-				Increment: 1,
-				Offset:    collP.KeyOffset,
-			}})
-	if err != nil {
-		return err
-	}
-	ar.stockc.stockProp = spropc
-	ar.stockc.stockKey = stockkeyc
-	ar.stockc.stock = stockc
-	return nil
-}
-
-func createDbStruct(ar *arangorepository, collP *CollectionParams) error {
-	if err := createCollections(ar, collP); err != nil {
-		return err
-	}
-	if err := createGraphCollections(ar, collP); err != nil {
-		return err
-	}
-	return createIndex(ar)
-}
-
-func createIndex(ar *arangorepository) error {
-	_, _, err := ar.database.EnsurePersistentIndex(
-		ar.stockc.stock.Name(),
-		[]string{"stock_id"},
-		&driver.EnsurePersistentIndexOptions{
-			Unique:       true,
-			InBackground: true,
-			Name:         "stock_id_idx",
-		})
-	return err
 }
 
 // GetStrain retrieves a strain from the database
 func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	bindVars := map[string]interface{}{
+		"id":                id,
 		"@stock_collection": ar.stockc.stock.Name(),
 		"stock_collection":  ar.stockc.stock.Name(),
-		"id":                id,
 		"parent_graph":      ar.stockc.strain2Parent.Name(),
 		"prop_graph":        ar.stockc.stockPropType.Name(),
 	}
 	g, err := ar.database.GetRow(
 		statement.StockFindQ,
 		map[string]interface{}{
-			"@stock_collection": ar.stockc.stock.Name(),
 			"id":                id,
+			"@stock_collection": ar.stockc.stock.Name(),
 		})
 	if err != nil {
 		return m, fmt.Errorf("error in finding strain id %s %s", id, err)
@@ -202,10 +75,8 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 	if err != nil {
 		return m, fmt.Errorf("error in finding strain id %s %s", id, err)
 	}
-	if err := r.Read(m); err != nil {
-		return m, err
-	}
-	return m, nil
+	err = r.Read(m)
+	return m, err
 }
 
 // GetPlasmid retrieves a plasmid from the database
@@ -224,10 +95,8 @@ func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 		m.NotFound = true
 		return m, nil
 	}
-	if err := r.Read(m); err != nil {
-		return m, err
-	}
-	return m, nil
+	err = r.Read(m)
+	return m, err
 }
 
 // AddStrain creates a new strain stock
@@ -269,10 +138,8 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, err
 	if err != nil {
 		return m, err
 	}
-	if err := r.Read(m); err != nil {
-		return m, err
-	}
-	return m, nil
+	err = r.Read(m)
+	return m, err
 }
 
 // AddPlasmid creates a new plasmid stock
@@ -288,10 +155,8 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewPlasmid) (*model.StockDoc, e
 	if err != nil {
 		return m, err
 	}
-	if err := r.Read(m); err != nil {
-		return m, err
-	}
-	return m, nil
+	err = r.Read(m)
+	return m, err
 }
 
 // EditStrain updates an existing strain
