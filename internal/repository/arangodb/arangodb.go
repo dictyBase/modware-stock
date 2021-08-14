@@ -162,8 +162,7 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewPlasmid) (*model.StockDoc, e
 // EditStrain updates an existing strain
 func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	r, err := ar.database.GetRow(
-		statement.StockFindIdQ,
+	r, err := ar.database.GetRow(statement.StockFindIdQ,
 		map[string]interface{}{
 			"stock_collection": ar.stockc.stock.Name(),
 			"graph":            ar.stockc.stockPropType.Name(),
@@ -235,17 +234,15 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 		genAQLDocExpression(bindVars),
 		genAQLDocExpression(bindStVars),
 	)
-	rupd, err := ar.database.DoRun(
-		q,
-		cmBindVars,
-	)
+	rupd, err := ar.database.DoRun(q, cmBindVars)
 	if err != nil {
-		return m, fmt.Errorf("error in editing strain %s %s %s", us.Data.Id, err, q)
+		return m, fmt.Errorf(
+			"error in editing strain %s %s %s",
+			us.Data.Id, err, q,
+		)
 	}
-	if err := rupd.Read(m); err != nil {
-		return m, err
-	}
-	return m, nil
+	err = rupd.Read(m)
+	return m, err
 }
 
 // EditPlasmid updates an existing plasmid
@@ -285,10 +282,8 @@ func (ar *arangorepository) EditPlasmid(us *stock.PlasmidUpdate) (*model.StockDo
 	if err != nil {
 		return m, err
 	}
-	if err := rupd.Read(m); err != nil {
-		return m, err
-	}
-	return m, nil
+	err = rupd.Read(m)
+	return m, err
 }
 
 func (ar *arangorepository) ListStrainsByIds(p *stock.StockIdList) ([]*model.StockDoc, error) {
@@ -336,8 +331,7 @@ func (ar *arangorepository) ListStrains(p *stock.StockParameters) ([]*model.Stoc
 				statement.StrainListFilter,
 				ar.stockc.stock.Name(),
 				ar.stockc.stockPropType.Name(),
-				f,
-				l+1,
+				f, l+1,
 			)
 		} else { // else include both filter and cursor
 			stmt = fmt.Sprintf(
@@ -403,9 +397,7 @@ func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.Sto
 				statement.PlasmidListFilterWithCursor,
 				ar.stockc.stock.Name(),
 				ar.stockc.stockPropType.Name(),
-				f,
-				c,
-				l+1,
+				f, c, l+1,
 			)
 		}
 	} else {
@@ -471,8 +463,8 @@ func (ar *arangorepository) LoadStrain(id string, es *stock.ExistingStrain) (*mo
 	if len(es.Data.Attributes.Parent) > 0 { // in case parent is present
 		p := es.Data.Attributes.Parent
 		pVars := map[string]interface{}{
-			"@stock_collection": ar.stockc.stock.Name(),
 			"id":                p,
+			"@stock_collection": ar.stockc.stock.Name(),
 		}
 		r, err := ar.database.GetRow(statement.StockFindQ, pVars)
 		if err != nil {
@@ -503,10 +495,8 @@ func (ar *arangorepository) LoadStrain(id string, es *stock.ExistingStrain) (*mo
 	if err != nil {
 		return m, err
 	}
-	if err := r.Read(m); err != nil {
-		return m, err
-	}
-	return m, nil
+	err = r.Read(m)
+	return m, err
 }
 
 // LoadPlasmid will insert existing plasmid data into the database.
@@ -524,18 +514,13 @@ func (ar *arangorepository) LoadPlasmid(id string, ep *stock.ExistingPlasmid) (*
 	if err != nil {
 		return m, err
 	}
-	if err := r.Read(m); err != nil {
-		return m, err
-	}
-	return m, nil
+	err = r.Read(m)
+	return m, err
 }
 
 // ClearStocks clears all stocks from the repository datasource
 func (ar *arangorepository) ClearStocks() error {
-	if err := ar.stockc.stock.Truncate(context.Background()); err != nil {
-		return err
-	}
-	return nil
+	return ar.stockc.stock.Truncate(context.Background())
 }
 
 func addablePlasmidBindParams(attr *stock.NewPlasmidAttributes) map[string]interface{} {
