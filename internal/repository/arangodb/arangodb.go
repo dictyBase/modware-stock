@@ -11,10 +11,11 @@ import (
 )
 
 type arangorepository struct {
-	sess     *manager.Session
-	database *manager.Database
-	ontoc    *ontoarango.OntoCollection
-	stockc   *stockc
+	ontoc      *ontoarango.OntoCollection
+	sess       *manager.Session
+	database   *manager.Database
+	stockc     *stockc
+	strainOnto string
 }
 
 // NewStockRepo acts as constructor for database
@@ -22,7 +23,7 @@ func NewStockRepo(connP *manager.ConnectParams,
 	collP *CollectionParams,
 	ontoP *ontoarango.CollectionParams,
 ) (repository.StockRepository, error) {
-	ar := &arangorepository{}
+	ar := &arangorepository{strainOnto: collP.StrainOntology}
 	validate := validator.New()
 	if err := validate.Struct(collP); err != nil {
 		return ar, err

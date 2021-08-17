@@ -29,6 +29,8 @@ type CollectionParams struct {
 	// StockOntoGraph is the named graph for connecting stock
 	// with the ontology
 	StockOntoGraph string `validate:"required"`
+	// StrainOntology is the ontology for storing strain group
+	StrainOntology string `validate:"required"`
 }
 
 type stockc struct {
