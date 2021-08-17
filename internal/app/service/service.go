@@ -134,6 +134,9 @@ func (s *StockService) CreateStrain(ctx context.Context, r *stock.NewStrain) (*s
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
+	if len(r.Data.Attributes.DictyStrainProperty) == 0 {
+		r.Data.Attributes.DictyStrainProperty = s.Params["strain_term"]
+	}
 	m, err := s.repo.AddStrain(r)
 	if err != nil {
 		return st, aphgrpc.HandleInsertError(ctx, err)
@@ -508,6 +511,9 @@ func (s *StockService) LoadStrain(ctx context.Context, r *stock.ExistingStrain) 
 	st := &stock.Strain{}
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
+	}
+	if len(r.Data.Attributes.DictyStrainProperty) == 0 {
+		r.Data.Attributes.DictyStrainProperty = s.Params["strain_term"]
 	}
 	id := r.Data.Id
 	m, err := s.repo.LoadStrain(id, r)
