@@ -81,6 +81,10 @@ func RunServer(c *cli.Context) error {
 					"stockUpdate": "StockService.Update",
 					"stockDelete": "StockService.Delete",
 				}),
+			strainOnto(
+				c.String("strain-term"),
+				c.String("strain-ontology"),
+			),
 		),
 	)
 	if c.Bool("reflection") {
@@ -99,6 +103,15 @@ func RunServer(c *cli.Context) error {
 	log.Printf("starting grpc server on %s", endP)
 	grpcS.Serve(lis)
 	return nil
+}
+
+func strainOnto(term, onto string) aphgrpc.Option {
+	return func(so *aphgrpc.ServiceOptions) {
+		so.Params = map[string]string{
+			"strain_term": term,
+			"strain_onto": onto,
+		}
+	}
 }
 
 func getLogger(c *cli.Context) *logrus.Entry {
