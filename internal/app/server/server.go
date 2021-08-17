@@ -11,6 +11,7 @@ import (
 	"github.com/dictyBase/apihelpers/aphgrpc"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	ontoarango "github.com/dictyBase/go-obograph/storage/arangodb"
 	"github.com/dictyBase/modware-stock/internal/app/service"
 	"github.com/dictyBase/modware-stock/internal/message/nats"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
@@ -26,26 +27,7 @@ import (
 
 // RunServer starts and runs the server
 func RunServer(c *cli.Context) error {
-	arPort, _ := strconv.Atoi(c.String("arangodb-port"))
-	connP := &manager.ConnectParams{
-		User:     c.String("arangodb-user"),
-		Pass:     c.String("arangodb-pass"),
-		Database: c.String("arangodb-database"),
-		Host:     c.String("arangodb-host"),
-		Istls:    c.Bool("is-secure"),
-		Port:     arPort,
-	}
-	collP := &arangodb.CollectionParams{
-		Stock:              c.String("stock-collection"),
-		StockProp:          c.String("stockprop-collection"),
-		StockKeyGenerator:  c.String("stock-key-generator-collection"),
-		StockType:          c.String("stock-type-edge"),
-		ParentStrain:       c.String("parent-strain-edge"),
-		StockPropTypeGraph: c.String("stockproptype-graph"),
-		Strain2ParentGraph: c.String("strain2parent-graph"),
-		KeyOffset:          c.Int("keyoffset"),
-	}
-	srepo, err := arangodb.NewStockRepo(connP, collP)
+	srepo, err := arangodb.NewStockRepo(allParams(c))
 	if err != nil {
 		return cli.NewExitError(
 			fmt.Sprintf("cannot connect to arangodb stocks repository %s", err.Error()),
@@ -81,10 +63,7 @@ func RunServer(c *cli.Context) error {
 					"stockUpdate": "StockService.Update",
 					"stockDelete": "StockService.Delete",
 				}),
-			strainOnto(
-				c.String("strain-term"),
-				c.String("strain-ontology"),
-			),
+			strainType(c.String("strain-term")),
 		),
 	)
 	if c.Bool("reflection") {
@@ -105,12 +84,9 @@ func RunServer(c *cli.Context) error {
 	return nil
 }
 
-func strainOnto(term, onto string) aphgrpc.Option {
+func strainType(term string) aphgrpc.Option {
 	return func(so *aphgrpc.ServiceOptions) {
-		so.Params = map[string]string{
-			"strain_term": term,
-			"strain_onto": onto,
-		}
+		so.Params = map[string]string{"strain_term": term}
 	}
 }
 
@@ -141,4 +117,34 @@ func getLogger(c *cli.Context) *logrus.Entry {
 		log.Level = logrus.PanicLevel
 	}
 	return logrus.NewEntry(log)
+}
+
+func allParams(c *cli.Context) (*manager.ConnectParams, *arangodb.CollectionParams, *ontoarango.CollectionParams) {
+	arPort, _ := strconv.Atoi(c.String("arangodb-port"))
+	connP := &manager.ConnectParams{
+		User:     c.String("arangodb-user"),
+		Pass:     c.String("arangodb-pass"),
+		Database: c.String("arangodb-database"),
+		Host:     c.String("arangodb-host"),
+		Istls:    c.Bool("is-secure"),
+		Port:     arPort,
+	}
+	collP := &arangodb.CollectionParams{
+		Stock:              c.String("stock-collection"),
+		StockProp:          c.String("stockprop-collection"),
+		StockKeyGenerator:  c.String("stock-key-generator-collection"),
+		StockType:          c.String("stock-type-edge"),
+		ParentStrain:       c.String("parent-strain-edge"),
+		StockPropTypeGraph: c.String("stockproptype-graph"),
+		Strain2ParentGraph: c.String("strain2parent-graph"),
+		StrainOntology:     c.String("strain-ontology"),
+		KeyOffset:          c.Int("keyoffset"),
+	}
+	ontoP := &ontoarango.CollectionParams{
+		GraphInfo:    c.String("cv-collection"),
+		OboGraph:     c.String("obograph"),
+		Relationship: c.String("rel-collection"),
+		Term:         c.String("term-collection"),
+	}
+	return connP, collP, ontoP
 }
