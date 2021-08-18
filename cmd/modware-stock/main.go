@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	apiflag "github.com/dictyBase/apihelpers/command/flag"
+	"github.com/dictyBase/aphgrpc"
 	oboflag "github.com/dictyBase/go-obograph/command/flag"
 	"github.com/dictyBase/modware-stock/internal/app/server"
 	"github.com/dictyBase/modware-stock/internal/app/validate"
@@ -44,7 +44,7 @@ func allFlags() []cli.Flag {
 	f = append(f, serverFlags()...)
 	f = append(f, dbCollectionFlags()...)
 	f = append(f, oboflag.OntologyFlags()...)
-	return append(f, apiflag.NatsFlag()...)
+	return append(f, aphgrpc.NatsFlag()...)
 }
 
 func serverFlags() []cli.Flag {

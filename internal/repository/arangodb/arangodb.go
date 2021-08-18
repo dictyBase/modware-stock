@@ -7,7 +7,7 @@ import (
 	manager "github.com/dictyBase/arangomanager"
 	ontoarango "github.com/dictyBase/go-obograph/storage/arangodb"
 	"github.com/dictyBase/modware-stock/internal/repository"
-	validator "gopkg.in/go-playground/validator.v9"
+	validator "github.com/go-playground/validator/v10"
 )
 
 type arangorepository struct {

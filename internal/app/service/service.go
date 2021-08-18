@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dictyBase/apihelpers/aphgrpc"
+	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/message"
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	empty "google.golang.org/protobuf/types/known/emptypb"
+	timestamp "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var stockProp = map[string]int{
@@ -582,7 +581,7 @@ func (s *StockService) LoadPlasmid(ctx context.Context, r *stock.ExistingPlasmid
 }
 
 func genNextCursorVal(c *timestamp.Timestamp) int64 {
-	ts := ptypes.TimestampString(c)
+	ts := c.String()
 	t, _ := time.Parse("2006-01-02T15:04:05Z", ts)
 	return t.UnixNano() / 1000000
 }

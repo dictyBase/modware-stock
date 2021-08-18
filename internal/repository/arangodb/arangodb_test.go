@@ -12,7 +12,7 @@ import (
 	ontoarango "github.com/dictyBase/go-obograph/storage/arangodb"
 
 	driver "github.com/arangodb/go-driver"
-	"github.com/dictyBase/apihelpers/aphgrpc"
+	"github.com/dictyBase/aphgrpc"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
