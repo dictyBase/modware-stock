@@ -7,7 +7,6 @@ import (
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
-	"github.com/golang/protobuf/ptypes"
 )
 
 // GetStrain retrieves a strain from the database
@@ -319,8 +318,8 @@ func existingStrainBindParams(attr *stock.ExistingStrainAttributes) map[string]i
 		"species":          attr.Species,
 		"created_by":       attr.CreatedBy,
 		"updated_by":       attr.UpdatedBy,
-		"created_at":       ptypes.TimestampString(attr.CreatedAt),
-		"updated_at":       ptypes.TimestampString(attr.UpdatedAt),
+		"created_at":       attr.CreatedAt.String(),
+		"updated_at":       attr.UpdatedAt.String(),
 	}
 }
 

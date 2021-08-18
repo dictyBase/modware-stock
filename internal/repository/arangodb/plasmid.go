@@ -6,7 +6,6 @@ import (
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
-	"github.com/golang/protobuf/ptypes"
 )
 
 // LoadPlasmid will insert existing plasmid data into the database.
@@ -201,8 +200,8 @@ func addableStrainBindParams(attr *stock.NewStrainAttributes) map[string]interfa
 
 func existingPlasmidBindParams(attr *stock.ExistingPlasmidAttributes) map[string]interface{} {
 	bindVars := map[string]interface{}{
-		"created_at":       ptypes.TimestampString(attr.CreatedAt),
-		"updated_at":       ptypes.TimestampString(attr.UpdatedAt),
+		"created_at":       attr.CreatedAt.String(),
+		"updated_at":       attr.UpdatedAt.String(),
 		"depositor":        attr.Depositor,
 		"created_by":       attr.CreatedBy,
 		"updated_by":       attr.UpdatedBy,
