@@ -57,7 +57,7 @@ func createDbStruct(ar *arangorepository, collP *CollectionParams) error {
 
 func docCollections(ar *arangorepository, collP *CollectionParams) error {
 	db := ar.database
-	stockc, err := db.FindOrCreateCollection(
+	stkc, err := db.FindOrCreateCollection(
 		collP.Stock,
 		&driver.CreateCollectionOptions{},
 	)
@@ -82,9 +82,11 @@ func docCollections(ar *arangorepository, collP *CollectionParams) error {
 	if err != nil {
 		return err
 	}
-	ar.stockc.stockProp = spropc
-	ar.stockc.stockKey = stockkeyc
-	ar.stockc.stock = stockc
+	ar.stockc = &stockc{
+		stockProp: spropc,
+		stockKey:  stockkeyc,
+		stock:     stkc,
+	}
 	return nil
 }
 
