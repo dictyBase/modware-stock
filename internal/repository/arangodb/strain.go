@@ -318,8 +318,8 @@ func existingStrainBindParams(attr *stock.ExistingStrainAttributes) map[string]i
 		"species":          attr.Species,
 		"created_by":       attr.CreatedBy,
 		"updated_by":       attr.UpdatedBy,
-		"created_at":       attr.CreatedAt.String(),
-		"updated_at":       attr.UpdatedAt.String(),
+		"created_at":       attr.CreatedAt.AsTime().UnixMilli(),
+		"updated_at":       attr.UpdatedAt.AsTime().UnixMilli(),
 	}
 }
 

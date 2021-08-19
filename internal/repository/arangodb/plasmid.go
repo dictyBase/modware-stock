@@ -97,29 +97,31 @@ func (ar *arangorepository) EditPlasmid(us *stock.PlasmidUpdate) (*model.StockDo
 			"stock_id":         us.Data.Id,
 		})
 	if err != nil {
-		return m, fmt.Errorf("error in finding plasmid id %s %s", us.Data.Id, err)
+		return m,
+			fmt.Errorf("error in finding plasmid id %s %s", us.Data.Id, err)
 	}
 	if r.IsEmpty() {
-		return m, fmt.Errorf("plasmid id %s is absent in database", us.Data.Id)
+		return m,
+			fmt.Errorf("plasmid id %s is absent in database", us.Data.Id)
 	}
 	var propKey string
 	if err := r.Read(&propKey); err != nil {
-		return m, fmt.Errorf("error in reading using plasmid id %s %s", us.Data.Id, err)
+		return m,
+			fmt.Errorf("error in reading using plasmid id %s %s", us.Data.Id, err)
 	}
-	var stmt string
 	bindVars := getUpdatablePlasmidBindParams(us.Data.Attributes)
 	bindPlVars := getUpdatablePlasmidPropBindParams(us.Data.Attributes)
 	cmBindVars := mergeBindParams([]map[string]interface{}{bindVars, bindPlVars}...)
-	stmt = fmt.Sprintf(
-		statement.PlasmidUpd,
-		genAQLDocExpression(bindVars),
-		genAQLDocExpression(bindPlVars),
-	)
 	cmBindVars["@stock_properties_collection"] = ar.stockc.stockProp.Name()
 	cmBindVars["propkey"] = propKey
 	cmBindVars["@stock_collection"] = ar.stockc.stock.Name()
 	cmBindVars["key"] = us.Data.Id
-	rupd, err := ar.database.DoRun(stmt, cmBindVars)
+	rupd, err := ar.database.DoRun(
+		fmt.Sprintf(
+			statement.PlasmidUpd,
+			genAQLDocExpression(bindVars),
+			genAQLDocExpression(bindPlVars),
+		), cmBindVars)
 	if err != nil {
 		return m, err
 	}
@@ -148,8 +150,8 @@ func (ar *arangorepository) AddPlasmid(ns *stock.NewPlasmid) (*model.StockDoc, e
 func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	bindVars := map[string]interface{}{
-		"@stock_collection": ar.stockc.stock.Name(),
 		"id":                id,
+		"@stock_collection": ar.stockc.stock.Name(),
 		"graph":             ar.stockc.stockPropType.Name(),
 	}
 	r, err := ar.database.GetRow(statement.StockGetPlasmid, bindVars)
@@ -200,8 +202,8 @@ func addableStrainBindParams(attr *stock.NewStrainAttributes) map[string]interfa
 
 func existingPlasmidBindParams(attr *stock.ExistingPlasmidAttributes) map[string]interface{} {
 	bindVars := map[string]interface{}{
-		"created_at":       attr.CreatedAt.String(),
-		"updated_at":       attr.UpdatedAt.String(),
+		"created_at":       attr.CreatedAt.AsTime().UnixMilli(),
+		"updated_at":       attr.UpdatedAt.AsTime().UnixMilli(),
 		"depositor":        attr.Depositor,
 		"created_by":       attr.CreatedBy,
 		"updated_by":       attr.UpdatedBy,
