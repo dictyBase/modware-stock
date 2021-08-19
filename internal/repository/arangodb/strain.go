@@ -235,12 +235,12 @@ func (ar *arangorepository) ListStrainsByIds(p *stock.StockIdList) ([]*model.Sto
 		ids = append(ids, v)
 	}
 	bindVars := map[string]interface{}{
-		"ids":                 ids,
-		"limit":               len(ids),
-		"stock_collection":    ar.stockc.stock.Name(),
-		"@stock_collection":   ar.stockc.stock.Name(),
-		"prop_graph":          ar.stockc.stockPropType.Name(),
-		"par.stockcent_graph": ar.stockc.strain2Parent.Name(),
+		"ids":               ids,
+		"limit":             len(ids),
+		"stock_collection":  ar.stockc.stock.Name(),
+		"@stock_collection": ar.stockc.stock.Name(),
+		"prop_graph":        ar.stockc.stockPropType.Name(),
+		"parent_graph":      ar.stockc.strain2Parent.Name(),
 	}
 	rs, err := ar.database.SearchRows(statement.StrainListFromIds, bindVars)
 	if err != nil {
