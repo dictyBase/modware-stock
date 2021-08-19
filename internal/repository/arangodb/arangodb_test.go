@@ -45,13 +45,16 @@ func getConnectParams() *manager.ConnectParams {
 func getCollectionParams() *CollectionParams {
 	return &CollectionParams{
 		Stock:              "stock",
+		StockTerm:          "stock_term",
 		StockProp:          "stockprop",
 		StockKeyGenerator:  "stock_key_generator",
 		StockType:          "stock_type",
+		StockOntoGraph:     "stockonto",
 		ParentStrain:       "parent_strain",
 		StockPropTypeGraph: "stockprop_type",
 		Strain2ParentGraph: "strain2parent",
 		KeyOffset:          370000,
+		StrainOntology:     "dicty_strain_property",
 	}
 }
 
