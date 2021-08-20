@@ -20,25 +20,13 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, err
 	bindVars["@stock_type_collection"] = ar.stockc.stockType.Name()
 	if len(ns.Data.Attributes.Parent) > 0 { // in case parent is present
 		p := ns.Data.Attributes.Parent
-		pVars := map[string]interface{}{
-			"@stock_collection": ar.stockc.stock.Name(),
-			"id":                p,
-		}
-		r, err := ar.database.GetRow(statement.StockFindQ, pVars)
+		pVars, err := ar.processStrainWithParent(p)
 		if err != nil {
-			return m, fmt.Errorf("error in searching for parent %s %s", p, err)
+			return m, err
 		}
-		if r.IsEmpty() {
-			return m, fmt.Errorf("parent %s is not found", p)
-		}
-		var pid string
-		if err := r.Read(&pid); err != nil {
-			return m, fmt.Errorf("error in scanning the value %s %s", p, err)
-		}
-		stmt = statement.StockStrainWithParentsIns
-		bindVars["pid"] = pid
-		bindVars["@parent_strain_collection"] = ar.stockc.parentStrain.Name()
+		bindVars = mergeBindParams(bindVars, pVars)
 		m.StrainProperties = &model.StrainProperties{Parent: p}
+		stmt = statement.StockStrainWithParentsIns
 	}
 	r, err := ar.database.DoRun(stmt, bindVars)
 	if err != nil {
@@ -259,4 +247,28 @@ func addableStrainBindParams(attr *stock.NewStrainAttributes) map[string]interfa
 		"created_by":       attr.CreatedBy,
 		"updated_by":       attr.UpdatedBy,
 	}
+}
+
+func (ar *arangorepository) processStrainWithParent(parent string) (map[string]interface{}, error) {
+	qVar := map[string]interface{}{
+		"@stock_collection": ar.stockc.stock.Name(),
+		"id":                parent,
+	}
+	r, err := ar.database.GetRow(statement.StockFindQ, qVar)
+	if err != nil {
+		return qVar,
+			fmt.Errorf("error in searching for parent %s %s", parent, err)
+	}
+	if r.IsEmpty() {
+		return qVar, fmt.Errorf("parent %s is not found", parent)
+	}
+	var pid string
+	if err := r.Read(&pid); err != nil {
+		return qVar,
+			fmt.Errorf("error in scanning the value %s %s", parent, err)
+	}
+	return map[string]interface{}{
+		"pid":                       pid,
+		"@parent_strain_collection": ar.stockc.parentStrain.Name(),
+	}, nil
 }
