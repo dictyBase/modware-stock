@@ -17,6 +17,7 @@ import (
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
+	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -175,7 +176,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestEditStrain(t *testing.T) {
+func setUp(t *testing.T) (*assert.Assertions, repository.StockRepository) {
 	assert := assert.New(t)
 	repo, err := NewStockRepo(
 		getConnectParams(),
@@ -183,10 +184,17 @@ func TestEditStrain(t *testing.T) {
 		getOntoParams(),
 	)
 	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	return assert, repo
+}
+
+func tearDown(assert *assert.Assertions, repo repository.StockRepository) {
+	err := repo.ClearStocks()
+	assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
+}
+
+func TestEditStrain(t *testing.T) {
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	ns := newUpdatableTestStrain("todd@gagg.com")
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -337,17 +345,8 @@ func TestEditStrain(t *testing.T) {
 }
 
 func TestAddStrain(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	nsp := newTestParentStrain("todd@gagg.com")
 	m, err := repo.AddStrain(nsp)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -413,17 +412,8 @@ func TestAddStrain(t *testing.T) {
 }
 
 func TestAddPlasmid(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	ns := newTestPlasmid("george@costanza.com")
 	m, err := repo.AddPlasmid(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -459,17 +449,8 @@ func TestAddPlasmid(t *testing.T) {
 }
 
 func TestEditPlasmid(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	ns := newUpdatableTestPlasmid("art@vandelay.org")
 	m, err := repo.AddPlasmid(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -567,17 +548,8 @@ func TestEditPlasmid(t *testing.T) {
 }
 
 func TestGetStrain(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	ns := newTestStrain("george@costanza.com")
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -613,17 +585,8 @@ func TestGetStrain(t *testing.T) {
 }
 
 func TestGetPlasmid(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	ns := newTestPlasmid("george@costanza.com")
 	m, err := repo.AddPlasmid(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -647,17 +610,8 @@ func TestGetPlasmid(t *testing.T) {
 }
 
 func TestListStrainsByIds(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	// add 10 new test strains
 	ids := make([]string, 0)
 	for i := 1; i <= 30; i++ {
@@ -706,17 +660,8 @@ func TestListStrainsByIds(t *testing.T) {
 }
 
 func TestListStrains(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	// add 10 new test strains
 	for i := 1; i <= 10; i++ {
 		ns := newTestStrain(fmt.Sprintf("%s@kramericaindustries.com", RandString(10)))
@@ -769,17 +714,8 @@ func TestListStrains(t *testing.T) {
 }
 
 func TestListStrainsWithFilter(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	// add 10 new test strains
 	for i := 1; i <= 10; i++ {
 		ns := newTestStrain(fmt.Sprintf("%s@kramericaindustries.com", RandString(10)))
@@ -826,17 +762,8 @@ func TestListStrainsWithFilter(t *testing.T) {
 }
 
 func TestListPlasmids(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	// add ten new test plasmids
 	for i := 1; i <= 10; i++ {
 		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
@@ -888,17 +815,8 @@ func TestListPlasmids(t *testing.T) {
 }
 
 func TestListPlasmidsWithFilter(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	// add 10 new test plasmids
 	for i := 1; i <= 10; i++ {
 		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
@@ -950,17 +868,8 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 }
 
 func TestRemoveStock(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	ns := newTestStrain("george@costanza.com")
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -975,17 +884,8 @@ func TestRemoveStock(t *testing.T) {
 }
 
 func TestLoadStockWithStrains(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
 	nsp := &stock.ExistingStrain{
 		Data: &stock.ExistingStrain_Data{
@@ -1089,17 +989,8 @@ func TestLoadStockWithStrains(t *testing.T) {
 }
 
 func TestLoadStockWithPlasmids(t *testing.T) {
-	assert := assert.New(t)
-	repo, err := NewStockRepo(
-		getConnectParams(),
-		getCollectionParams(),
-		getOntoParams(),
-	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
-	defer func() {
-		err := repo.ClearStocks()
-		assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
-	}()
+	assert, repo := setUp(t)
+	defer tearDown(assert, repo)
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
 	ns := &stock.ExistingPlasmid{
 		Data: &stock.ExistingPlasmid_Data{
