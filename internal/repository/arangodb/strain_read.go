@@ -42,44 +42,9 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 // ListStrains provides a list of all strains
 func (ar *arangorepository) ListStrains(p *stock.StockParameters) ([]*model.StockDoc, error) {
 	var om []*model.StockDoc
-	var stmt string
-	c := p.Cursor
-	l := p.Limit
-	f := p.Filter
-	// if filter string exists, it needs to be included in statement
-	if len(f) > 0 {
-		if c == 0 { // no cursor so return first set of results with filter
-			stmt = fmt.Sprintf(
-				statement.StrainListFilter,
-				ar.stockc.stock.Name(),
-				ar.stockc.stockPropType.Name(),
-				f, l+1,
-			)
-		} else { // else include both filter and cursor
-			stmt = fmt.Sprintf(
-				statement.StrainListFilterWithCursor,
-				ar.stockc.stock.Name(),
-				ar.stockc.stockPropType.Name(),
-				f, c, l+1,
-			)
-		}
-	} else {
-		// otherwise use query statement without filter
-		if c == 0 { // no cursor so return first set of result
-			stmt = fmt.Sprintf(
-				statement.StrainList,
-				ar.stockc.stock.Name(),
-				ar.stockc.stockPropType.Name(),
-				l+1,
-			)
-		} else { // add cursor if it exists
-			stmt = fmt.Sprintf(
-				statement.StrainListWithCursor,
-				ar.stockc.stock.Name(),
-				ar.stockc.stockPropType.Name(),
-				c, l+1,
-			)
-		}
+	stmt := ar.strainStmtNoFilter(p)
+	if len(p.Filter) > 0 {
+		stmt = ar.strainStmtWithFilter(p)
 	}
 	rs, err := ar.database.Search(stmt)
 	if err != nil {
@@ -127,4 +92,41 @@ func (ar *arangorepository) ListStrainsByIds(p *stock.StockIdList) ([]*model.Sto
 		ms = append(ms, m)
 	}
 	return ms, nil
+}
+
+func (ar *arangorepository) strainStmtWithFilter(p *stock.StockParameters) string {
+	if p.Cursor == 0 { // no cursor so return first set of results with filter
+		return fmt.Sprintf(
+			statement.StrainListFilter,
+			ar.stockc.stock.Name(),
+			ar.stockc.stockPropType.Name(),
+			p.Filter, p.Limit+1,
+		)
+	}
+	// else include both filter and cursor
+	return fmt.Sprintf(
+		statement.StrainListFilterWithCursor,
+		ar.stockc.stock.Name(),
+		ar.stockc.stockPropType.Name(),
+		p.Filter, p.Cursor, p.Limit+1,
+	)
+}
+
+func (ar *arangorepository) strainStmtNoFilter(p *stock.StockParameters) string {
+	// otherwise use query statement without filter
+	if p.Cursor == 0 { // no cursor so return first set of result
+		return fmt.Sprintf(
+			statement.StrainList,
+			ar.stockc.stock.Name(),
+			ar.stockc.stockPropType.Name(),
+			p.Limit+1,
+		)
+	}
+	// add cursor if it exists
+	return fmt.Sprintf(
+		statement.StrainListWithCursor,
+		ar.stockc.stock.Name(),
+		ar.stockc.stockPropType.Name(),
+		p.Cursor, p.Limit+1,
+	)
 }

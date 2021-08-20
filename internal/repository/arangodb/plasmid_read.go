@@ -11,44 +11,10 @@ import (
 // ListPlasmids provides a list of all plasmids
 func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.StockDoc, error) {
 	var om []*model.StockDoc
-	var stmt string
-	c := p.Cursor
-	l := p.Limit
-	f := p.Filter
+	stmt := ar.plasmidStmtNoFilter(p)
 	// if filter string exists, it needs to be included in statement
-	if len(f) > 0 {
-		if c == 0 { // no cursor so return first set of result
-			stmt = fmt.Sprintf(
-				statement.PlasmidListFilter,
-				ar.stockc.stock.Name(),
-				ar.stockc.stockPropType.Name(),
-				f, l+1,
-			)
-		} else { // else include both filter and cursor
-			stmt = fmt.Sprintf(
-				statement.PlasmidListFilterWithCursor,
-				ar.stockc.stock.Name(),
-				ar.stockc.stockPropType.Name(),
-				f, c, l+1,
-			)
-		}
-	} else {
-		// otherwise use query statement without filter
-		if c == 0 { // no cursor so return first set of result
-			stmt = fmt.Sprintf(
-				statement.PlasmidList,
-				ar.stockc.stock.Name(),
-				ar.stockc.stockPropType.Name(),
-				l+1,
-			)
-		} else { // add cursor if it exists
-			stmt = fmt.Sprintf(
-				statement.PlasmidListWithCursor,
-				ar.stockc.stock.Name(),
-				ar.stockc.stockPropType.Name(),
-				c, l+1,
-			)
-		}
+	if len(p.Filter) > 0 {
+		stmt = ar.plasmidStmtWithFilter(p)
 	}
 	rs, err := ar.database.Search(stmt)
 	if err != nil {
@@ -85,4 +51,41 @@ func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 	}
 	err = r.Read(m)
 	return m, err
+}
+
+func (ar *arangorepository) plasmidStmtWithFilter(p *stock.StockParameters) string {
+	if p.Cursor == 0 { // no cursor so return first set of result
+		return fmt.Sprintf(
+			statement.PlasmidListFilter,
+			ar.stockc.stock.Name(),
+			ar.stockc.stockPropType.Name(),
+			p.Filter, p.Limit+1,
+		)
+	}
+	// else include both filter and cursor
+	return fmt.Sprintf(
+		statement.PlasmidListFilterWithCursor,
+		ar.stockc.stock.Name(),
+		ar.stockc.stockPropType.Name(),
+		p.Filter, p.Cursor, p.Limit+1,
+	)
+}
+
+func (ar *arangorepository) plasmidStmtNoFilter(p *stock.StockParameters) string {
+	// otherwise use query statement without filter
+	if p.Cursor == 0 { // no cursor so return first set of result
+		return fmt.Sprintf(
+			statement.PlasmidList,
+			ar.stockc.stock.Name(),
+			ar.stockc.stockPropType.Name(),
+			p.Limit+1,
+		)
+	}
+	// add cursor if it exists
+	return fmt.Sprintf(
+		statement.PlasmidListWithCursor,
+		ar.stockc.stock.Name(),
+		ar.stockc.stockPropType.Name(),
+		p.Cursor, p.Limit+1,
+	)
 }
