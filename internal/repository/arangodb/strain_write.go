@@ -20,7 +20,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, err
 	bindVars["@stock_type_collection"] = ar.stockc.stockType.Name()
 	if len(ns.Data.Attributes.Parent) > 0 { // in case parent is present
 		p := ns.Data.Attributes.Parent
-		pVars, err := ar.processStrainWithParent(p)
+		pVars, err := ar.handleAddStrainWithParent(p)
 		if err != nil {
 			return m, err
 		}
@@ -39,25 +39,9 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, err
 // EditStrain updates an existing strain
 func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	r, err := ar.database.GetRow(
-		statement.StockFindIdQ,
-		map[string]interface{}{
-			"stock_collection": ar.stockc.stock.Name(),
-			"graph":            ar.stockc.stockPropType.Name(),
-			"stock_id":         us.Data.Id,
-		})
+	propKey, err := ar.checkStrain(us.Data.Id)
 	if err != nil {
-		return m,
-			fmt.Errorf("error in finding strain id %s %s", us.Data.Id, err)
-	}
-	if r.IsEmpty() {
-		return m,
-			fmt.Errorf("strain id %s is absent in database", us.Data.Id)
-	}
-	var propKey string
-	if err := r.Read(&propKey); err != nil {
-		return m,
-			fmt.Errorf("error in reading using strain id %s %s", us.Data.Id, err)
+		return m, err
 	}
 	bindVars := getUpdatableStrainBindParams(us.Data.Attributes)
 	bindStVars := getUpdatableStrainPropBindParams(us.Data.Attributes)
@@ -73,43 +57,12 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 	parent := us.Data.Attributes.Parent
 	stmt := statement.StrainUpd
 	if len(parent) > 0 { // in case parent is present
-		// parent -> relation -> child
-		//   obj  ->  pred    -> sub
-		// 1. Have to make sure the parent is present
-		// 2. Have to figure out if child(sub) has an existing relation
-		//    a) If relation exists, get and update the relation(pred)
-		//    b) If not, create the new relation(pred)
-		ok, err := ar.stockc.stock.DocumentExists(context.Background(), parent)
+		pVars, pStmt, err := ar.handleEditStrainWithParent(parent, us.Data.Id)
 		if err != nil {
-			return m, fmt.Errorf("error in checking for parent id %s %s", parent, err)
+			return m, err
 		}
-		if !ok {
-			return m, fmt.Errorf("parent id %s does not exist in database", parent)
-		}
-		r, err := ar.database.GetRow(
-			statement.StrainGetParentRel,
-			map[string]interface{}{
-				"parent_graph": ar.stockc.strain2Parent.Name(),
-				"strain_key":   us.Data.Id,
-			})
-		if err != nil {
-			return m, fmt.Errorf("error in parent relation query %s", err)
-		}
-		var pKey string
-		if !r.IsEmpty() {
-			if err := r.Read(&pKey); err != nil {
-				return m, fmt.Errorf("error in reading parent relation key %s", err)
-			}
-		}
-		if len(pKey) > 0 {
-			stmt = statement.StrainWithExistingParentUpd
-			cmBindVars["pkey"] = pKey
-		} else {
-			stmt = statement.StrainWithNewParentUpd
-		}
-		cmBindVars["parent"] = us.Data.Attributes.Parent
-		cmBindVars["stock_collection"] = ar.stockc.stock.Name()
-		cmBindVars["@parent_strain_collection"] = ar.stockc.parentStrain.Name()
+		stmt = pStmt
+		cmBindVars = mergeBindParams(cmBindVars, pVars)
 		m.StrainProperties = &model.StrainProperties{Parent: parent}
 	}
 	rupd, err := ar.database.DoRun(
@@ -249,7 +202,53 @@ func addableStrainBindParams(attr *stock.NewStrainAttributes) map[string]interfa
 	}
 }
 
-func (ar *arangorepository) processStrainWithParent(parent string) (map[string]interface{}, error) {
+func (ar *arangorepository) handleEditStrainWithParent(parent, id string) (map[string]interface{}, string, error) {
+	pVar := map[string]interface{}{
+		"parent_graph": ar.stockc.strain2Parent.Name(),
+		"strain_key":   id,
+	}
+	if err := ar.validateParent(parent); err != nil {
+		return pVar, "", err
+	}
+	r, err := ar.database.GetRow(statement.StrainGetParentRel, pVar)
+	if err != nil {
+		return pVar,
+			"",
+			fmt.Errorf("error in parent relation query %s", err)
+	}
+	var pKey string
+	if !r.IsEmpty() {
+		if err := r.Read(&pKey); err != nil {
+			return pVar,
+				"",
+				fmt.Errorf("error in reading parent relation key %s", err)
+		}
+	}
+	stmt := statement.StrainWithNewParentUpd
+	cmBindVars := map[string]interface{}{
+		"parent":                    parent,
+		"stock_collection":          ar.stockc.stock.Name(),
+		"@parent_strain_collection": ar.stockc.parentStrain.Name(),
+	}
+	if len(pKey) > 0 {
+		stmt = statement.StrainWithExistingParentUpd
+		cmBindVars["pkey"] = pKey
+	}
+	return cmBindVars, stmt, nil
+}
+
+func (ar *arangorepository) validateParent(parent string) error {
+	ok, err := ar.stockc.stock.DocumentExists(context.Background(), parent)
+	if err != nil {
+		return fmt.Errorf("error in checking for parent id %s %s", parent, err)
+	}
+	if !ok {
+		return fmt.Errorf("parent id %s does not exist in database", parent)
+	}
+	return nil
+}
+
+func (ar *arangorepository) handleAddStrainWithParent(parent string) (map[string]interface{}, error) {
 	qVar := map[string]interface{}{
 		"@stock_collection": ar.stockc.stock.Name(),
 		"id":                parent,
@@ -271,4 +270,28 @@ func (ar *arangorepository) processStrainWithParent(parent string) (map[string]i
 		"pid":                       pid,
 		"@parent_strain_collection": ar.stockc.parentStrain.Name(),
 	}, nil
+}
+
+func (ar *arangorepository) checkStrain(id string) (string, error) {
+	r, err := ar.database.GetRow(
+		statement.StockFindIdQ,
+		map[string]interface{}{
+			"stock_collection": ar.stockc.stock.Name(),
+			"graph":            ar.stockc.stockPropType.Name(),
+			"stock_id":         id,
+		})
+	if err != nil {
+		return id,
+			fmt.Errorf("error in finding strain id %s %s", id, err)
+	}
+	if r.IsEmpty() {
+		return id,
+			fmt.Errorf("strain id %s is absent in database", id)
+	}
+	var propKey string
+	if err := r.Read(&propKey); err != nil {
+		return id,
+			fmt.Errorf("error in reading using strain id %s %s", id, err)
+	}
+	return propKey, nil
 }
