@@ -12,12 +12,12 @@ import (
 // It receives the already existing plasmid ID and the data to go with it.
 func (ar *arangorepository) LoadPlasmid(id string, ep *stock.ExistingPlasmid) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	attr := ep.Data.Attributes
-	bindVars := existingPlasmidBindParams(attr)
-	bindVars["stock_id"] = id
-	bindVars["@stock_collection"] = ar.stockc.stock.Name()
-	bindVars["@stock_type_collection"] = ar.stockc.stockType.Name()
-	bindVars["@stock_properties_collection"] = ar.stockc.stockProp.Name()
+	bindVars := mergeBindParams(map[string]interface{}{
+		"stock_id":                     id,
+		"@stock_collection":            ar.stockc.stock.Name(),
+		"@stock_type_collection":       ar.stockc.stockType.Name(),
+		"@stock_properties_collection": ar.stockc.stockProp.Name(),
+	}, existingPlasmidBindParams(ep.Data.Attributes))
 	r, err := ar.database.DoRun(statement.StockPlasmidLoad, bindVars)
 	if err != nil {
 		return m, err
@@ -29,33 +29,21 @@ func (ar *arangorepository) LoadPlasmid(id string, ep *stock.ExistingPlasmid) (*
 // EditPlasmid updates an existing plasmid
 func (ar *arangorepository) EditPlasmid(us *stock.PlasmidUpdate) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	r, err := ar.database.GetRow(
-		statement.StockFindIdQ,
-		map[string]interface{}{
-			"stock_collection": ar.stockc.stock.Name(),
-			"graph":            ar.stockc.stockPropType.Name(),
-			"stock_id":         us.Data.Id,
-		})
+	propKey, err := ar.checkStock(us.Data.Id)
 	if err != nil {
-		return m,
-			fmt.Errorf("error in finding plasmid id %s %s", us.Data.Id, err)
-	}
-	if r.IsEmpty() {
-		return m,
-			fmt.Errorf("plasmid id %s is absent in database", us.Data.Id)
-	}
-	var propKey string
-	if err := r.Read(&propKey); err != nil {
-		return m,
-			fmt.Errorf("error in reading using plasmid id %s %s", us.Data.Id, err)
+		return m, err
 	}
 	bindVars := getUpdatablePlasmidBindParams(us.Data.Attributes)
 	bindPlVars := getUpdatablePlasmidPropBindParams(us.Data.Attributes)
-	cmBindVars := mergeBindParams(bindVars, bindPlVars)
-	cmBindVars["key"] = us.Data.Id
-	cmBindVars["propkey"] = propKey
-	cmBindVars["@stock_properties_collection"] = ar.stockc.stockProp.Name()
-	cmBindVars["@stock_collection"] = ar.stockc.stock.Name()
+	cmBindVars := mergeBindParams(
+		map[string]interface{}{
+			"@stock_properties_collection": ar.stockc.stockProp.Name(),
+			"@stock_collection":            ar.stockc.stock.Name(),
+			"key":                          us.Data.Id,
+			"propkey":                      propKey,
+		},
+		bindVars, bindPlVars,
+	)
 	rupd, err := ar.database.DoRun(
 		fmt.Sprintf(
 			statement.PlasmidUpd,
@@ -72,12 +60,12 @@ func (ar *arangorepository) EditPlasmid(us *stock.PlasmidUpdate) (*model.StockDo
 // AddPlasmid creates a new plasmid stock
 func (ar *arangorepository) AddPlasmid(ns *stock.NewPlasmid) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	attr := ns.Data.Attributes
-	bindVars := addablePlasmidBindParams(attr)
-	bindVars["@stock_collection"] = ar.stockc.stock.Name()
-	bindVars["@stock_key_generator"] = ar.stockc.stockKey.Name()
-	bindVars["@stock_type_collection"] = ar.stockc.stockType.Name()
-	bindVars["@stock_properties_collection"] = ar.stockc.stockProp.Name()
+	bindVars := mergeBindParams(map[string]interface{}{
+		"@stock_collection":            ar.stockc.stock.Name(),
+		"@stock_key_generator":         ar.stockc.stockKey.Name(),
+		"@stock_type_collection":       ar.stockc.stockType.Name(),
+		"@stock_properties_collection": ar.stockc.stockProp.Name(),
+	}, addablePlasmidBindParams(ns.Data.Attributes))
 	r, err := ar.database.DoRun(statement.StockPlasmidIns, bindVars)
 	if err != nil {
 		return m, err

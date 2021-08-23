@@ -36,12 +36,13 @@ func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.Sto
 // GetPlasmid retrieves a plasmid from the database
 func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	bindVars := map[string]interface{}{
-		"id":                id,
-		"@stock_collection": ar.stockc.stock.Name(),
-		"graph":             ar.stockc.stockPropType.Name(),
-	}
-	r, err := ar.database.GetRow(statement.StockGetPlasmid, bindVars)
+	r, err := ar.database.GetRow(
+		statement.StockGetPlasmid,
+		map[string]interface{}{
+			"id":                id,
+			"@stock_collection": ar.stockc.stock.Name(),
+			"graph":             ar.stockc.stockPropType.Name(),
+		})
 	if err != nil {
 		return m, err
 	}

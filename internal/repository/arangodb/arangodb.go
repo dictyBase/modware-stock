@@ -7,6 +7,7 @@ import (
 	manager "github.com/dictyBase/arangomanager"
 	ontoarango "github.com/dictyBase/go-obograph/storage/arangodb"
 	"github.com/dictyBase/modware-stock/internal/repository"
+	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 	validator "github.com/go-playground/validator/v10"
 )
 
@@ -41,6 +42,30 @@ func NewStockRepo(connP *manager.ConnectParams,
 	ar.database = db
 	err = createDbStruct(ar, collP)
 	return ar, err
+}
+
+func (ar *arangorepository) checkStock(id string) (string, error) {
+	r, err := ar.database.GetRow(
+		statement.StockFindIdQ,
+		map[string]interface{}{
+			"stock_collection": ar.stockc.stock.Name(),
+			"graph":            ar.stockc.stockPropType.Name(),
+			"stock_id":         id,
+		})
+	if err != nil {
+		return id,
+			fmt.Errorf("error in finding stock id %s %s", id, err)
+	}
+	if r.IsEmpty() {
+		return id,
+			fmt.Errorf("stock id %s is absent in database", id)
+	}
+	var propKey string
+	if err := r.Read(&propKey); err != nil {
+		return id,
+			fmt.Errorf("error in reading using stock id %s %s", id, err)
+	}
+	return propKey, nil
 }
 
 func normalizeSliceBindParam(s []string) []string {
