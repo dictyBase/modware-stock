@@ -39,7 +39,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, err
 // EditStrain updates an existing strain
 func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	propKey, err := ar.checkStrain(us.Data.Id)
+	propKey, err := ar.checkStock(us.Data.Id)
 	if err != nil {
 		return m, err
 	}
@@ -270,28 +270,4 @@ func (ar *arangorepository) handleAddStrainWithParent(parent string) (map[string
 		"pid":                       pid,
 		"@parent_strain_collection": ar.stockc.parentStrain.Name(),
 	}, nil
-}
-
-func (ar *arangorepository) checkStrain(id string) (string, error) {
-	r, err := ar.database.GetRow(
-		statement.StockFindIdQ,
-		map[string]interface{}{
-			"stock_collection": ar.stockc.stock.Name(),
-			"graph":            ar.stockc.stockPropType.Name(),
-			"stock_id":         id,
-		})
-	if err != nil {
-		return id,
-			fmt.Errorf("error in finding strain id %s %s", id, err)
-	}
-	if r.IsEmpty() {
-		return id,
-			fmt.Errorf("strain id %s is absent in database", id)
-	}
-	var propKey string
-	if err := r.Read(&propKey); err != nil {
-		return id,
-			fmt.Errorf("error in reading using strain id %s %s", id, err)
-	}
-	return propKey, nil
 }
