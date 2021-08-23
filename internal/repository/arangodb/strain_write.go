@@ -13,11 +13,12 @@ import (
 func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	stmt := statement.StockStrainIns
-	bindVars := addableStrainBindParams(ns.Data.Attributes)
-	bindVars["@stock_collection"] = ar.stockc.stock.Name()
-	bindVars["@stock_key_generator"] = ar.stockc.stockKey.Name()
-	bindVars["@stock_properties_collection"] = ar.stockc.stockProp.Name()
-	bindVars["@stock_type_collection"] = ar.stockc.stockType.Name()
+	bindVars := mergeBindParams(map[string]interface{}{
+		"@stock_collection":            ar.stockc.stock.Name(),
+		"@stock_key_generator":         ar.stockc.stockKey.Name(),
+		"@stock_properties_collection": ar.stockc.stockProp.Name(),
+		"@stock_type_collection":       ar.stockc.stockType.Name(),
+	}, addableStrainBindParams(ns.Data.Attributes))
 	if len(ns.Data.Attributes.Parent) > 0 { // in case parent is present
 		p := ns.Data.Attributes.Parent
 		pVars, err := ar.handleAddStrainWithParent(p)
@@ -88,34 +89,22 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 func (ar *arangorepository) LoadStrain(id string, es *stock.ExistingStrain) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	stmt := statement.StockStrainLoad
-	bindVars := existingStrainBindParams(es.Data.Attributes)
+	bindVars := mergeBindParams(map[string]interface{}{
+		"stock_id":                     id,
+		"@stock_collection":            ar.stockc.stock.Name(),
+		"@stock_properties_collection": ar.stockc.stockProp.Name(),
+		"@stock_type_collection":       ar.stockc.stockType.Name(),
+	}, existingStrainBindParams(es.Data.Attributes))
 	if len(es.Data.Attributes.Parent) > 0 { // in case parent is present
 		p := es.Data.Attributes.Parent
-		r, err := ar.database.GetRow(
-			statement.StockFindQ,
-			map[string]interface{}{
-				"@stock_collection": ar.stockc.stock.Name(),
-				"id":                p,
-			})
+		pVars, err := ar.handleAddStrainWithParent(p)
 		if err != nil {
-			return m, fmt.Errorf("error in searching for parent %s %s", p, err)
+			return m, err
 		}
-		if r.IsEmpty() {
-			return m, fmt.Errorf("parent %s is not found", p)
-		}
-		var pid string
-		if err := r.Read(&pid); err != nil {
-			return m, fmt.Errorf("error in scanning the value %s %s", p, err)
-		}
-		stmt = statement.StockStrainWithParentLoad
-		bindVars["pid"] = pid
-		bindVars["@parent_strain_collection"] = ar.stockc.parentStrain.Name()
+		bindVars = mergeBindParams(bindVars, pVars)
 		m.StrainProperties = &model.StrainProperties{Parent: p}
+		stmt = statement.StockStrainWithParentLoad
 	}
-	bindVars["stock_id"] = id
-	bindVars["@stock_collection"] = ar.stockc.stock.Name()
-	bindVars["@stock_properties_collection"] = ar.stockc.stockProp.Name()
-	bindVars["@stock_type_collection"] = ar.stockc.stockType.Name()
 	r, err := ar.database.DoRun(stmt, bindVars)
 	if err != nil {
 		return m, err
