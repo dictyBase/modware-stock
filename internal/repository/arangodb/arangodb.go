@@ -99,3 +99,27 @@ func genAQLDocExpression(bindVars map[string]interface{}) string {
 	}
 	return strings.Join(bindParams, ",")
 }
+
+func (ar *arangorepository) termID(term, onto string) (string, error) {
+	var id string
+	r, err := ar.database.GetRow(
+		statement.strainExistTermQ,
+		map[string]interface{}{
+			"@cv_collection":     ar.ontoc.Cv.Name(),
+			"@cvterm_collection": ar.ontoc.Term.Name(),
+			"ontology":           onto,
+			"term":               term,
+		})
+	if err != nil {
+		return id,
+			fmt.Errorf("error in running obograph retrieving query %s", err)
+	}
+	if r.IsEmpty() {
+		return id,
+			fmt.Errorf("ontology %s and tag %s does not exist", onto, term)
+	}
+	if err := r.Read(&id); err != nil {
+		return id, fmt.Errorf("error in retrieving obograph id %s", err)
+	}
+	return id, nil
+}
