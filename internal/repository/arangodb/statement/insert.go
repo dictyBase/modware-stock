@@ -30,6 +30,7 @@ const (
 			} INTO @@stock_properties_collection RETURN NEW
 		)
 		INSERT { _from: n[0]._id, _to: o[0]._id, type: 'strain' } INTO @@stock_type_collection
+		INSERT { _from: n[0]._id, _to: @to } INTO @@stock_onto_collection
 		RETURN MERGE(
 			n[0],
 			{
@@ -67,6 +68,7 @@ const (
 		)
 		INSERT { _from: n[0]._id, _to: o[0]._id, type: 'strain' } INTO @@stock_type_collection
 		INSERT { _from: @pid, _to: n[0]._id } INTO @@parent_strain_collection
+		INSERT { _from: n[0]._id, _to: @to } INTO @@stock_onto_collection
 		RETURN MERGE(
 			n[0],
 			{

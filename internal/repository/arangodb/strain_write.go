@@ -11,13 +11,23 @@ import (
 
 // AddStrain creates a new strain stock
 func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, error) {
-	m := &model.StockDoc{}
+	m := &model.StockDoc{
+		StrainProperties: &model.StrainProperties{
+			DictyStrainProperty: ns.Data.Attributes.DictyStrainProperty,
+		},
+	}
+	tid, err := ar.termID(ns.Data.Attributes.DictyStrainProperty, ar.strainOnto)
+	if err != nil {
+		return m, err
+	}
 	stmt := statement.StockStrainIns
 	bindVars := mergeBindParams(map[string]interface{}{
+		"@to":                          tid,
 		"@stock_collection":            ar.stockc.stock.Name(),
 		"@stock_key_generator":         ar.stockc.stockKey.Name(),
 		"@stock_properties_collection": ar.stockc.stockProp.Name(),
 		"@stock_type_collection":       ar.stockc.stockType.Name(),
+		"@stock_onto_collection":       ar.stockc.stockOnto.Name(),
 	}, addableStrainBindParams(ns.Data.Attributes))
 	if len(ns.Data.Attributes.Parent) > 0 { // in case parent is present
 		p := ns.Data.Attributes.Parent
@@ -26,7 +36,7 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, err
 			return m, err
 		}
 		bindVars = mergeBindParams(bindVars, pVars)
-		m.StrainProperties = &model.StrainProperties{Parent: p}
+		m.StrainProperties.Parent = p
 		stmt = statement.StockStrainWithParentsIns
 	}
 	r, err := ar.database.DoRun(stmt, bindVars)
