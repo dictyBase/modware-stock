@@ -25,8 +25,3 @@ func (ar *arangorepository) RemoveStock(id string) error {
 	}
 	return nil
 }
-
-// ClearStocks clears all stocks from the repository datasource
-func (ar *arangorepository) ClearStocks() error {
-	return ar.stockc.stock.Truncate(context.Background())
-}

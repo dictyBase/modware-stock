@@ -1,6 +1,7 @@
 package repository
 
 import (
+	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 )
@@ -19,5 +20,5 @@ type StockRepository interface {
 	RemoveStock(id string) error
 	LoadStrain(id string, es *stock.ExistingStrain) (*model.StockDoc, error)
 	LoadPlasmid(id string, ep *stock.ExistingPlasmid) (*model.StockDoc, error)
-	ClearStocks() error
+	Dbh() *manager.Database
 }

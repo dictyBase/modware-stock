@@ -100,10 +100,14 @@ func genAQLDocExpression(bindVars map[string]interface{}) string {
 	return strings.Join(bindParams, ",")
 }
 
+func (ar *arangorepository) Dbh() *manager.Database {
+	return ar.database
+}
+
 func (ar *arangorepository) termID(term, onto string) (string, error) {
 	var id string
 	r, err := ar.database.GetRow(
-		statement.strainExistTermQ,
+		statement.StrainExistTermQ,
 		map[string]interface{}{
 			"@cv_collection":     ar.ontoc.Cv.Name(),
 			"@cvterm_collection": ar.ontoc.Term.Name(),
