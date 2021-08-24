@@ -1,7 +1,6 @@
 package arangodb
 
 import (
-	"log"
 	"math/rand"
 	"os"
 	"testing"
@@ -9,7 +8,6 @@ import (
 
 	ontoarango "github.com/dictyBase/go-obograph/storage/arangodb"
 
-	driver "github.com/arangodb/go-driver"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
@@ -23,7 +21,8 @@ const (
 )
 
 var seedRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
-var gta *testarango.TestArango
+
+//var gta *testarango.TestArango
 
 func getOntoParams() *ontoarango.CollectionParams {
 	return &ontoarango.CollectionParams{
@@ -41,6 +40,17 @@ func getConnectParams() *manager.ConnectParams {
 		Database: gta.Database,
 		Host:     gta.Host,
 		Port:     gta.Port,
+		Istls:    false,
+	}
+}
+
+func getConnectParamsFromDb(ta *testarango.TestArango) *manager.ConnectParams {
+	return &manager.ConnectParams{
+		User:     ta.User,
+		Pass:     ta.Pass,
+		Database: ta.Database,
+		Host:     ta.Host,
+		Port:     ta.Port,
 		Istls:    false,
 	}
 }
@@ -158,30 +168,34 @@ func newTestPlasmid(createdby string) *stock.NewPlasmid {
 }
 
 func TestMain(m *testing.M) {
-	ta, err := testarango.NewTestArangoFromEnv(true)
-	if err != nil {
-		log.Fatalf("unable to construct new TestArango instance %s", err)
-	}
-	gta = ta
-	dbh, err := ta.DB(ta.Database)
-	if err != nil {
-		log.Fatalf("unable to get database %s", err)
-	}
-	cp := getCollectionParams()
-	_, err = dbh.CreateCollection(cp.Stock, &driver.CreateCollectionOptions{})
-	if err != nil {
-		dbh.Drop()
-		log.Fatalf("unable to create collection %s %s", cp.Stock, err)
-	}
+	//ta, err := testarango.NewTestArangoFromEnv(true)
+	//if err != nil {
+	//log.Fatalf("unable to construct new TestArango instance %s", err)
+	//}
+	//gta = ta
+	//dbh, err := ta.DB(ta.Database)
+	//if err != nil {
+	//log.Fatalf("unable to get database %s", err)
+	//}
+	//cp := getCollectionParams()
+	//_, err = dbh.CreateCollection(cp.Stock, &driver.CreateCollectionOptions{})
+	//if err != nil {
+	//dbh.Drop()
+	//log.Fatalf("unable to create collection %s %s", cp.Stock, err)
+	//}
 	code := m.Run()
-	dbh.Drop()
+	//dbh.Drop()
 	os.Exit(code)
 }
 
-func setUp(t *testing.T) (*assert.Assertions, repository.StockRepository) {
+func setUp(t *testing.T) (*assert.Assertions, *repository.StockRepository) {
+	ta, err := testarango.NewTestArangoFromEnv(true)
+	if err != nil {
+		t.Fatalf("unable to construct new TestArango instance %s", err)
+	}
 	assert := assert.New(t)
 	repo, err := NewStockRepo(
-		getConnectParams(),
+		getConnectParamsFromDb(ta),
 		getCollectionParams(),
 		getOntoParams(),
 	)
@@ -189,14 +203,13 @@ func setUp(t *testing.T) (*assert.Assertions, repository.StockRepository) {
 	return assert, repo
 }
 
-func tearDown(assert *assert.Assertions, repo repository.StockRepository) {
-	err := repo.ClearStocks()
-	assert.NoErrorf(err, "expect no error in clearing stocks, received %s", err)
+func tearDown(repo *repository.StockRepository) {
+	repo.Dbh().Drop()
 }
 
 func TestRemoveStock(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	ns := newTestStrain("george@costanza.com")
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)

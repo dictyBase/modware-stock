@@ -12,7 +12,7 @@ import (
 
 func TestLoadStockWithPlasmids(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
 	ns := &stock.ExistingPlasmid{
 		Data: &stock.ExistingPlasmid_Data{
@@ -67,7 +67,7 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 
 func TestListPlasmidsWithFilter(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	// add 10 new test plasmids
 	for i := 1; i <= 10; i++ {
 		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
@@ -120,7 +120,7 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 
 func TestListPlasmids(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	// add ten new test plasmids
 	for i := 1; i <= 10; i++ {
 		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
@@ -173,7 +173,7 @@ func TestListPlasmids(t *testing.T) {
 
 func TestGetPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	ns := newTestPlasmid("george@costanza.com")
 	m, err := repo.AddPlasmid(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -198,7 +198,7 @@ func TestGetPlasmid(t *testing.T) {
 
 func TestEditPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	ns := newUpdatableTestPlasmid("art@vandelay.org")
 	m, err := repo.AddPlasmid(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -297,7 +297,7 @@ func TestEditPlasmid(t *testing.T) {
 
 func TestAddPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	ns := newTestPlasmid("george@costanza.com")
 	m, err := repo.AddPlasmid(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
