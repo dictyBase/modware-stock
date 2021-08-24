@@ -12,7 +12,7 @@ import (
 
 func TestLoadStockWithStrains(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
 	nsp := &stock.ExistingStrain{
 		Data: &stock.ExistingStrain_Data{
@@ -117,7 +117,7 @@ func TestLoadStockWithStrains(t *testing.T) {
 
 func TestListStrainsWithFilter(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	// add 10 new test strains
 	for i := 1; i <= 10; i++ {
 		ns := newTestStrain(fmt.Sprintf("%s@kramericaindustries.com", RandString(10)))
@@ -219,7 +219,7 @@ func TestListStrains(t *testing.T) {
 
 func TestListStrainsByIds(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	// add 10 new test strains
 	ids := make([]string, 0)
 	for i := 1; i <= 30; i++ {
@@ -269,7 +269,7 @@ func TestListStrainsByIds(t *testing.T) {
 
 func TestGetStrain(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	ns := newTestStrain("george@costanza.com")
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -306,7 +306,7 @@ func TestGetStrain(t *testing.T) {
 
 func TestAddStrain(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	nsp := newTestParentStrain("todd@gagg.com")
 	m, err := repo.AddStrain(nsp)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -373,7 +373,7 @@ func TestAddStrain(t *testing.T) {
 
 func TestEditStrain(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	ns := newUpdatableTestStrain("todd@gagg.com")
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
