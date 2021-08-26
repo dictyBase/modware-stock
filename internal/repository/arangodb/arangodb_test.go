@@ -27,8 +27,6 @@ const (
 
 var seedRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-//var gta *testarango.TestArango
-
 func getOntoParams() *ontoarango.CollectionParams {
 	return &ontoarango.CollectionParams{
 		GraphInfo:    "cv",
