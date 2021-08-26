@@ -1,11 +1,15 @@
 package arangodb
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/dictyBase/go-obograph/graph"
+	"github.com/dictyBase/go-obograph/storage"
 	ontoarango "github.com/dictyBase/go-obograph/storage/arangodb"
 
 	manager "github.com/dictyBase/arangomanager"
@@ -14,6 +18,7 @@ import (
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -30,17 +35,6 @@ func getOntoParams() *ontoarango.CollectionParams {
 		OboGraph:     "obograph",
 		Relationship: "cvterm_relationship",
 		Term:         "cvterm",
-	}
-}
-
-func getConnectParams() *manager.ConnectParams {
-	return &manager.ConnectParams{
-		User:     gta.User,
-		Pass:     gta.Pass,
-		Database: gta.Database,
-		Host:     gta.Host,
-		Port:     gta.Port,
-		Istls:    false,
 	}
 }
 
@@ -95,18 +89,19 @@ func newTestStrain(createdby string) *stock.NewStrain {
 		Data: &stock.NewStrain_Data{
 			Type: "strain",
 			Attributes: &stock.NewStrainAttributes{
-				CreatedBy:       createdby,
-				UpdatedBy:       createdby,
-				Depositor:       "george@costanza.com",
-				Summary:         "Radiation-sensitive mutant.",
-				EditableSummary: "Radiation-sensitive mutant.",
-				Dbxrefs:         []string{"5466867", "4536935", "d2578", "d0319", "d2020/1033268", "d2580"},
-				Genes:           []string{"DDB_G0348394", "DDB_G098058933"},
-				Publications:    []string{"4849343943", "48394394"},
-				Label:           "yS13",
-				Species:         "Dictyostelium discoideum",
-				Plasmid:         "DBP0000027",
-				Names:           []string{"gammaS13", "gammaS-13", "γS-13"},
+				CreatedBy:           createdby,
+				UpdatedBy:           createdby,
+				Depositor:           "george@costanza.com",
+				Summary:             "Radiation-sensitive mutant.",
+				EditableSummary:     "Radiation-sensitive mutant.",
+				Dbxrefs:             []string{"5466867", "4536935", "d2578", "d0319", "d2020/1033268", "d2580"},
+				Genes:               []string{"DDB_G0348394", "DDB_G098058933"},
+				Publications:        []string{"4849343943", "48394394"},
+				Label:               "yS13",
+				Species:             "Dictyostelium discoideum",
+				Plasmid:             "DBP0000027",
+				Names:               []string{"gammaS13", "gammaS-13", "γS-13"},
+				DictyStrainProperty: "general strain",
 			},
 		},
 	}
@@ -117,15 +112,16 @@ func newTestParentStrain(createdby string) *stock.NewStrain {
 		Data: &stock.NewStrain_Data{
 			Type: "strain",
 			Attributes: &stock.NewStrainAttributes{
-				CreatedBy:       createdby,
-				UpdatedBy:       createdby,
-				Depositor:       createdby,
-				Summary:         "Remi-mutant strain",
-				EditableSummary: "Remi-mutant strain.",
-				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
-				Label:           "egeB/DDB_G0270724_ps-REMI",
-				Species:         "Dictyostelium discoideum",
-				Names:           []string{"gammaS13", "BCN149086"},
+				CreatedBy:           createdby,
+				UpdatedBy:           createdby,
+				Depositor:           createdby,
+				Summary:             "Remi-mutant strain",
+				EditableSummary:     "Remi-mutant strain.",
+				Dbxrefs:             []string{"5466867", "4536935", "d2578"},
+				Label:               "egeB/DDB_G0270724_ps-REMI",
+				Species:             "Dictyostelium discoideum",
+				Names:               []string{"gammaS13", "BCN149086"},
+				DictyStrainProperty: "general strain",
 			},
 		},
 	}
@@ -188,23 +184,79 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func setUp(t *testing.T) (*assert.Assertions, *repository.StockRepository) {
+func setUp(t *testing.T) (*require.Assertions, repository.StockRepository) {
 	ta, err := testarango.NewTestArangoFromEnv(true)
 	if err != nil {
 		t.Fatalf("unable to construct new TestArango instance %s", err)
 	}
-	assert := assert.New(t)
+	assert := require.New(t)
 	repo, err := NewStockRepo(
 		getConnectParamsFromDb(ta),
 		getCollectionParams(),
 		getOntoParams(),
 	)
 	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
+	err = loadData(ta)
+	assert.NoError(err, "expect no error from loading ontology")
 	return assert, repo
 }
 
-func tearDown(repo *repository.StockRepository) {
+func tearDown(repo repository.StockRepository) {
 	repo.Dbh().Drop()
+}
+
+func loadData(ta *testarango.TestArango) error {
+	dir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("unable to get current dir %s", err)
+	}
+	r, err := os.Open(
+		filepath.Join(
+			filepath.Dir(dir), "testdata", "dicty_strain_property.json",
+		),
+	)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+	g, err := graph.BuildGraph(r)
+	if err != nil {
+		return fmt.Errorf("error in building graph %s", err)
+	}
+	collP := getOntoParams()
+	cp := &ontoarango.ConnectParams{
+		User:     ta.User,
+		Pass:     ta.Pass,
+		Host:     ta.Host,
+		Database: ta.Database,
+		Port:     ta.Port,
+		Istls:    ta.Istls,
+	}
+	clp := &ontoarango.CollectionParams{
+		Term:         collP.Term,
+		Relationship: collP.Relationship,
+		GraphInfo:    collP.GraphInfo,
+		OboGraph:     collP.OboGraph,
+	}
+	ds, err := ontoarango.NewDataSource(cp, clp)
+	if err != nil {
+		return err
+	}
+	return loadOboGraphInArango(g, ds)
+}
+
+func loadOboGraphInArango(g graph.OboGraph, ds storage.DataSource) error {
+	if ds.ExistsOboGraph(g) {
+		return nil
+	}
+	if err := ds.SaveOboGraphInfo(g); err != nil {
+		return fmt.Errorf("error in saving graph %s", err)
+	}
+	if _, err := ds.SaveTerms(g); err != nil {
+		return fmt.Errorf("error in saving terms %s", err)
+	}
+	_, err := ds.SaveRelationships(g)
+	return err
 }
 
 func TestRemoveStock(t *testing.T) {

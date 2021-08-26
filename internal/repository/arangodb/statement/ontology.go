@@ -1,7 +1,7 @@
 package statement
 
 const (
-	strainExistTermQ = `
+	StrainExistTermQ = `
 		FOR cv IN @@cv_collection
 			FOR cvt IN @@cvterm_collection
 				FILTER cv.metadata.namespace == @ontology

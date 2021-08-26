@@ -22,12 +22,12 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, err
 	}
 	stmt := statement.StockStrainIns
 	bindVars := mergeBindParams(map[string]interface{}{
-		"@to":                          tid,
+		"to":                           tid,
 		"@stock_collection":            ar.stockc.stock.Name(),
 		"@stock_key_generator":         ar.stockc.stockKey.Name(),
 		"@stock_properties_collection": ar.stockc.stockProp.Name(),
 		"@stock_type_collection":       ar.stockc.stockType.Name(),
-		"@stock_onto_collection":       ar.stockc.stockOnto.Name(),
+		"@stock_term_collection":       ar.stockc.stockTerm.Name(),
 	}, addableStrainBindParams(ns.Data.Attributes))
 	if len(ns.Data.Attributes.Parent) > 0 { // in case parent is present
 		p := ns.Data.Attributes.Parent
