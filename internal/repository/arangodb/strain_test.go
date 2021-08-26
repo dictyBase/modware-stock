@@ -165,7 +165,7 @@ func TestListStrainsWithFilter(t *testing.T) {
 
 func TestListStrains(t *testing.T) {
 	assert, repo := setUp(t)
-	defer tearDown(assert, repo)
+	defer tearDown(repo)
 	// add 10 new test strains
 	for i := 1; i <= 10; i++ {
 		ns := newTestStrain(fmt.Sprintf("%s@kramericaindustries.com", RandString(10)))
