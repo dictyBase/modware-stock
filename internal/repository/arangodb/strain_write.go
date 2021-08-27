@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cockroachdb/errors"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
@@ -85,7 +86,7 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 		cmBindVars,
 	)
 	if err != nil {
-		return m, fmt.Errorf(
+		return m, errors.Errorf(
 			"error in editing strain %s %s",
 			us.Data.Id, err,
 		)
@@ -213,14 +214,14 @@ func (ar *arangorepository) handleEditStrainWithParent(parent, id string) (map[s
 	if err != nil {
 		return pVar,
 			"",
-			fmt.Errorf("error in parent relation query %s", err)
+			errors.Errorf("error in parent relation query %s", err)
 	}
 	var pKey string
 	if !r.IsEmpty() {
 		if err := r.Read(&pKey); err != nil {
 			return pVar,
 				"",
-				fmt.Errorf("error in reading parent relation key %s", err)
+				errors.Errorf("error in reading parent relation key %s", err)
 		}
 	}
 	stmt := statement.StrainWithNewParentUpd
@@ -239,10 +240,10 @@ func (ar *arangorepository) handleEditStrainWithParent(parent, id string) (map[s
 func (ar *arangorepository) validateParent(parent string) error {
 	ok, err := ar.stockc.stock.DocumentExists(context.Background(), parent)
 	if err != nil {
-		return fmt.Errorf("error in checking for parent id %s %s", parent, err)
+		return errors.Errorf("error in checking for parent id %s %s", parent, err)
 	}
 	if !ok {
-		return fmt.Errorf("parent id %s does not exist in database", parent)
+		return errors.Errorf("parent id %s does not exist in database", parent)
 	}
 	return nil
 }
@@ -255,15 +256,15 @@ func (ar *arangorepository) handleAddStrainWithParent(parent string) (map[string
 	r, err := ar.database.GetRow(statement.StockFindQ, qVar)
 	if err != nil {
 		return qVar,
-			fmt.Errorf("error in searching for parent %s %s", parent, err)
+			errors.Errorf("error in searching for parent %s %s", parent, err)
 	}
 	if r.IsEmpty() {
-		return qVar, fmt.Errorf("parent %s is not found", parent)
+		return qVar, errors.Errorf("parent %s is not found", parent)
 	}
 	var pid string
 	if err := r.Read(&pid); err != nil {
 		return qVar,
-			fmt.Errorf("error in scanning the value %s %s", parent, err)
+			errors.Errorf("error in scanning the value %s %s", parent, err)
 	}
 	return map[string]interface{}{
 		"pid":                       pid,

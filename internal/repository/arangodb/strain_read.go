@@ -3,6 +3,7 @@ package arangodb
 import (
 	"fmt"
 
+	"github.com/cockroachdb/errors"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
@@ -18,7 +19,7 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 			"@stock_collection": ar.stockc.stock.Name(),
 		})
 	if err != nil {
-		return m, fmt.Errorf("error in finding strain id %s %s", id, err)
+		return m, errors.Errorf("error in finding strain id %s %s", id, err)
 	}
 	if g.IsEmpty() {
 		m.NotFound = true
@@ -33,7 +34,7 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 	}
 	r, err := ar.database.GetRow(statement.StockGetStrain, bindVars)
 	if err != nil {
-		return m, fmt.Errorf("error in finding strain id %s %s", id, err)
+		return m, errors.Errorf("error in finding strain id %s %s", id, err)
 	}
 	err = r.Read(m)
 	return m, err

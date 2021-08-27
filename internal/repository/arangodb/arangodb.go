@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	manager "github.com/dictyBase/arangomanager"
 	ontoarango "github.com/dictyBase/go-obograph/storage/arangodb"
 	"github.com/dictyBase/modware-stock/internal/repository"
@@ -54,16 +55,16 @@ func (ar *arangorepository) checkStock(id string) (string, error) {
 		})
 	if err != nil {
 		return id,
-			fmt.Errorf("error in finding stock id %s %s", id, err)
+			errors.Errorf("error in finding stock id %s %s", id, err)
 	}
 	if r.IsEmpty() {
 		return id,
-			fmt.Errorf("stock id %s is absent in database", id)
+			errors.Errorf("stock id %s is absent in database", id)
 	}
 	var propKey string
 	if err := r.Read(&propKey); err != nil {
 		return id,
-			fmt.Errorf("error in reading using stock id %s %s", id, err)
+			errors.Errorf("error in reading using stock id %s %s", id, err)
 	}
 	return propKey, nil
 }
@@ -116,14 +117,14 @@ func (ar *arangorepository) termID(term, onto string) (string, error) {
 		})
 	if err != nil {
 		return id,
-			fmt.Errorf("error in running obograph retrieving query %s", err)
+			errors.Errorf("error in running obograph retrieving query %s", err)
 	}
 	if r.IsEmpty() {
 		return id,
-			fmt.Errorf("ontology %s and tag %s does not exist", onto, term)
+			errors.Errorf("ontology %s and tag %s does not exist", onto, term)
 	}
 	if err := r.Read(&id); err != nil {
-		return id, fmt.Errorf("error in retrieving obograph id %s", err)
+		return id, errors.Errorf("error in retrieving obograph id %s", err)
 	}
 	return id, nil
 }
