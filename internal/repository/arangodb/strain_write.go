@@ -12,40 +12,19 @@ import (
 
 // AddStrain creates a new strain stock
 func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, error) {
-	m := &model.StockDoc{
-		StrainProperties: &model.StrainProperties{
-			DictyStrainProperty: ns.Data.Attributes.DictyStrainProperty,
-		},
-	}
-	tid, err := ar.termID(ns.Data.Attributes.DictyStrainProperty, ar.strainOnto)
-	if err != nil {
-		return m, err
-	}
-	stmt := statement.StockStrainIns
-	bindVars := mergeBindParams(map[string]interface{}{
-		"to":                           tid,
-		"@stock_collection":            ar.stockc.stock.Name(),
-		"@stock_key_generator":         ar.stockc.stockKey.Name(),
-		"@stock_properties_collection": ar.stockc.stockProp.Name(),
-		"@stock_type_collection":       ar.stockc.stockType.Name(),
-		"@stock_term_collection":       ar.stockc.stockTerm.Name(),
-	}, addableStrainBindParams(ns.Data.Attributes))
-	if len(ns.Data.Attributes.Parent) > 0 { // in case parent is present
-		p := ns.Data.Attributes.Parent
-		pVars, err := ar.handleAddStrainWithParent(p)
-		if err != nil {
-			return m, err
-		}
-		bindVars = mergeBindParams(bindVars, pVars)
-		m.StrainProperties.Parent = p
-		stmt = statement.StockStrainWithParentsIns
-	}
-	r, err := ar.database.DoRun(stmt, bindVars)
-	if err != nil {
-		return m, err
-	}
-	err = r.Read(m)
-	return m, err
+	return ar.persistStrain(&persistStrainParams{
+		parent:          ns.Data.Attributes.Parent,
+		dictyStrainProp: ns.Data.Attributes.DictyStrainProperty,
+		statement:       statement.StockStrainIns,
+		parentStatement: statement.StockStrainWithParentsIns,
+		bindVars: mergeBindParams(map[string]interface{}{
+			"@stock_collection":            ar.stockc.stock.Name(),
+			"@stock_key_generator":         ar.stockc.stockKey.Name(),
+			"@stock_properties_collection": ar.stockc.stockProp.Name(),
+			"@stock_type_collection":       ar.stockc.stockType.Name(),
+			"@stock_term_collection":       ar.stockc.stockTerm.Name(),
+		}, addableStrainBindParams(ns.Data.Attributes)),
+	})
 }
 
 // EditStrain updates an existing strain
@@ -98,13 +77,23 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 // LoadStrain will insert existing strain data into the database.
 // It receives the already existing strain ID and the data to go with it.
 func (ar *arangorepository) LoadStrain(id string, es *stock.ExistingStrain) (*model.StockDoc, error) {
-	m := &model.StockDoc{}
+	m := &model.StockDoc{
+		StrainProperties: &model.StrainProperties{
+			DictyStrainProperty: es.Data.Attributes.DictyStrainProperty,
+		},
+	}
+	tid, err := ar.termID(es.Data.Attributes.DictyStrainProperty, ar.strainOnto)
+	if err != nil {
+		return m, err
+	}
 	stmt := statement.StockStrainLoad
 	bindVars := mergeBindParams(map[string]interface{}{
+		"to":                           tid,
 		"stock_id":                     id,
 		"@stock_collection":            ar.stockc.stock.Name(),
 		"@stock_properties_collection": ar.stockc.stockProp.Name(),
 		"@stock_type_collection":       ar.stockc.stockType.Name(),
+		"@stock_term_collection":       ar.stockc.stockTerm.Name(),
 	}, existingStrainBindParams(es.Data.Attributes))
 	if len(es.Data.Attributes.Parent) > 0 { // in case parent is present
 		p := es.Data.Attributes.Parent
@@ -113,7 +102,7 @@ func (ar *arangorepository) LoadStrain(id string, es *stock.ExistingStrain) (*mo
 			return m, err
 		}
 		bindVars = mergeBindParams(bindVars, pVars)
-		m.StrainProperties = &model.StrainProperties{Parent: p}
+		m.StrainProperties.Parent = p
 		stmt = statement.StockStrainWithParentLoad
 	}
 	r, err := ar.database.DoRun(stmt, bindVars)
@@ -270,4 +259,35 @@ func (ar *arangorepository) handleAddStrainWithParent(parent string) (map[string
 		"pid":                       pid,
 		"@parent_strain_collection": ar.stockc.parentStrain.Name(),
 	}, nil
+}
+
+func (ar *arangorepository) persistStrain(args *persistStrainParams) (*model.StockDoc, error) {
+	m := &model.StockDoc{
+		StrainProperties: &model.StrainProperties{
+			DictyStrainProperty: args.dictyStrainProp,
+		},
+	}
+	tid, err := ar.termID(args.dictyStrainProp, ar.strainOnto)
+	if err != nil {
+		return m, err
+	}
+	stmt := args.statement
+	bindVars := mergeBindParams(map[string]interface{}{
+		"to": tid,
+	}, args.bindVars)
+	if len(args.parent) > 0 { // parent is present
+		pVars, err := ar.handleAddStrainWithParent(args.parent)
+		if err != nil {
+			return m, err
+		}
+		bindVars = mergeBindParams(bindVars, pVars)
+		m.StrainProperties.Parent = args.parent
+		stmt = args.parentStatement
+	}
+	r, err := ar.database.DoRun(stmt, bindVars)
+	if err != nil {
+		return m, err
+	}
+	err = r.Read(m)
+	return m, err
 }
