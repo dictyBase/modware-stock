@@ -34,15 +34,16 @@ type CollectionParams struct {
 }
 
 type stockc struct {
-	stock         driver.Collection
-	stockProp     driver.Collection
-	stockKey      driver.Collection
-	stockType     driver.Collection
-	parentStrain  driver.Collection
-	stockTerm     driver.Collection
-	stockPropType driver.Graph
-	strain2Parent driver.Graph
-	stockOnto     driver.Graph
+	stock, stockProp, stockKey         driver.Collection
+	stockType, parentStrain, stockTerm driver.Collection
+	stockPropType, strain2Parent       driver.Graph
+	stockOnto                          driver.Graph
+}
+
+type persistStrainParams struct {
+	parent, dictyStrainProp    string
+	statement, parentStatement string
+	bindVars                   map[string]interface{}
 }
 
 func createDbStruct(ar *arangorepository, collP *CollectionParams) error {
