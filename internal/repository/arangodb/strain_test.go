@@ -290,6 +290,11 @@ func TestGetStrain(t *testing.T) {
 	assert.Equal(g.StrainProperties.Species, ns.Data.Attributes.Species, "should match species")
 	assert.Equal(g.StrainProperties.Plasmid, ns.Data.Attributes.Plasmid, "should match plasmid")
 	assert.Empty(g.StrainProperties.Parent, "should not have parent")
+	assert.Equal(
+		g.StrainProperties.DictyStrainProperty,
+		"general strain",
+		"should match ontology strain property",
+	)
 	assert.Len(g.Dbxrefs, 6, "should match length of six dbxrefs")
 	assert.True(m.CreatedAt.Equal(g.CreatedAt), "should match created time of stock")
 	assert.True(m.UpdatedAt.Equal(g.UpdatedAt), "should match updated time of stock")
@@ -301,6 +306,11 @@ func TestGetStrain(t *testing.T) {
 	g2, err := repo.GetStrain(m2.StockID)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(g2.StrainProperties.Parent, m.StockID, "should match parent")
+	assert.Equal(
+		g2.StrainProperties.DictyStrainProperty,
+		"general strain",
+		"should match ontology strain property",
+	)
 	ne, err := repo.GetStrain("DBS01")
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.True(ne.NotFound, "entry should not exist")

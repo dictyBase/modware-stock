@@ -32,14 +32,12 @@ const (
 					FILTER s.stock_id == @id
 					LIMIT 1
 					RETURN MERGE(
-						s,
-						{
-							strain_properties: {
-							label: v.label,
-							species: v.species,
-							plasmid: v.plasmid,
-							names: v.names,
-							dicty_strain_property: t[0]
+						s,{ strain_properties: {
+								label: v.label,
+								species: v.species,
+								plasmid: v.plasmid,
+								names: v.names,
+								dicty_strain_property: t[0]
 						}
 					}
 				)
@@ -53,7 +51,8 @@ const (
 						label: b[0].strain_properties.label,
 						species: b[0].strain_properties.species,
 						plasmid: b[0].strain_properties.plasmid,
-						names: b[0].strain_properties.names
+						names: b[0].strain_properties.names,
+						dicty_strain_property: t[0]
 					}
 				}
 			)

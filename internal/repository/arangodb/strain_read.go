@@ -26,11 +26,14 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 		return m, nil
 	}
 	bindVars := map[string]interface{}{
-		"id":                id,
-		"@stock_collection": ar.stockc.stock.Name(),
-		"stock_collection":  ar.stockc.stock.Name(),
-		"parent_graph":      ar.stockc.strain2Parent.Name(),
-		"prop_graph":        ar.stockc.stockPropType.Name(),
+		"id":                 id,
+		"@stock_collection":  ar.stockc.stock.Name(),
+		"@cv_collection":     ar.ontoc.Cv.Name(),
+		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
+		"ontology":           ar.strainOnto,
+		"stock_collection":   ar.stockc.stock.Name(),
+		"parent_graph":       ar.stockc.strain2Parent.Name(),
+		"prop_graph":         ar.stockc.stockPropType.Name(),
 	}
 	r, err := ar.database.GetRow(statement.StockGetStrain, bindVars)
 	if err != nil {
