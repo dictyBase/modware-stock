@@ -162,27 +162,6 @@ func newTestPlasmid(createdby string) *stock.NewPlasmid {
 	}
 }
 
-func TestMain(m *testing.M) {
-	//ta, err := testarango.NewTestArangoFromEnv(true)
-	//if err != nil {
-	//log.Fatalf("unable to construct new TestArango instance %s", err)
-	//}
-	//gta = ta
-	//dbh, err := ta.DB(ta.Database)
-	//if err != nil {
-	//log.Fatalf("unable to get database %s", err)
-	//}
-	//cp := getCollectionParams()
-	//_, err = dbh.CreateCollection(cp.Stock, &driver.CreateCollectionOptions{})
-	//if err != nil {
-	//dbh.Drop()
-	//log.Fatalf("unable to create collection %s %s", cp.Stock, err)
-	//}
-	code := m.Run()
-	//dbh.Drop()
-	os.Exit(code)
-}
-
 func setUp(t *testing.T) (*require.Assertions, repository.StockRepository) {
 	ta, err := testarango.NewTestArangoFromEnv(true)
 	if err != nil {
