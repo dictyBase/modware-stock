@@ -102,12 +102,8 @@ const (
 			} INTO @@stock_properties_collection RETURN NEW
 		)
 		INSERT { _from: n[0]._id, _to: o[0]._id, type: 'strain' } INTO @@stock_type_collection
-		RETURN MERGE(
-			n[0],
-			{
-				strain_properties: o[0]
-			}
-		)
+		INSERT { _from: n[0]._id, _to: @to } INTO @@stock_term_collection
+		RETURN MERGE(n[0],{strain_properties: o[0]})
 	`
 	StockStrainWithParentLoad = `
 		LET n = (
@@ -136,12 +132,8 @@ const (
 		)
 		INSERT { _from: n[0]._id, _to: o[0]._id, type: 'strain' } INTO @@stock_type_collection
 		INSERT { _from: @pid, _to: n[0]._id } INTO @@parent_strain_collection
-		RETURN MERGE(
-			n[0],
-			{
-				strain_properties: o[0]
-			}
-		)
+		INSERT { _from: n[0]._id, _to: @to } INTO @@stock_term_collection
+		RETURN MERGE(n[0],{strain_properties: o[0]})
 	`
 	StockPlasmidIns = `
 		LET kg = (
