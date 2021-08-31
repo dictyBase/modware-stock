@@ -77,40 +77,19 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 // LoadStrain will insert existing strain data into the database.
 // It receives the already existing strain ID and the data to go with it.
 func (ar *arangorepository) LoadStrain(id string, es *stock.ExistingStrain) (*model.StockDoc, error) {
-	m := &model.StockDoc{
-		StrainProperties: &model.StrainProperties{
-			DictyStrainProperty: es.Data.Attributes.DictyStrainProperty,
-		},
-	}
-	tid, err := ar.termID(es.Data.Attributes.DictyStrainProperty, ar.strainOnto)
-	if err != nil {
-		return m, err
-	}
-	stmt := statement.StockStrainLoad
-	bindVars := mergeBindParams(map[string]interface{}{
-		"to":                           tid,
-		"stock_id":                     id,
-		"@stock_collection":            ar.stockc.stock.Name(),
-		"@stock_properties_collection": ar.stockc.stockProp.Name(),
-		"@stock_type_collection":       ar.stockc.stockType.Name(),
-		"@stock_term_collection":       ar.stockc.stockTerm.Name(),
-	}, existingStrainBindParams(es.Data.Attributes))
-	if len(es.Data.Attributes.Parent) > 0 { // in case parent is present
-		p := es.Data.Attributes.Parent
-		pVars, err := ar.handleAddStrainWithParent(p)
-		if err != nil {
-			return m, err
-		}
-		bindVars = mergeBindParams(bindVars, pVars)
-		m.StrainProperties.Parent = p
-		stmt = statement.StockStrainWithParentLoad
-	}
-	r, err := ar.database.DoRun(stmt, bindVars)
-	if err != nil {
-		return m, err
-	}
-	err = r.Read(m)
-	return m, err
+	return ar.persistStrain(&persistStrainParams{
+		parent:          es.Data.Attributes.Parent,
+		dictyStrainProp: es.Data.Attributes.DictyStrainProperty,
+		statement:       statement.StockStrainLoad,
+		parentStatement: statement.StockStrainWithParentLoad,
+		bindVars: mergeBindParams(map[string]interface{}{
+			"stock_id":                     id,
+			"@stock_collection":            ar.stockc.stock.Name(),
+			"@stock_properties_collection": ar.stockc.stockProp.Name(),
+			"@stock_type_collection":       ar.stockc.stockType.Name(),
+			"@stock_term_collection":       ar.stockc.stockTerm.Name(),
+		}, existingStrainBindParams(es.Data.Attributes)),
+	})
 }
 
 func existingStrainBindParams(attr *stock.ExistingStrainAttributes) map[string]interface{} {
