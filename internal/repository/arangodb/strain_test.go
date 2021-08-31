@@ -19,17 +19,18 @@ func TestLoadStockWithStrains(t *testing.T) {
 			Type: "strain",
 			Id:   "DBS0252873",
 			Attributes: &stock.ExistingStrainAttributes{
-				CreatedAt:       aphgrpc.TimestampProto(tm),
-				UpdatedAt:       aphgrpc.TimestampProto(tm),
-				CreatedBy:       "wizard_of_loneliness@testemail.org",
-				UpdatedBy:       "wizard_of_loneliness@testemail.org",
-				Depositor:       "wizard_of_loneliness@testemail.org",
-				Summary:         "Remi-mutant strain",
-				EditableSummary: "Remi-mutant strain.",
-				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
-				Label:           "egeB/DDB_G0270724_ps-REMI",
-				Species:         "Dictyostelium discoideum",
-				Names:           []string{"gammaS13", "BCN149086"},
+				CreatedAt:           aphgrpc.TimestampProto(tm),
+				UpdatedAt:           aphgrpc.TimestampProto(tm),
+				CreatedBy:           "wizard_of_loneliness@testemail.org",
+				UpdatedBy:           "wizard_of_loneliness@testemail.org",
+				Depositor:           "wizard_of_loneliness@testemail.org",
+				Summary:             "Remi-mutant strain",
+				EditableSummary:     "Remi-mutant strain.",
+				Dbxrefs:             []string{"5466867", "4536935", "d2578"},
+				Label:               "egeB/DDB_G0270724_ps-REMI",
+				Species:             "Dictyostelium discoideum",
+				Names:               []string{"gammaS13", "BCN149086"},
+				DictyStrainProperty: "general strain",
 			},
 		},
 	}
@@ -57,17 +58,18 @@ func TestLoadStockWithStrains(t *testing.T) {
 			Type: "strain",
 			Id:   "DBS0252873",
 			Attributes: &stock.ExistingStrainAttributes{
-				CreatedAt:       aphgrpc.TimestampProto(tm),
-				UpdatedAt:       aphgrpc.TimestampProto(tm),
-				CreatedBy:       "wizard_of_loneliness@testemail.org",
-				UpdatedBy:       "wizard_of_loneliness@testemail.org",
-				Depositor:       "wizard_of_loneliness@testemail.org",
-				Summary:         "Remi-mutant strain",
-				EditableSummary: "Remi-mutant strain.",
-				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
-				Label:           "egeB/DDB_G0270724_ps-REMI",
-				Species:         "Dictyostelium discoideum",
-				Names:           []string{"gammaS13", "BCN149086"},
+				CreatedAt:           aphgrpc.TimestampProto(tm),
+				UpdatedAt:           aphgrpc.TimestampProto(tm),
+				CreatedBy:           "wizard_of_loneliness@testemail.org",
+				UpdatedBy:           "wizard_of_loneliness@testemail.org",
+				Depositor:           "wizard_of_loneliness@testemail.org",
+				Summary:             "Remi-mutant strain",
+				EditableSummary:     "Remi-mutant strain.",
+				Dbxrefs:             []string{"5466867", "4536935", "d2578"},
+				Label:               "egeB/DDB_G0270724_ps-REMI",
+				Species:             "Dictyostelium discoideum",
+				Names:               []string{"gammaS13", "BCN149086"},
+				DictyStrainProperty: "general strain",
 			},
 		},
 	}
@@ -305,6 +307,7 @@ func TestGetStrain(t *testing.T) {
 }
 
 func TestAddStrain(t *testing.T) {
+	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	nsp := newTestParentStrain("todd@gagg.com")
@@ -372,6 +375,7 @@ func TestAddStrain(t *testing.T) {
 }
 
 func TestEditStrain(t *testing.T) {
+	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	ns := newUpdatableTestStrain("todd@gagg.com")
