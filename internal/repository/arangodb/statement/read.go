@@ -17,7 +17,14 @@ const (
 			FOR v IN 1..1 INBOUND CONCAT(@stock_collection,"/",@id) GRAPH @parent_graph
 				RETURN v.stock_id
 		)
-		
+		LET t = (
+			FOR v IN 1..1 OUTBOUND CONCAT(@stock_collection,"/",@id) GRAPH @stock_cvterm_graph
+				FOR cv IN @@cv_collection
+					FILTER v.deprecated == false
+					FILTER v.graph_id == cv._id
+					FILTER cv.metadata.namespace == @ontology
+					RETURN v.label
+		)
 		LET b = (
 			FOR v, e IN 1..1 OUTBOUND CONCAT(@stock_collection,"/",@id) GRAPH @prop_graph
 				FILTER e.type == 'strain'
@@ -31,7 +38,8 @@ const (
 							label: v.label,
 							species: v.species,
 							plasmid: v.plasmid,
-							names: v.names
+							names: v.names,
+							dicty_strain_property: t[0]
 						}
 					}
 				)
