@@ -60,16 +60,27 @@ const (
 		FOR v,e IN 1..1 INBOUND @strain_key GRAPH @parent_graph
 			RETURN e._key
 	`
-
 	StrainListFromIds = `
 		FOR id IN @ids
-			FOR v, e IN 1..1 OUTBOUND CONCAT(@stock_collection,"/",id) GRAPH @prop_graph
+			FOR v, e IN 1..1 OUTBOUND 
+								CONCAT(@stock_collection,"/",id) 
+								GRAPH @prop_graph
 				LET parent = (
-							FOR p IN 1..1 INBOUND 
-										CONCAT(@stock_collection,"/",id) 
-										GRAPH @parent_graph
-								RETURN p.stock_id
+					FOR p IN 1..1 INBOUND 
+								CONCAT(@stock_collection,"/",id) 
+								GRAPH @parent_graph
+						RETURN p.stock_id
 								
+				)
+				LET term = (
+					FOR cg IN 1..1 OUTBOUND 
+									CONCAT(@stock_collection,"/",id) 
+									GRAPH @stock_cvterm_graph
+						FOR cv IN @@cv_collection
+							FILTER cg.deprecated == false
+							FILTER cg.graph_id == cv._id
+							FILTER cv.metadata.namespace == @ontology
+							RETURN cg.label
 				)
 				FILTER e.type == 'strain'
 				FOR s IN @@stock_collection
@@ -78,6 +89,7 @@ const (
 					RETURN MERGE(s,{
 							strain_properties: {
 								parent: parent[0],
+								dicty_strain_property: term[0],
 								label: v.label,
 								species: v.species,
 								plasmid: v.plasmid,
@@ -85,7 +97,6 @@ const (
 						}
 					})
 	`
-
 	StrainList = `
 		FOR s IN %s
 			FOR v, e IN 1..1 OUTBOUND s GRAPH '%s'

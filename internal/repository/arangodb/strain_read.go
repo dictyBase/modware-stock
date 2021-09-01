@@ -5,6 +5,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/collection"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 )
@@ -61,19 +62,20 @@ func (ar *arangorepository) ListStrains(p *stock.StockParameters) ([]*model.Stoc
 
 func (ar *arangorepository) ListStrainsByIds(p *stock.StockIdList) ([]*model.StockDoc, error) {
 	ms := make([]*model.StockDoc, 0)
-	ids := make([]string, 0)
-	for _, v := range p.Id {
-		ids = append(ids, v)
-	}
-	bindVars := map[string]interface{}{
-		"ids":               ids,
-		"limit":             len(ids),
-		"stock_collection":  ar.stockc.stock.Name(),
-		"@stock_collection": ar.stockc.stock.Name(),
-		"prop_graph":        ar.stockc.stockPropType.Name(),
-		"parent_graph":      ar.stockc.strain2Parent.Name(),
-	}
-	rs, err := ar.database.SearchRows(statement.StrainListFromIds, bindVars)
+	ids := collection.MapString(p.Id, func(s string) string { return s })
+	rs, err := ar.database.SearchRows(
+		statement.StrainListFromIds,
+		map[string]interface{}{
+			"ids":                ids,
+			"limit":              len(ids),
+			"ontology":           ar.strainOnto,
+			"stock_collection":   ar.stockc.stock.Name(),
+			"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
+			"prop_graph":         ar.stockc.stockPropType.Name(),
+			"parent_graph":       ar.stockc.strain2Parent.Name(),
+			"@stock_collection":  ar.stockc.stock.Name(),
+			"@cv_collection":     ar.ontoc.Cv.Name(),
+		})
 	if err != nil {
 		return ms, err
 	}
