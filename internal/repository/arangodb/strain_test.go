@@ -240,6 +240,11 @@ func TestListStrainsByIds(t *testing.T) {
 		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
 		assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), stock.StockID, "should have a strain stock id")
 		assert.Empty(stock.StrainProperties.Parent, "parent field should be empty")
+		assert.Equal(
+			stock.StrainProperties.DictyStrainProperty,
+			"general strain",
+			"should match ontology strain property",
+		)
 	}
 	// strain with parents
 	pm, err := repo.AddStrain(newTestParentStrain("j@peterman.org"))
@@ -252,7 +257,6 @@ func TestListStrainsByIds(t *testing.T) {
 		assert.NoErrorf(err, "expect no error adding strain with parent, received %s", err)
 		pids = append(pids, m.StockID)
 	}
-	// get first five results
 	pls, err := repo.ListStrainsByIds(&stock.StockIdList{Id: pids})
 	assert.NoErrorf(err, "expect no error in getting 30 stocks with parents, received %s", err)
 	assert.Len(pls, 30, "should match the provided limit number")
@@ -262,6 +266,11 @@ func TestListStrainsByIds(t *testing.T) {
 		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
 		assert.Regexp(regexp.MustCompile(`^DBS0\d{6,}$`), stock.StockID, "should have a strain stock id")
 		assert.Equal(stock.StrainProperties.Parent, pm.StockID, "should match parent id")
+		assert.Equal(
+			stock.StrainProperties.DictyStrainProperty,
+			"general strain",
+			"should match ontology strain property",
+		)
 	}
 	// Non-existing ids
 	els, err := repo.ListStrainsByIds(&stock.StockIdList{Id: []string{"DBN589343", "DBN48473232"}})
