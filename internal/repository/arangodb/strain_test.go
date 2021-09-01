@@ -11,6 +11,7 @@ import (
 )
 
 func TestLoadStockWithStrains(t *testing.T) {
+	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
@@ -118,6 +119,7 @@ func TestLoadStockWithStrains(t *testing.T) {
 }
 
 func TestListStrainsWithFilter(t *testing.T) {
+	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	// add 10 new test strains
@@ -166,6 +168,7 @@ func TestListStrainsWithFilter(t *testing.T) {
 }
 
 func TestListStrains(t *testing.T) {
+	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	// add 10 new test strains
@@ -220,6 +223,7 @@ func TestListStrains(t *testing.T) {
 }
 
 func TestListStrainsByIds(t *testing.T) {
+	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	// add 10 new test strains
@@ -279,6 +283,7 @@ func TestListStrainsByIds(t *testing.T) {
 }
 
 func TestGetStrain(t *testing.T) {
+	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	ns := newTestStrain("george@costanza.com")
