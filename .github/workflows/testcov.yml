@@ -18,7 +18,7 @@ jobs:
       - name: check out code
         uses: actions/checkout@v2
       - name: unit test
-        run: go test -covermode=atomic -coverprofile=profile.cov -v ./...
+        run: go test -parallel 4 -covermode=atomic -coverprofile=profile.cov -v ./...
         env:
           ARANGO_USER: root
           ARANGO_PASS: rootpass
