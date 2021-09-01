@@ -12,32 +12,24 @@ import (
 // GetStrain retrieves a strain from the database
 func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	g, err := ar.database.GetRow(
-		statement.StockFindQ,
+	r, err := ar.database.GetRow(
+		statement.StockGetStrain,
 		map[string]interface{}{
-			"id":                id,
-			"@stock_collection": ar.stockc.stock.Name(),
+			"id":                 id,
+			"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
+			"ontology":           ar.strainOnto,
+			"stock_collection":   ar.stockc.stock.Name(),
+			"parent_graph":       ar.stockc.strain2Parent.Name(),
+			"prop_graph":         ar.stockc.stockPropType.Name(),
+			"@stock_collection":  ar.stockc.stock.Name(),
+			"@cv_collection":     ar.ontoc.Cv.Name(),
 		})
 	if err != nil {
 		return m, errors.Errorf("error in finding strain id %s %s", id, err)
 	}
-	if g.IsEmpty() {
+	if r.IsEmpty() {
 		m.NotFound = true
 		return m, nil
-	}
-	bindVars := map[string]interface{}{
-		"id":                 id,
-		"@stock_collection":  ar.stockc.stock.Name(),
-		"@cv_collection":     ar.ontoc.Cv.Name(),
-		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
-		"ontology":           ar.strainOnto,
-		"stock_collection":   ar.stockc.stock.Name(),
-		"parent_graph":       ar.stockc.strain2Parent.Name(),
-		"prop_graph":         ar.stockc.stockPropType.Name(),
-	}
-	r, err := ar.database.GetRow(statement.StockGetStrain, bindVars)
-	if err != nil {
-		return m, errors.Errorf("error in finding strain id %s %s", id, err)
 	}
 	err = r.Read(m)
 	return m, err

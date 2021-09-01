@@ -13,50 +13,32 @@ const (
 			RETURN s._id
 	`
 	StockGetStrain = `
-		LET a = (
-			FOR v IN 1..1 INBOUND CONCAT(@stock_collection,"/",@id) GRAPH @parent_graph
-				RETURN v.stock_id
-		)
-		LET t = (
-			FOR v IN 1..1 OUTBOUND CONCAT(@stock_collection,"/",@id) GRAPH @stock_cvterm_graph
-				FOR cv IN @@cv_collection
-					FILTER v.deprecated == false
-					FILTER v.graph_id == cv._id
-					FILTER cv.metadata.namespace == @ontology
-					RETURN v.label
-		)
-		LET b = (
-			FOR v, e IN 1..1 OUTBOUND CONCAT(@stock_collection,"/",@id) GRAPH @prop_graph
-				FILTER e.type == 'strain'
-				FOR s IN @@stock_collection
-					FILTER s.stock_id == @id
-					LIMIT 1
-					RETURN MERGE(
-						s,{ strain_properties: {
-								label: v.label,
-								species: v.species,
-								plasmid: v.plasmid,
-								names: v.names,
-								dicty_strain_property: t[0]
-						}
-					}
-				)
-		)
-		
-		RETURN LENGTH(a) > 0 ? (MERGE(
-			b[0],
-			{
-				strain_properties: {
-						parent: a[0],
-						label: b[0].strain_properties.label,
-						species: b[0].strain_properties.species,
-						plasmid: b[0].strain_properties.plasmid,
-						names: b[0].strain_properties.names,
-						dicty_strain_property: t[0]
-					}
-				}
+		FOR v, e IN 1..1 OUTBOUND CONCAT(@stock_collection,"/",@id) GRAPH @prop_graph
+			LET parent = (
+				FOR pg IN 1..1 INBOUND CONCAT(@stock_collection,"/",@id) GRAPH @parent_graph
+					RETURN pg.stock_id
 			)
-		) : (b[0])
+			LET term = (
+				FOR cg IN 1..1 OUTBOUND CONCAT(@stock_collection,"/",@id) GRAPH @stock_cvterm_graph
+					FOR cv IN @@cv_collection
+						FILTER cg.deprecated == false
+						FILTER cg.graph_id == cv._id
+						FILTER cv.metadata.namespace == @ontology
+						RETURN cg.label
+			)
+			FILTER e.type == 'strain'
+			FOR s IN @@stock_collection
+				FILTER s.stock_id == @id
+				LIMIT 1
+				RETURN MERGE(s, {
+					strain_properties: {
+							label: v.label,
+							species: v.species,
+							plasmid: v.plasmid,
+							names: v.names,
+							dicty_strain_property: term[0],
+							parent: parent[0]
+			}})
 	`
 	StockGetPlasmid = `
 		FOR s IN @@stock_collection
