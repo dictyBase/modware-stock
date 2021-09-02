@@ -7,6 +7,7 @@ import (
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
 )
 
@@ -21,25 +22,7 @@ func (s *StockService) CreatePlasmid(ctx context.Context, r *stock.NewPlasmid) (
 	if err != nil {
 		return st, aphgrpc.HandleInsertError(ctx, err)
 	}
-	st.Data = &stock.Plasmid_Data{
-		Type: "plasmid",
-		Id:   m.Key,
-		Attributes: &stock.PlasmidAttributes{
-			CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-			UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-			CreatedBy:       m.CreatedBy,
-			UpdatedBy:       m.UpdatedBy,
-			Summary:         m.Summary,
-			EditableSummary: m.EditableSummary,
-			Depositor:       m.Depositor,
-			Genes:           m.Genes,
-			Dbxrefs:         m.Dbxrefs,
-			Publications:    m.Publications,
-			ImageMap:        m.PlasmidProperties.ImageMap,
-			Sequence:        m.PlasmidProperties.Sequence,
-			Name:            m.PlasmidProperties.Name,
-		},
-	}
+	st.Data = makePlasmidData(m)
 	s.publisher.PublishPlasmid(s.Topics["stockCreate"], st)
 	return st, nil
 }
@@ -56,27 +39,13 @@ func (s *StockService) GetPlasmid(ctx context.Context, r *stock.StockId) (*stock
 		return st, aphgrpc.HandleGetError(ctx, err)
 	}
 	if m.NotFound {
-		return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", r.Id))
+		return st,
+			aphgrpc.HandleNotFoundError(
+				ctx,
+				fmt.Errorf("could not find plasmid with ID %s", r.Id),
+			)
 	}
-	st.Data = &stock.Plasmid_Data{
-		Type: "plasmid",
-		Id:   m.Key,
-		Attributes: &stock.PlasmidAttributes{
-			CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-			UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-			CreatedBy:       m.CreatedBy,
-			UpdatedBy:       m.UpdatedBy,
-			Summary:         m.Summary,
-			EditableSummary: m.EditableSummary,
-			Depositor:       m.Depositor,
-			Genes:           m.Genes,
-			Dbxrefs:         m.Dbxrefs,
-			Publications:    m.Publications,
-			ImageMap:        m.PlasmidProperties.ImageMap,
-			Sequence:        m.PlasmidProperties.Sequence,
-			Name:            m.PlasmidProperties.Name,
-		},
-	}
+	st.Data = makePlasmidData(m)
 	return st, nil
 }
 
@@ -165,28 +134,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 	if len(mc) == 0 {
 		return pc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any plasmids"))
 	}
-	var pdata []*stock.PlasmidCollection_Data
-	for _, m := range mc {
-		pdata = append(pdata, &stock.PlasmidCollection_Data{
-			Type: "plasmid",
-			Id:   m.Key,
-			Attributes: &stock.PlasmidAttributes{
-				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-				CreatedBy:       m.CreatedBy,
-				UpdatedBy:       m.UpdatedBy,
-				Summary:         m.Summary,
-				EditableSummary: m.EditableSummary,
-				Depositor:       m.Depositor,
-				Genes:           m.Genes,
-				Dbxrefs:         m.Dbxrefs,
-				Publications:    m.Publications,
-				ImageMap:        m.PlasmidProperties.ImageMap,
-				Sequence:        m.PlasmidProperties.Sequence,
-				Name:            m.PlasmidProperties.Name,
-			},
-		})
-	}
+	pdata := plasmidModelToCollectionSlice(mc)
 	if len(pdata) < int(limit)-2 { // fewer results than limit
 		pc.Data = pdata
 		pc.Meta = &stock.Meta{
@@ -216,7 +164,13 @@ func (s *StockService) LoadPlasmid(ctx context.Context, r *stock.ExistingPlasmid
 	if err != nil {
 		return st, aphgrpc.HandleInsertError(ctx, err)
 	}
-	st.Data = &stock.Plasmid_Data{
+	st.Data = makePlasmidData(m)
+	s.publisher.PublishPlasmid(s.Topics["stockCreate"], st)
+	return st, nil
+}
+
+func makePlasmidData(m *model.StockDoc) *stock.Plasmid_Data {
+	return &stock.Plasmid_Data{
 		Type: "plasmid",
 		Id:   m.Key,
 		Attributes: &stock.PlasmidAttributes{
@@ -235,7 +189,30 @@ func (s *StockService) LoadPlasmid(ctx context.Context, r *stock.ExistingPlasmid
 			Name:            m.PlasmidProperties.Name,
 		},
 	}
+}
 
-	s.publisher.PublishPlasmid(s.Topics["stockCreate"], st)
-	return st, nil
+func plasmidModelToCollectionSlice(mc []*model.StockDoc) []*stock.PlasmidCollection_Data {
+	var pdata []*stock.PlasmidCollection_Data
+	for _, m := range mc {
+		pdata = append(pdata, &stock.PlasmidCollection_Data{
+			Type: "plasmid",
+			Id:   m.Key,
+			Attributes: &stock.PlasmidAttributes{
+				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+				CreatedBy:       m.CreatedBy,
+				UpdatedBy:       m.UpdatedBy,
+				Summary:         m.Summary,
+				EditableSummary: m.EditableSummary,
+				Depositor:       m.Depositor,
+				Genes:           m.Genes,
+				Dbxrefs:         m.Dbxrefs,
+				Publications:    m.Publications,
+				ImageMap:        m.PlasmidProperties.ImageMap,
+				Sequence:        m.PlasmidProperties.Sequence,
+				Name:            m.PlasmidProperties.Name,
+			},
+		})
+	}
+	return pdata
 }
