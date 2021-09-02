@@ -138,26 +138,9 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 
 func makeStrainData(m *model.StockDoc) *stock.Strain_Data {
 	return &stock.Strain_Data{
-		Type: "strain",
-		Id:   m.Key,
-		Attributes: &stock.StrainAttributes{
-			CreatedAt:           aphgrpc.TimestampProto(m.CreatedAt),
-			UpdatedAt:           aphgrpc.TimestampProto(m.UpdatedAt),
-			CreatedBy:           m.CreatedBy,
-			UpdatedBy:           m.UpdatedBy,
-			Summary:             m.Summary,
-			EditableSummary:     m.EditableSummary,
-			Depositor:           m.Depositor,
-			Genes:               m.Genes,
-			Dbxrefs:             m.Dbxrefs,
-			Publications:        m.Publications,
-			Label:               m.StrainProperties.Label,
-			Species:             m.StrainProperties.Species,
-			Plasmid:             m.StrainProperties.Plasmid,
-			Parent:              m.StrainProperties.Parent,
-			Names:               m.StrainProperties.Names,
-			DictyStrainProperty: m.StrainProperties.DictyStrainProperty,
-		},
+		Type:       "strain",
+		Id:         m.Key,
+		Attributes: makeStrainAttributes(m),
 	}
 }
 
@@ -165,25 +148,9 @@ func strainModelToCollectionSlice(mc []*model.StockDoc) []*stock.StrainCollectio
 	var sdata []*stock.StrainCollection_Data
 	for _, m := range mc {
 		sdata = append(sdata, &stock.StrainCollection_Data{
-			Type: "strain",
-			Id:   m.Key,
-			Attributes: &stock.StrainAttributes{
-				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-				CreatedBy:       m.CreatedBy,
-				UpdatedBy:       m.UpdatedBy,
-				Summary:         m.Summary,
-				EditableSummary: m.EditableSummary,
-				Depositor:       m.Depositor,
-				Genes:           m.Genes,
-				Dbxrefs:         m.Dbxrefs,
-				Publications:    m.Publications,
-				Label:           m.StrainProperties.Label,
-				Species:         m.StrainProperties.Species,
-				Plasmid:         m.StrainProperties.Plasmid,
-				Parent:          m.StrainProperties.Parent,
-				Names:           m.StrainProperties.Names,
-			},
+			Type:       "strain",
+			Id:         m.Key,
+			Attributes: makeStrainAttributes(m),
 		})
 	}
 	return sdata
@@ -193,27 +160,31 @@ func strainModelToListSlice(mc []*model.StockDoc) []*stock.StrainList_Data {
 	var sdata []*stock.StrainList_Data
 	for _, m := range mc {
 		sdata = append(sdata, &stock.StrainList_Data{
-			Type: "strain",
-			Id:   m.Key,
-			Attributes: &stock.StrainAttributes{
-				CreatedAt:           aphgrpc.TimestampProto(m.CreatedAt),
-				UpdatedAt:           aphgrpc.TimestampProto(m.UpdatedAt),
-				CreatedBy:           m.CreatedBy,
-				UpdatedBy:           m.UpdatedBy,
-				Summary:             m.Summary,
-				EditableSummary:     m.EditableSummary,
-				Depositor:           m.Depositor,
-				Genes:               m.Genes,
-				Dbxrefs:             m.Dbxrefs,
-				Publications:        m.Publications,
-				Label:               m.StrainProperties.Label,
-				Species:             m.StrainProperties.Species,
-				Plasmid:             m.StrainProperties.Plasmid,
-				Parent:              m.StrainProperties.Parent,
-				Names:               m.StrainProperties.Names,
-				DictyStrainProperty: m.StrainProperties.DictyStrainProperty,
-			},
+			Type:       "strain",
+			Id:         m.Key,
+			Attributes: makeStrainAttributes(m),
 		})
 	}
 	return sdata
+}
+
+func makeStrainAttributes(m *model.StockDoc) *stock.StrainAttributes {
+	return &stock.StrainAttributes{
+		CreatedAt:           aphgrpc.TimestampProto(m.CreatedAt),
+		UpdatedAt:           aphgrpc.TimestampProto(m.UpdatedAt),
+		CreatedBy:           m.CreatedBy,
+		UpdatedBy:           m.UpdatedBy,
+		Summary:             m.Summary,
+		EditableSummary:     m.EditableSummary,
+		Depositor:           m.Depositor,
+		Genes:               m.Genes,
+		Dbxrefs:             m.Dbxrefs,
+		Publications:        m.Publications,
+		Label:               m.StrainProperties.Label,
+		Species:             m.StrainProperties.Species,
+		Plasmid:             m.StrainProperties.Plasmid,
+		Parent:              m.StrainProperties.Parent,
+		Names:               m.StrainProperties.Names,
+		DictyStrainProperty: m.StrainProperties.DictyStrainProperty,
+	}
 }
