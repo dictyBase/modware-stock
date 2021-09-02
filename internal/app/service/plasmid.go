@@ -124,23 +124,9 @@ func (s *StockService) LoadPlasmid(ctx context.Context, r *stock.ExistingPlasmid
 
 func makePlasmidData(m *model.StockDoc) *stock.Plasmid_Data {
 	return &stock.Plasmid_Data{
-		Type: "plasmid",
-		Id:   m.Key,
-		Attributes: &stock.PlasmidAttributes{
-			CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-			UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-			CreatedBy:       m.CreatedBy,
-			UpdatedBy:       m.UpdatedBy,
-			Summary:         m.Summary,
-			EditableSummary: m.EditableSummary,
-			Depositor:       m.Depositor,
-			Genes:           m.Genes,
-			Dbxrefs:         m.Dbxrefs,
-			Publications:    m.Publications,
-			ImageMap:        m.PlasmidProperties.ImageMap,
-			Sequence:        m.PlasmidProperties.Sequence,
-			Name:            m.PlasmidProperties.Name,
-		},
+		Type:       "plasmid",
+		Id:         m.Key,
+		Attributes: makePlasmidAttr(m),
 	}
 }
 
@@ -148,24 +134,28 @@ func plasmidModelToCollectionSlice(mc []*model.StockDoc) []*stock.PlasmidCollect
 	var pdata []*stock.PlasmidCollection_Data
 	for _, m := range mc {
 		pdata = append(pdata, &stock.PlasmidCollection_Data{
-			Type: "plasmid",
-			Id:   m.Key,
-			Attributes: &stock.PlasmidAttributes{
-				CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-				UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-				CreatedBy:       m.CreatedBy,
-				UpdatedBy:       m.UpdatedBy,
-				Summary:         m.Summary,
-				EditableSummary: m.EditableSummary,
-				Depositor:       m.Depositor,
-				Genes:           m.Genes,
-				Dbxrefs:         m.Dbxrefs,
-				Publications:    m.Publications,
-				ImageMap:        m.PlasmidProperties.ImageMap,
-				Sequence:        m.PlasmidProperties.Sequence,
-				Name:            m.PlasmidProperties.Name,
-			},
+			Type:       "plasmid",
+			Id:         m.Key,
+			Attributes: makePlasmidAttr(m),
 		})
 	}
 	return pdata
+}
+
+func makePlasmidAttr(m *model.StockDoc) *stock.PlasmidAttributes {
+	return &stock.PlasmidAttributes{
+		CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+		UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+		CreatedBy:       m.CreatedBy,
+		UpdatedBy:       m.UpdatedBy,
+		Summary:         m.Summary,
+		EditableSummary: m.EditableSummary,
+		Depositor:       m.Depositor,
+		Genes:           m.Genes,
+		Dbxrefs:         m.Dbxrefs,
+		Publications:    m.Publications,
+		ImageMap:        m.PlasmidProperties.ImageMap,
+		Sequence:        m.PlasmidProperties.Sequence,
+		Name:            m.PlasmidProperties.Name,
+	}
 }
