@@ -106,7 +106,7 @@ func (s *StockService) ListStrainsByIds(ctx context.Context, r *stock.StockIdLis
 				fmt.Errorf("could not find any strains"),
 			)
 	}
-	sl.Data = strainModelToListSlice(m)
+	sl.Data = strainModelToListSlice(mc)
 	return sl, nil
 }
 
