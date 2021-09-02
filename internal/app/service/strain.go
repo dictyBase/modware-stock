@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
 )
 
@@ -205,57 +207,50 @@ func (s *StockService) ListStrainsByIds(ctx context.Context, r *stock.StockIdLis
 
 // ListStrains lists all existing strains
 func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters) (*stock.StrainCollection, error) {
-	sc := &stock.StrainCollection{}
 	limit := int64(10)
 	if r.Limit > 10 {
 		limit = r.Limit
 	}
-	var astmt string
-	var vert bool
-	if len(r.Filter) > 0 {
-		p, err := query.ParseFilterString(r.Filter)
-		if err != nil {
-			return sc, aphgrpc.HandleInvalidParamError(
-				ctx,
-				fmt.Errorf("error in parsing filter string"),
-			)
-		}
-		// need to check if filter contains an item found in strain properties
-		for _, n := range p {
-			if _, ok := stockProp[n.Field]; ok {
-				vert = true
-				break
-			}
-		}
-		if vert {
-			astmt, err = query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Vert: "v"})
-			if err != nil {
-				return sc, aphgrpc.HandleInvalidParamError(
-					ctx,
-					fmt.Errorf("error in generating AQL statement"),
-				)
-			}
-		} else {
-			astmt, err = query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Doc: "s"})
-			if err != nil {
-				return sc, aphgrpc.HandleInvalidParamError(
-					ctx,
-					fmt.Errorf("error in generating AQL statement"),
-				)
-			}
-		}
-		// if the parsed statement is empty FILTER, just return empty string
-		if astmt == "FILTER " {
-			astmt = ""
-		}
-	}
-	mc, err := s.repo.ListStrains(&stock.StockParameters{Cursor: r.Cursor, Limit: limit, Filter: astmt})
+	sc := &stock.StrainCollection{Meta: &stock.Meta{Limit: limit}}
+	mc, err := s.strainModelList(ctx, r, limit)
 	if err != nil {
-		return sc, aphgrpc.HandleGetError(ctx, err)
+		return sc, err
+	}
+	sdata := strainModelToCollectionSlice(mc)
+	if len(sdata) < int(limit)-2 { // fewer results than limit
+		sc.Data = sdata
+		sc.Meta.Total = int64(len(sdata))
+		return sc, nil
+	}
+	sc.Data = sdata[:len(sdata)-1]
+	sc.Meta.NextCursor = genNextCursorVal(sdata[len(sdata)-1].Attributes.CreatedAt)
+	sc.Meta.Total = int64(len(sdata))
+	return sc, nil
+}
+
+func (s *StockService) strainModelList(ctx context.Context, r *stock.StockParameters, limit int64) ([]*model.StockDoc, error) {
+	astmt, err := strainAQLStatement(r.Filter)
+	if err != nil {
+		return []*model.StockDoc{}, aphgrpc.HandleInvalidParamError(ctx, err)
+	}
+	mc, err := s.repo.ListStrains(&stock.StockParameters{
+		Cursor: r.Cursor,
+		Limit:  limit,
+		Filter: astmt,
+	})
+	if err != nil {
+		return mc, aphgrpc.HandleGetError(ctx, err)
 	}
 	if len(mc) == 0 {
-		return sc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any strains"))
+		return mc,
+			aphgrpc.HandleNotFoundError(
+				ctx, errors.New("could not find any strains"),
+			)
 	}
+	return mc, nil
+}
+
+func strainModelToCollectionSlice(mc []*model.StockDoc) []*stock.StrainCollection_Data {
 	var sdata []*stock.StrainCollection_Data
 	for _, m := range mc {
 		sdata = append(sdata, &stock.StrainCollection_Data{
@@ -280,19 +275,48 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 			},
 		})
 	}
-	if len(sdata) < int(limit)-2 { // fewer results than limit
-		sc.Data = sdata
-		sc.Meta = &stock.Meta{
-			Limit: limit,
-			Total: int64(len(sdata)),
+	return sdata
+}
+
+func strainAQLStatement(filter string) (string, error) {
+	var vert bool
+	var astmt string
+	p, err := query.ParseFilterString(filter)
+	if err != nil {
+		return astmt,
+			fmt.Errorf("error in parsing filter string %s", err)
+	}
+	// need to check if filter contains an item found in strain properties
+	for _, n := range p {
+		if _, ok := stockProp[n.Field]; ok {
+			vert = true
+			break
 		}
-		return sc, nil
 	}
-	sc.Data = sdata[:len(sdata)-1]
-	sc.Meta = &stock.Meta{
-		Limit:      limit,
-		NextCursor: genNextCursorVal(sdata[len(sdata)-1].Attributes.CreatedAt),
-		Total:      int64(len(sdata)),
+	if vert {
+		astmt, err := query.GenAQLFilterStatement(&query.StatementParameters{
+			Fmap:    arangodb.FMap,
+			Filters: p,
+			Vert:    "v",
+		})
+		if err != nil {
+			return astmt,
+				fmt.Errorf("error in generating AQL statement %s", err)
+		}
+	} else {
+		astmt, err := query.GenAQLFilterStatement(&query.StatementParameters{
+			Fmap:    arangodb.FMap,
+			Filters: p,
+			Doc:     "s",
+		})
+		if err != nil {
+			return astmt,
+				fmt.Errorf("error in generating AQL statement %s", err)
+		}
 	}
-	return sc, nil
+	// if the parsed statement is empty FILTER, just return empty string
+	if astmt == "FILTER " {
+		astmt = ""
+	}
+	return astmt, nil
 }
