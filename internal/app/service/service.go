@@ -146,3 +146,10 @@ func stockModelList(args *modelListParams) ([]*model.StockDoc, error) {
 	}
 	return mc, nil
 }
+
+func limitVal(limit int64) int64 {
+	if limit > 0 {
+		return limit
+	}
+	return int64(10)
+}

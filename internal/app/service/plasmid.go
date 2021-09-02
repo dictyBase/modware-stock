@@ -82,10 +82,7 @@ func (s *StockService) UpdatePlasmid(ctx context.Context, r *stock.PlasmidUpdate
 
 // ListPlasmids lists all existing plasmids
 func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameters) (*stock.PlasmidCollection, error) {
-	limit := int64(10)
-	if r.Limit > 10 {
-		limit = r.Limit
-	}
+	limit := limitVal(r.Limit)
 	pc := &stock.PlasmidCollection{Meta: &stock.Meta{Limit: limit}}
 	mc, err := stockModelList(&modelListParams{
 		ctx:         ctx,

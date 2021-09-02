@@ -113,10 +113,7 @@ func (s *StockService) ListStrainsByIds(ctx context.Context, r *stock.StockIdLis
 
 // ListStrains lists all existing strains
 func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters) (*stock.StrainCollection, error) {
-	limit := int64(10)
-	if r.Limit > 10 {
-		limit = r.Limit
-	}
+	limit := limitVal(r.Limit)
 	sc := &stock.StrainCollection{Meta: &stock.Meta{Limit: limit}}
 	mc, err := stockModelList(&modelListParams{
 		ctx:         ctx,
