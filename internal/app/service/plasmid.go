@@ -5,10 +5,8 @@ import (
 	"fmt"
 
 	"github.com/dictyBase/aphgrpc"
-	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
-	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
 )
 
 // CreatePlasmid handles the creation of a new plasmid
@@ -84,71 +82,29 @@ func (s *StockService) UpdatePlasmid(ctx context.Context, r *stock.PlasmidUpdate
 
 // ListPlasmids lists all existing plasmids
 func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameters) (*stock.PlasmidCollection, error) {
-	pc := &stock.PlasmidCollection{}
 	limit := int64(10)
 	if r.Limit > 10 {
 		limit = r.Limit
 	}
-	var astmt string
-	var vert bool
-	if len(r.Filter) > 0 {
-		p, err := query.ParseFilterString(r.Filter)
-		if err != nil {
-			return pc, aphgrpc.HandleInvalidParamError(
-				ctx,
-				fmt.Errorf("error in parsing filter string"),
-			)
-		}
-		for _, n := range p {
-			if _, ok := stockProp[n.Field]; ok {
-				vert = true
-				break
-			}
-		}
-		if vert {
-			astmt, err = query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Vert: "v"})
-			if err != nil {
-				return pc, aphgrpc.HandleInvalidParamError(
-					ctx,
-					fmt.Errorf("error in generating AQL statement"),
-				)
-			}
-		} else {
-			astmt, err = query.GenAQLFilterStatement(&query.StatementParameters{Fmap: arangodb.FMap, Filters: p, Doc: "s"})
-			if err != nil {
-				return pc, aphgrpc.HandleInvalidParamError(
-					ctx,
-					fmt.Errorf("error in generating AQL statement"),
-				)
-			}
-		}
-		// if the parsed statement is empty FILTER, just return empty string
-		if astmt == "FILTER " {
-			astmt = ""
-		}
-	}
-	mc, err := s.repo.ListPlasmids(&stock.StockParameters{Cursor: r.Cursor, Limit: limit, Filter: astmt})
+	pc := &stock.PlasmidCollection{Meta: &stock.Meta{Limit: limit}}
+	mc, err := stockModelList(&modelListParams{
+		ctx:         ctx,
+		stockParams: r,
+		limit:       limit,
+		fn:          s.repo.ListPlasmids,
+	})
 	if err != nil {
-		return pc, aphgrpc.HandleGetError(ctx, err)
-	}
-	if len(mc) == 0 {
-		return pc, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any plasmids"))
+		return pc, err
 	}
 	pdata := plasmidModelToCollectionSlice(mc)
 	if len(pdata) < int(limit)-2 { // fewer results than limit
 		pc.Data = pdata
-		pc.Meta = &stock.Meta{
-			Limit: limit,
-			Total: int64(len(pdata)),
-		}
+		pc.Meta.Total = int64(len(pdata))
 		return pc, nil
 	}
 	pc.Data = pdata[:len(pdata)-1]
-	pc.Meta = &stock.Meta{
-		Limit:      limit,
-		NextCursor: genNextCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt),
-		Total:      int64(len(pdata)),
-	}
+	pc.Meta.NextCursor = genNextCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt)
+	pc.Meta.Total = int64(len(pdata))
 	return pc, nil
 }
 
