@@ -25,28 +25,7 @@ func (s *StockService) GetStrain(ctx context.Context, r *stock.StockId) (*stock.
 	if m.NotFound {
 		return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", r.Id))
 	}
-	st.Data = &stock.Strain_Data{
-		Type: "strain",
-		Id:   m.Key,
-		Attributes: &stock.StrainAttributes{
-			CreatedAt:           aphgrpc.TimestampProto(m.CreatedAt),
-			UpdatedAt:           aphgrpc.TimestampProto(m.UpdatedAt),
-			CreatedBy:           m.CreatedBy,
-			UpdatedBy:           m.UpdatedBy,
-			Summary:             m.Summary,
-			EditableSummary:     m.EditableSummary,
-			Depositor:           m.Depositor,
-			Genes:               m.Genes,
-			Dbxrefs:             m.Dbxrefs,
-			Publications:        m.Publications,
-			Label:               m.StrainProperties.Label,
-			Species:             m.StrainProperties.Species,
-			Plasmid:             m.StrainProperties.Plasmid,
-			Parent:              m.StrainProperties.Parent,
-			Names:               m.StrainProperties.Names,
-			DictyStrainProperty: m.StrainProperties.DictyStrainProperty,
-		},
-	}
+	st.Data = s.makeStrainData(m)
 	return st, nil
 }
 
@@ -64,27 +43,7 @@ func (s *StockService) LoadStrain(ctx context.Context, r *stock.ExistingStrain) 
 	if err != nil {
 		return st, aphgrpc.HandleInsertError(ctx, err)
 	}
-	st.Data = &stock.Strain_Data{
-		Type: "strain",
-		Id:   m.Key,
-		Attributes: &stock.StrainAttributes{
-			CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
-			UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
-			CreatedBy:       m.CreatedBy,
-			UpdatedBy:       m.UpdatedBy,
-			Summary:         m.Summary,
-			EditableSummary: m.EditableSummary,
-			Depositor:       m.Depositor,
-			Genes:           m.Genes,
-			Dbxrefs:         m.Dbxrefs,
-			Publications:    m.Publications,
-			Label:           m.StrainProperties.Label,
-			Species:         m.StrainProperties.Species,
-			Plasmid:         m.StrainProperties.Plasmid,
-			Parent:          m.StrainProperties.Parent,
-			Names:           m.StrainProperties.Names,
-		},
-	}
+	st.Data = s.makeStrainData(m)
 	s.publisher.PublishStrain(s.Topics["stockCreate"], st)
 	return st, nil
 }
@@ -102,28 +61,7 @@ func (s *StockService) CreateStrain(ctx context.Context, r *stock.NewStrain) (*s
 	if err != nil {
 		return st, aphgrpc.HandleInsertError(ctx, err)
 	}
-	st.Data = &stock.Strain_Data{
-		Type: "strain",
-		Id:   m.Key,
-		Attributes: &stock.StrainAttributes{
-			CreatedAt:           aphgrpc.TimestampProto(m.CreatedAt),
-			UpdatedAt:           aphgrpc.TimestampProto(m.UpdatedAt),
-			CreatedBy:           m.CreatedBy,
-			UpdatedBy:           m.UpdatedBy,
-			Summary:             m.Summary,
-			EditableSummary:     m.EditableSummary,
-			Depositor:           m.Depositor,
-			Genes:               m.Genes,
-			Dbxrefs:             m.Dbxrefs,
-			Publications:        m.Publications,
-			Label:               m.StrainProperties.Label,
-			Species:             m.StrainProperties.Species,
-			Plasmid:             m.StrainProperties.Plasmid,
-			Parent:              m.StrainProperties.Parent,
-			Names:               m.StrainProperties.Names,
-			DictyStrainProperty: m.StrainProperties.DictyStrainProperty,
-		},
-	}
+	st.Data = s.makeStrainData(m)
 	s.publisher.PublishStrain(s.Topics["stockCreate"], st)
 	return st, nil
 }
@@ -139,26 +77,14 @@ func (s *StockService) UpdateStrain(ctx context.Context, r *stock.StrainUpdate) 
 		return st, aphgrpc.HandleUpdateError(ctx, err)
 	}
 	if m.NotFound {
-		return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", m.ID))
+		return st,
+			aphgrpc.HandleNotFoundError(
+				ctx,
+				fmt.Errorf("could not find strain with ID %s", m.ID),
+			)
 	}
-	st.Data = &stock.Strain_Data{
-		Type: "strain",
-		Id:   m.Key,
-		Attributes: &stock.StrainAttributes{
-			UpdatedBy:       m.UpdatedBy,
-			Summary:         m.Summary,
-			EditableSummary: m.EditableSummary,
-			Depositor:       m.Depositor,
-			Genes:           m.Genes,
-			Dbxrefs:         m.Dbxrefs,
-			Publications:    m.Publications,
-			Label:           m.StrainProperties.Label,
-			Species:         m.StrainProperties.Species,
-			Plasmid:         m.StrainProperties.Plasmid,
-			Parent:          m.StrainProperties.Parent,
-			Names:           m.StrainProperties.Names,
-		},
-	}
+	st.Data = s.makeStrainData(m)
+	st.Data.Attributes.DictyStrainProperty = ""
 	s.publisher.PublishStrain(s.Topics["stockUpdate"], st)
 	return st, nil
 }
@@ -174,34 +100,13 @@ func (s *StockService) ListStrainsByIds(ctx context.Context, r *stock.StockIdLis
 		return sl, aphgrpc.HandleGetError(ctx, err)
 	}
 	if len(mc) == 0 {
-		return sl, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find any strains"))
+		return sl,
+			aphgrpc.HandleNotFoundError(
+				ctx,
+				fmt.Errorf("could not find any strains"),
+			)
 	}
-	sdata := make([]*stock.StrainList_Data, 0)
-	for _, m := range mc {
-		sdata = append(sdata, &stock.StrainList_Data{
-			Type: "strain",
-			Id:   m.Key,
-			Attributes: &stock.StrainAttributes{
-				CreatedAt:           aphgrpc.TimestampProto(m.CreatedAt),
-				UpdatedAt:           aphgrpc.TimestampProto(m.UpdatedAt),
-				CreatedBy:           m.CreatedBy,
-				UpdatedBy:           m.UpdatedBy,
-				Summary:             m.Summary,
-				EditableSummary:     m.EditableSummary,
-				Depositor:           m.Depositor,
-				Genes:               m.Genes,
-				Dbxrefs:             m.Dbxrefs,
-				Publications:        m.Publications,
-				Label:               m.StrainProperties.Label,
-				Species:             m.StrainProperties.Species,
-				Plasmid:             m.StrainProperties.Plasmid,
-				Parent:              m.StrainProperties.Parent,
-				Names:               m.StrainProperties.Names,
-				DictyStrainProperty: m.StrainProperties.DictyStrainProperty,
-			},
-		})
-	}
-	sl.Data = sdata
+	sl.Data = strainModelToListSlice(m)
 	return sl, nil
 }
 
@@ -226,6 +131,31 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 	sc.Meta.NextCursor = genNextCursorVal(sdata[len(sdata)-1].Attributes.CreatedAt)
 	sc.Meta.Total = int64(len(sdata))
 	return sc, nil
+}
+
+func (s *StockService) makeStrainData(m *model.StockDoc) *stock.Strain_Data {
+	return &stock.Strain_Data{
+		Type: "strain",
+		Id:   m.Key,
+		Attributes: &stock.StrainAttributes{
+			CreatedAt:           aphgrpc.TimestampProto(m.CreatedAt),
+			UpdatedAt:           aphgrpc.TimestampProto(m.UpdatedAt),
+			CreatedBy:           m.CreatedBy,
+			UpdatedBy:           m.UpdatedBy,
+			Summary:             m.Summary,
+			EditableSummary:     m.EditableSummary,
+			Depositor:           m.Depositor,
+			Genes:               m.Genes,
+			Dbxrefs:             m.Dbxrefs,
+			Publications:        m.Publications,
+			Label:               m.StrainProperties.Label,
+			Species:             m.StrainProperties.Species,
+			Plasmid:             m.StrainProperties.Plasmid,
+			Parent:              m.StrainProperties.Parent,
+			Names:               m.StrainProperties.Names,
+			DictyStrainProperty: m.StrainProperties.DictyStrainProperty,
+		},
+	}
 }
 
 func (s *StockService) strainModelList(ctx context.Context, r *stock.StockParameters, limit int64) ([]*model.StockDoc, error) {
@@ -272,6 +202,35 @@ func strainModelToCollectionSlice(mc []*model.StockDoc) []*stock.StrainCollectio
 				Plasmid:         m.StrainProperties.Plasmid,
 				Parent:          m.StrainProperties.Parent,
 				Names:           m.StrainProperties.Names,
+			},
+		})
+	}
+	return sdata
+}
+
+func strainModelToListSlice(mc []*model.StockDoc) []*stock.StrainList_Data {
+	var sdata []*stock.StrainList_Data
+	for _, m := range mc {
+		sdata = append(sdata, &stock.StrainList_Data{
+			Type: "strain",
+			Id:   m.Key,
+			Attributes: &stock.StrainAttributes{
+				CreatedAt:           aphgrpc.TimestampProto(m.CreatedAt),
+				UpdatedAt:           aphgrpc.TimestampProto(m.UpdatedAt),
+				CreatedBy:           m.CreatedBy,
+				UpdatedBy:           m.UpdatedBy,
+				Summary:             m.Summary,
+				EditableSummary:     m.EditableSummary,
+				Depositor:           m.Depositor,
+				Genes:               m.Genes,
+				Dbxrefs:             m.Dbxrefs,
+				Publications:        m.Publications,
+				Label:               m.StrainProperties.Label,
+				Species:             m.StrainProperties.Species,
+				Plasmid:             m.StrainProperties.Plasmid,
+				Parent:              m.StrainProperties.Parent,
+				Names:               m.StrainProperties.Names,
+				DictyStrainProperty: m.StrainProperties.DictyStrainProperty,
 			},
 		})
 	}
