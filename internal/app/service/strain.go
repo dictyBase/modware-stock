@@ -2,14 +2,11 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/dictyBase/aphgrpc"
-	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
-	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
 )
 
 // GetStrain handles getting a strain by its ID
@@ -23,9 +20,13 @@ func (s *StockService) GetStrain(ctx context.Context, r *stock.StockId) (*stock.
 		return st, aphgrpc.HandleGetError(ctx, err)
 	}
 	if m.NotFound {
-		return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find strain with ID %s", r.Id))
+		return st,
+			aphgrpc.HandleNotFoundError(
+				ctx,
+				fmt.Errorf("could not find strain with ID %s", r.Id),
+			)
 	}
-	st.Data = s.makeStrainData(m)
+	st.Data = makeStrainData(m)
 	return st, nil
 }
 
@@ -43,7 +44,7 @@ func (s *StockService) LoadStrain(ctx context.Context, r *stock.ExistingStrain) 
 	if err != nil {
 		return st, aphgrpc.HandleInsertError(ctx, err)
 	}
-	st.Data = s.makeStrainData(m)
+	st.Data = makeStrainData(m)
 	s.publisher.PublishStrain(s.Topics["stockCreate"], st)
 	return st, nil
 }
@@ -61,7 +62,7 @@ func (s *StockService) CreateStrain(ctx context.Context, r *stock.NewStrain) (*s
 	if err != nil {
 		return st, aphgrpc.HandleInsertError(ctx, err)
 	}
-	st.Data = s.makeStrainData(m)
+	st.Data = makeStrainData(m)
 	s.publisher.PublishStrain(s.Topics["stockCreate"], st)
 	return st, nil
 }
@@ -83,7 +84,7 @@ func (s *StockService) UpdateStrain(ctx context.Context, r *stock.StrainUpdate) 
 				fmt.Errorf("could not find strain with ID %s", m.ID),
 			)
 	}
-	st.Data = s.makeStrainData(m)
+	st.Data = makeStrainData(m)
 	st.Data.Attributes.DictyStrainProperty = ""
 	s.publisher.PublishStrain(s.Topics["stockUpdate"], st)
 	return st, nil
@@ -117,7 +118,12 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		limit = r.Limit
 	}
 	sc := &stock.StrainCollection{Meta: &stock.Meta{Limit: limit}}
-	mc, err := s.strainModelList(ctx, r, limit)
+	mc, err := stockModelList(&modelListParams{
+		ctx:         ctx,
+		stockParams: r,
+		limit:       limit,
+		fn:          s.repo.ListStrains,
+	})
 	if err != nil {
 		return sc, err
 	}
@@ -133,7 +139,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 	return sc, nil
 }
 
-func (s *StockService) makeStrainData(m *model.StockDoc) *stock.Strain_Data {
+func makeStrainData(m *model.StockDoc) *stock.Strain_Data {
 	return &stock.Strain_Data{
 		Type: "strain",
 		Id:   m.Key,
@@ -156,28 +162,6 @@ func (s *StockService) makeStrainData(m *model.StockDoc) *stock.Strain_Data {
 			DictyStrainProperty: m.StrainProperties.DictyStrainProperty,
 		},
 	}
-}
-
-func (s *StockService) strainModelList(ctx context.Context, r *stock.StockParameters, limit int64) ([]*model.StockDoc, error) {
-	astmt, err := strainAQLStatement(r.Filter)
-	if err != nil {
-		return []*model.StockDoc{}, aphgrpc.HandleInvalidParamError(ctx, err)
-	}
-	mc, err := s.repo.ListStrains(&stock.StockParameters{
-		Cursor: r.Cursor,
-		Limit:  limit,
-		Filter: astmt,
-	})
-	if err != nil {
-		return mc, aphgrpc.HandleGetError(ctx, err)
-	}
-	if len(mc) == 0 {
-		return mc,
-			aphgrpc.HandleNotFoundError(
-				ctx, errors.New("could not find any strains"),
-			)
-	}
-	return mc, nil
 }
 
 func strainModelToCollectionSlice(mc []*model.StockDoc) []*stock.StrainCollection_Data {
@@ -235,47 +219,4 @@ func strainModelToListSlice(mc []*model.StockDoc) []*stock.StrainList_Data {
 		})
 	}
 	return sdata
-}
-
-func strainAQLStatement(filter string) (string, error) {
-	var vert bool
-	var astmt string
-	p, err := query.ParseFilterString(filter)
-	if err != nil {
-		return astmt,
-			fmt.Errorf("error in parsing filter string %s", err)
-	}
-	// need to check if filter contains an item found in strain properties
-	for _, n := range p {
-		if _, ok := stockProp[n.Field]; ok {
-			vert = true
-			break
-		}
-	}
-	if vert {
-		astmt, err := query.GenAQLFilterStatement(&query.StatementParameters{
-			Fmap:    arangodb.FMap,
-			Filters: p,
-			Vert:    "v",
-		})
-		if err != nil {
-			return astmt,
-				fmt.Errorf("error in generating AQL statement %s", err)
-		}
-	} else {
-		astmt, err := query.GenAQLFilterStatement(&query.StatementParameters{
-			Fmap:    arangodb.FMap,
-			Filters: p,
-			Doc:     "s",
-		})
-		if err != nil {
-			return astmt,
-				fmt.Errorf("error in generating AQL statement %s", err)
-		}
-	}
-	// if the parsed statement is empty FILTER, just return empty string
-	if astmt == "FILTER " {
-		astmt = ""
-	}
-	return astmt, nil
 }

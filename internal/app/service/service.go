@@ -2,15 +2,29 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dictyBase/aphgrpc"
+	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/message"
+	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
+	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	timestamp "google.golang.org/protobuf/types/known/timestamppb"
 )
+
+type listFn func(*stock.StockParameters) ([]*model.StockDoc, error)
+
+type modelListParams struct {
+	ctx         context.Context
+	stockParams *stock.StockParameters
+	limit       int64
+	fn          listFn
+}
 
 var stockProp = map[string]int{
 	"label":        1,
@@ -66,4 +80,69 @@ func (s *StockService) RemoveStock(ctx context.Context, r *stock.StockId) (*empt
 func genNextCursorVal(c *timestamp.Timestamp) int64 {
 	t, _ := time.Parse("2006-01-02T15:04:05Z", c.String())
 	return t.UnixNano() / 1000000
+}
+
+func stockAQLStatement(filter string) (string, error) {
+	var vert bool
+	var astmt string
+	p, err := query.ParseFilterString(filter)
+	if err != nil {
+		return astmt,
+			fmt.Errorf("error in parsing filter string %s", err)
+	}
+	// need to check if filter contains an item found in strain properties
+	for _, n := range p {
+		if _, ok := stockProp[n.Field]; ok {
+			vert = true
+			break
+		}
+	}
+	if vert {
+		astmt, err := query.GenAQLFilterStatement(&query.StatementParameters{
+			Fmap:    arangodb.FMap,
+			Filters: p,
+			Vert:    "v",
+		})
+		if err != nil {
+			return astmt,
+				fmt.Errorf("error in generating AQL statement %s", err)
+		}
+	} else {
+		astmt, err := query.GenAQLFilterStatement(&query.StatementParameters{
+			Fmap:    arangodb.FMap,
+			Filters: p,
+			Doc:     "s",
+		})
+		if err != nil {
+			return astmt,
+				fmt.Errorf("error in generating AQL statement %s", err)
+		}
+	}
+	// if the parsed statement is empty FILTER, just return empty string
+	if astmt == "FILTER " {
+		astmt = ""
+	}
+	return astmt, nil
+}
+
+func stockModelList(args *modelListParams) ([]*model.StockDoc, error) {
+	astmt, err := stockAQLStatement(args.stockParams.Filter)
+	if err != nil {
+		return []*model.StockDoc{}, aphgrpc.HandleInvalidParamError(args.ctx, err)
+	}
+	mc, err := args.fn(&stock.StockParameters{
+		Cursor: args.stockParams.Cursor,
+		Limit:  args.limit,
+		Filter: astmt,
+	})
+	if err != nil {
+		return mc, aphgrpc.HandleGetError(args.ctx, err)
+	}
+	if len(mc) == 0 {
+		return mc,
+			aphgrpc.HandleNotFoundError(
+				args.ctx, errors.New("could not find any strains"),
+			)
+	}
+	return mc, nil
 }
