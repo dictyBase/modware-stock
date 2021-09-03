@@ -32,11 +32,13 @@ func NewStockRepo(connP *manager.ConnectParams,
 	}
 	sess, db, err := manager.NewSessionDb(connP)
 	if err != nil {
-		return ar, err
+		return ar,
+			errors.Errorf("error in creating database session %s", err)
 	}
 	oc, err := ontoarango.CreateCollection(db, ontoP)
 	if err != nil {
-		return ar, err
+		return ar,
+			errors.Errorf("error in creating ontology collections %s", err)
 	}
 	ar.ontoc = oc
 	ar.sess = sess
