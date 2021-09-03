@@ -2,6 +2,7 @@ package arangodb
 
 import (
 	driver "github.com/arangodb/go-driver"
+	"github.com/cockroachdb/errors"
 )
 
 // CollectionParams are the arangodb collections required for storing stocks
@@ -63,14 +64,14 @@ func docCollections(ar *arangorepository, collP *CollectionParams) error {
 		&driver.CreateCollectionOptions{},
 	)
 	if err != nil {
-		return err
+		return errors.Errorf("error in creating collection %s %s", collP.Stock, err)
 	}
 	spropc, err := db.FindOrCreateCollection(
 		collP.StockProp,
 		&driver.CreateCollectionOptions{},
 	)
 	if err != nil {
-		return err
+		return errors.Errorf("error in creating collection %s %s", collP.StockProp, err)
 	}
 	stockkeyc, err := db.FindOrCreateCollection(
 		collP.StockKeyGenerator,
@@ -81,7 +82,7 @@ func docCollections(ar *arangorepository, collP *CollectionParams) error {
 				Offset:    collP.KeyOffset,
 			}})
 	if err != nil {
-		return err
+		return errors.Errorf("error in creating collection %s %s", collP.StockKeyGenerator, err)
 	}
 	ar.stockc = &stockc{
 		stockProp: spropc,
@@ -105,21 +106,21 @@ func createEdgeCollections(ar *arangorepository, collP *CollectionParams) error 
 		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
 	)
 	if err != nil {
-		return err
+		return errors.Errorf("error in creating edge collection %s %s", collP.StockType, err)
 	}
 	parentc, err := db.FindOrCreateCollection(
 		collP.ParentStrain,
 		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
 	)
 	if err != nil {
-		return err
+		return errors.Errorf("error in creating edge collection %s %s", collP.ParentStrain, err)
 	}
 	sterm, err := db.FindOrCreateCollection(
 		collP.StockTerm,
 		&driver.CreateCollectionOptions{Type: driver.CollectionTypeEdge},
 	)
 	if err != nil {
-		return err
+		return errors.Errorf("error in creating edge collection %s %s", collP.StockTerm, err)
 	}
 	ar.stockc.parentStrain = parentc
 	ar.stockc.stockType = stypec
@@ -138,7 +139,7 @@ func createNamedGraph(ar *arangorepository, collP *CollectionParams) error {
 		}},
 	)
 	if err != nil {
-		return err
+		return errors.Errorf("error in creating named graph %s %s", collP.StockPropTypeGraph, err)
 	}
 	strain2parentg, err := db.FindOrCreateGraph(
 		collP.Strain2ParentGraph,
@@ -149,7 +150,7 @@ func createNamedGraph(ar *arangorepository, collP *CollectionParams) error {
 		}},
 	)
 	if err != nil {
-		return err
+		return errors.Errorf("error in creating named graph %s %s", collP.Strain2ParentGraph, err)
 	}
 	sonto, err := db.FindOrCreateGraph(
 		collP.StockOntoGraph,
@@ -160,7 +161,7 @@ func createNamedGraph(ar *arangorepository, collP *CollectionParams) error {
 		}},
 	)
 	if err != nil {
-		return err
+		return errors.Errorf("error in creating named graph %s %s", collP.StockOntoGraph, err)
 	}
 	ar.stockc.stockPropType = sproptypeg
 	ar.stockc.strain2Parent = strain2parentg
@@ -177,5 +178,8 @@ func createIndex(ar *arangorepository) error {
 			InBackground: true,
 			Name:         "stock_id_idx",
 		})
-	return err
+	return errors.Errorf(
+		"error in creating index %s %s",
+		"stock_id_idx", err,
+	)
 }
