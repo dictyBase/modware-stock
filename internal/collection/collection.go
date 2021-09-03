@@ -21,7 +21,7 @@ func MapString(a []string, fn func(string) string) []string {
 // passes the test implemented by the given functions
 func FilterFlags(af []cli.Flag, fn func(cli.Flag) bool) []cli.Flag {
 	if len(af) == 0 {
-		return f
+		return af
 	}
 	var nf []cli.Flag
 	for _, f := range af {
