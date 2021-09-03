@@ -178,8 +178,8 @@ func createIndex(ar *arangorepository) error {
 			InBackground: true,
 			Name:         "stock_id_idx",
 		})
-	return errors.Errorf(
-		"error in creating index %s %s",
-		"stock_id_idx", err,
-	)
+	if err != nil {
+		return errors.Errorf("error in creating index %s", err)
+	}
+	return nil
 }
