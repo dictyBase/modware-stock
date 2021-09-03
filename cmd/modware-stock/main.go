@@ -2,11 +2,13 @@ package main
 
 import (
 	"os"
+	"strings"
 
 	"github.com/dictyBase/aphgrpc"
 	oboflag "github.com/dictyBase/go-obograph/command/flag"
 	"github.com/dictyBase/modware-stock/internal/app/server"
 	"github.com/dictyBase/modware-stock/internal/app/validate"
+	"github.com/dictyBase/modware-stock/internal/collection"
 	"github.com/urfave/cli"
 )
 
@@ -43,7 +45,14 @@ func allFlags() []cli.Flag {
 	f := make([]cli.Flag, 0)
 	f = append(f, serverFlags()...)
 	f = append(f, dbCollectionFlags()...)
-	f = append(f, oboflag.OntologyFlags()...)
+	f = append(f, collection.FilterFlags(
+		oboflag.OntologyFlags(),
+		func(f cli.Flag) bool {
+			if strings.HasPrefix(f.GetName(), "obojson") {
+				return false
+			}
+			return true
+		})...)
 	return append(f, aphgrpc.NatsFlag()...)
 }
 
