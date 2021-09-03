@@ -140,7 +140,7 @@ func allParams(c *cli.Context) (*manager.ConnectParams, *arangodb.CollectionPara
 		StrainOntology:     c.String("strain-ontology"),
 		KeyOffset:          c.Int("keyoffset"),
 		StockTerm:          c.String("strain-term"),
-		StockOntoGraph:     c.String("stock-onto-graph"),
+		StockOntoGraph:     c.String("stockonto-graph"),
 	}
 	ontoP := &ontoarango.CollectionParams{
 		GraphInfo:    c.String("cv-collection"),
