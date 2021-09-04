@@ -24,13 +24,13 @@ type CollectionParams struct {
 	// KeyOffset is the initial offset for stock id generation. It is needed to
 	// maintain the previous stock identifiers.
 	KeyOffset int `validate:"required"`
-	// StockTerm is the edge collection stock with an ontology
+	// StockTerm is the edge collection for connecting stock with an ontology
 	// term
 	StockTerm string `validate:"required"`
 	// StockOntoGraph is the named graph for connecting stock
 	// with the ontology
 	StockOntoGraph string `validate:"required"`
-	// StrainOntology is the ontology for storing strain group
+	// StrainOntology is the name ontology for storing strain group
 	StrainOntology string `validate:"required"`
 }
 
