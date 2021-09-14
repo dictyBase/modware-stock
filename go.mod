@@ -6,7 +6,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/dictyBase/aphgrpc v1.4.2
 	github.com/dictyBase/arangomanager v0.3.1
-	github.com/dictyBase/go-genproto v0.0.0-20210812210059-437a662da4f7
+	github.com/dictyBase/go-genproto v0.0.0-20210914223342-8fbbef2bfced
 	github.com/dictyBase/go-obograph v1.2.0
 	github.com/go-playground/validator/v10 v10.9.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
