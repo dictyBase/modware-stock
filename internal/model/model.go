@@ -6,6 +6,13 @@ import (
 	driver "github.com/arangodb/go-driver"
 )
 
+type UploadStatus int
+
+const (
+	Created UploadStatus = iota
+	Updated
+)
+
 // StockDoc is the data structure for biological stocks
 type StockDoc struct {
 	driver.DocumentMeta
