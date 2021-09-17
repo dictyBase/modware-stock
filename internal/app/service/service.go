@@ -4,15 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager/query"
+	"github.com/dictyBase/go-genproto/dictybaseapis/api/upload"
+	"github.com/dictyBase/go-genproto/dictybaseapis/dictybase/api/upload"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/message"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
+	"golang.org/x/sync/errgroup"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	timestamp "google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -75,6 +79,43 @@ func (s *StockService) RemoveStock(ctx context.Context, r *stock.StockId) (*empt
 		return e, aphgrpc.HandleDeleteError(ctx, err)
 	}
 	return e, nil
+}
+
+func (s *StockService) OboJsonFileUpload(stream stock.StockService_OboJsonFileUploadServer) error {
+	in, out := io.Pipe()
+	grp := new(errgroup.Group)
+	defer in.Close()
+	grp.Go(func() error {
+		defer out.Close()
+		for {
+			req, err := stream.Recv()
+			if err != nil {
+				if err == io.EOF {
+					return nil
+				}
+				return err
+			}
+			out.Write(req.Content)
+		}
+	})
+	m, err := s.repo.LoadOboJson(in)
+	if err != nil {
+		return aphgrpc.HandleGenericError(context.Background(), err)
+	}
+	if err := grp.Wait(); err != nil {
+		return aphgrpc.HandleGenericError(context.Background(), err)
+	}
+	return stream.SendAndClose(&upload.FileUploadResponse{
+		Status: uploadResponse(m),
+		Msg:    "obojson file is uploaded",
+	})
+}
+
+func uploadResponse(m model.UploadStatus) upload.FileUploadResponse_Status {
+	if m == model.Created {
+		return upload.FileUploadResponse_CREATED
+	}
+	return upload.FileUploadResponse_UPDATED
 }
 
 func genNextCursorVal(c *timestamp.Timestamp) int64 {
