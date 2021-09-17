@@ -1,6 +1,7 @@
 package arangodb
 
 import (
+	"bufio"
 	"fmt"
 	"math/rand"
 	"os"
@@ -183,6 +184,18 @@ func tearDown(repo repository.StockRepository) {
 	repo.Dbh().Drop()
 }
 
+func oboReader() (*os.File, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return &os.File{}, fmt.Errorf("unable to get current dir %s", err)
+	}
+	return os.Open(
+		filepath.Join(
+			filepath.Dir(dir), "testdata", "dicty_phenotypes.json",
+		),
+	)
+}
+
 func loadData(ta *testarango.TestArango) error {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -235,6 +248,17 @@ func loadOboGraphInArango(g graph.OboGraph, ds storage.DataSource) error {
 	}
 	_, err := ds.SaveRelationships(g)
 	return err
+}
+
+func TestLoadOboJson(t *testing.T) {
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	fh, err := oboReader()
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	defer fh.Close()
+	m, err := repo.LoadOboJson(bufio.NewReader(fh))
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	assert.Equal(m, model.Created, "should match created upload status")
 }
 
 func TestRemoveStock(t *testing.T) {
