@@ -63,6 +63,8 @@ github.com/dictyBase/go-genproto v0.0.0-20210914223342-8fbbef2bfced h1:/6a3OJAqp
 github.com/dictyBase/go-genproto v0.0.0-20210914223342-8fbbef2bfced/go.mod h1:KY6iUqXl1lLq81WTW9u5DfZE58xM61PsGLSLwwtePlk=
 github.com/dictyBase/go-obograph v1.2.0 h1:4NMnM9WHD3PLHPgsu8CmpM4JmUpS40rGaLYKVDa3hKY=
 github.com/dictyBase/go-obograph v1.2.0/go.mod h1:RSriY6heWOLCBBNBZqOsHCYutyUcN1qJ64G6WPd87U0=
+github.com/dictyBase/go-obograph v1.3.0 h1:RXHs0v5b6w2QIlCU1hsDzplabAMNQnq/nDRyHSGeSj4=
+github.com/dictyBase/go-obograph v1.3.0/go.mod h1:RSriY6heWOLCBBNBZqOsHCYutyUcN1qJ64G6WPd87U0=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/eknkc/amber v0.0.0-20171010120322-cdade1c07385/go.mod h1:0vRUJqYpeSZifjYj7uP3BG/gKcuzL9xWVV/Y+cK33KM=
 github.com/emirpasic/gods v1.12.0 h1:QAUIPSaCu4G+POclxeqb3F+WPpdKqFGlw36+yOzGlrg=
