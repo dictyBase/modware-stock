@@ -1,12 +1,14 @@
 package repository
 
 import (
+	"io"
+
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 )
 
-// StockRepository is an interface for accessing stock information
+// StockRepository is an interface for managing stock information
 type StockRepository interface {
 	GetStrain(id string) (*model.StockDoc, error)
 	GetPlasmid(id string) (*model.StockDoc, error)
@@ -17,8 +19,9 @@ type StockRepository interface {
 	ListStrains(s *stock.StockParameters) ([]*model.StockDoc, error)
 	ListStrainsByIds(s *stock.StockIdList) ([]*model.StockDoc, error)
 	ListPlasmids(s *stock.StockParameters) ([]*model.StockDoc, error)
-	RemoveStock(id string) error
 	LoadStrain(id string, es *stock.ExistingStrain) (*model.StockDoc, error)
 	LoadPlasmid(id string, ep *stock.ExistingPlasmid) (*model.StockDoc, error)
+	RemoveStock(id string) error
 	Dbh() *manager.Database
+	LoadOboJson(r io.Reader) (model.UploadStatus, error)
 }

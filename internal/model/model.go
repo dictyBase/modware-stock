@@ -11,6 +11,7 @@ type UploadStatus int
 const (
 	Created UploadStatus = iota
 	Updated
+	Failed
 )
 
 // StockDoc is the data structure for biological stocks
