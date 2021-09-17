@@ -57,12 +57,8 @@ github.com/dictyBase/aphgrpc v1.4.2 h1:jkNyIpUBATNVNTM99TfAHln8UEpzyvNNNuM2+UY6t
 github.com/dictyBase/aphgrpc v1.4.2/go.mod h1:rzi2U95QntAuS6XpqespgZmQ8Ujo2Sq2R5FyhW5adA8=
 github.com/dictyBase/arangomanager v0.3.1 h1:wkEUMHIVU012sHZ3niqDDlYiiz2jVhdwwobMPmv4fnk=
 github.com/dictyBase/arangomanager v0.3.1/go.mod h1:sSR7JRZpUWZaw8WzVZRiG2zA3gSgY7gIq84S4u2AQ0I=
-github.com/dictyBase/go-genproto v0.0.0-20210812210059-437a662da4f7 h1:azMIUX+v11QcuVJ5qfd/eUh3RyOHzlhhvARqx/HDlqQ=
-github.com/dictyBase/go-genproto v0.0.0-20210812210059-437a662da4f7/go.mod h1:KY6iUqXl1lLq81WTW9u5DfZE58xM61PsGLSLwwtePlk=
 github.com/dictyBase/go-genproto v0.0.0-20210914223342-8fbbef2bfced h1:/6a3OJAqpscwx2t2fhSxRbpc3+sfWyQKUPpIxBN7148=
 github.com/dictyBase/go-genproto v0.0.0-20210914223342-8fbbef2bfced/go.mod h1:KY6iUqXl1lLq81WTW9u5DfZE58xM61PsGLSLwwtePlk=
-github.com/dictyBase/go-obograph v1.2.0 h1:4NMnM9WHD3PLHPgsu8CmpM4JmUpS40rGaLYKVDa3hKY=
-github.com/dictyBase/go-obograph v1.2.0/go.mod h1:RSriY6heWOLCBBNBZqOsHCYutyUcN1qJ64G6WPd87U0=
 github.com/dictyBase/go-obograph v1.3.0 h1:RXHs0v5b6w2QIlCU1hsDzplabAMNQnq/nDRyHSGeSj4=
 github.com/dictyBase/go-obograph v1.3.0/go.mod h1:RSriY6heWOLCBBNBZqOsHCYutyUcN1qJ64G6WPd87U0=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
@@ -354,6 +350,7 @@ golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJ
 golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
+golang.org/x/sync v0.0.0-20210220032951-036812b2e83c h1:5KslGYwFpkhGh+Q16bwMP3cOontH8FOep7tGV86Y7SQ=
 golang.org/x/sync v0.0.0-20210220032951-036812b2e83c/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sys v0.0.0-20180830151530-49385e6e1522/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180909124046-d0be0721c37e/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
