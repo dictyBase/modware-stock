@@ -84,19 +84,8 @@ func (s *StockService) OboJsonFileUpload(stream stock.StockService_OboJsonFileUp
 	in, out := io.Pipe()
 	grp := new(errgroup.Group)
 	defer in.Close()
-	grp.Go(func() error {
-		defer out.Close()
-		for {
-			req, err := stream.Recv()
-			if err != nil {
-				if err == io.EOF {
-					return nil
-				}
-				return err
-			}
-			out.Write(req.Content)
-		}
-	})
+	oh := &oboStreamHandler{writer: out, stream: stream}
+	grp.Go(oh.Write)
 	m, err := s.repo.LoadOboJson(in)
 	if err != nil {
 		return aphgrpc.HandleGenericError(context.Background(), err)
@@ -192,4 +181,24 @@ func limitVal(limit int64) int64 {
 		return limit
 	}
 	return int64(10)
+}
+
+type oboStreamHandler struct {
+	writer *io.PipeWriter
+	stream stock.StockService_OboJsonFileUploadServer
+}
+
+func (oh *oboStreamHandler) Write() error {
+	defer oh.writer.Close()
+	for {
+		req, err := oh.stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		oh.writer.Write(req.Content)
+	}
+	return nil
 }
