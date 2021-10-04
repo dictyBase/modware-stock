@@ -11,6 +11,7 @@ import (
 	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/api/upload"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/go-obograph/storage"
 	"github.com/dictyBase/modware-stock/internal/message"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
@@ -80,7 +81,7 @@ func (s *StockService) RemoveStock(ctx context.Context, r *stock.StockId) (*empt
 	return e, nil
 }
 
-func (s *StockService) OboJsonFileUpload(stream stock.StockService_OboJsonFileUploadServer) error {
+func (s *StockService) OboJSONFileUpload(stream stock.StockService_OboJSONFileUploadServer) error {
 	in, out := io.Pipe()
 	grp := new(errgroup.Group)
 	defer in.Close()
@@ -99,8 +100,8 @@ func (s *StockService) OboJsonFileUpload(stream stock.StockService_OboJsonFileUp
 	})
 }
 
-func uploadResponse(m model.UploadStatus) upload.FileUploadResponse_Status {
-	if m == model.Created {
+func uploadResponse(info *storage.UploadInformation) upload.FileUploadResponse_Status {
+	if info.IsCreated {
 		return upload.FileUploadResponse_CREATED
 	}
 	return upload.FileUploadResponse_UPDATED
@@ -185,7 +186,7 @@ func limitVal(limit int64) int64 {
 
 type oboStreamHandler struct {
 	writer *io.PipeWriter
-	stream stock.StockService_OboJsonFileUploadServer
+	stream stock.StockService_OboJSONFileUploadServer
 }
 
 func (oh *oboStreamHandler) Write() error {

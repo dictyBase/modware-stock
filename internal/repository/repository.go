@@ -5,6 +5,7 @@ import (
 
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/go-obograph/storage"
 	"github.com/dictyBase/modware-stock/internal/model"
 )
 
@@ -23,5 +24,5 @@ type StockRepository interface {
 	LoadPlasmid(id string, ep *stock.ExistingPlasmid) (*model.StockDoc, error)
 	RemoveStock(id string) error
 	Dbh() *manager.Database
-	LoadOboJson(r io.Reader) (model.UploadStatus, error)
+	LoadOboJson(r io.Reader) (*storage.UploadInformation, error)
 }

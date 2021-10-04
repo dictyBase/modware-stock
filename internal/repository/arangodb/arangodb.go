@@ -135,7 +135,7 @@ func (ar *arangorepository) termID(term, onto string) (string, error) {
 	return id, nil
 }
 
-func (ar *arangorepository) LoadOboJson(r io.Reader) (model.UploadStatus, error) {
+func (ar *arangorepository) LoadOboJson(r io.Reader) (*ontostorage.UploadInformation, error) {
 	ds, err := ontoarango.NewDataSourceFromDb(ar.database,
 		&ontoarango.CollectionParams{
 			OboGraph:     ar.ontoc.Obog.Name(),
@@ -144,16 +144,9 @@ func (ar *arangorepository) LoadOboJson(r io.Reader) (model.UploadStatus, error)
 			Term:         ar.ontoc.Term.Name(),
 		})
 	if err != nil {
-		return model.Failed, err
+		return &ontostorage.UploadInformation{}, err
 	}
-	g, err := graph.BuildGraph(r)
-	if err != nil {
-		return model.Failed, err
-	}
-	if ds.ExistsOboGraph(g) {
-		return persistExistOboGraph(ds, g)
-	}
-	return persistNewOboGraph(ds, g)
+	return ontostorage.LoadOboJSONFromDataSource(r, ds)
 }
 
 func persistNewOboGraph(ds ontostorage.DataSource, g graph.OboGraph) (model.UploadStatus, error) {
