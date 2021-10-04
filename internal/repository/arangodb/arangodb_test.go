@@ -258,7 +258,7 @@ func TestLoadOboJson(t *testing.T) {
 	defer fh.Close()
 	m, err := repo.LoadOboJson(bufio.NewReader(fh))
 	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Equal(m, model.Created, "should match created upload status")
+	assert.True(m.IsCreated, "should match created status")
 }
 
 func TestRemoveStock(t *testing.T) {
