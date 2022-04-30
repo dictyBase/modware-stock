@@ -57,12 +57,8 @@ github.com/dictyBase/aphgrpc v1.4.2 h1:jkNyIpUBATNVNTM99TfAHln8UEpzyvNNNuM2+UY6t
 github.com/dictyBase/aphgrpc v1.4.2/go.mod h1:rzi2U95QntAuS6XpqespgZmQ8Ujo2Sq2R5FyhW5adA8=
 github.com/dictyBase/arangomanager v0.3.1 h1:wkEUMHIVU012sHZ3niqDDlYiiz2jVhdwwobMPmv4fnk=
 github.com/dictyBase/arangomanager v0.3.1/go.mod h1:sSR7JRZpUWZaw8WzVZRiG2zA3gSgY7gIq84S4u2AQ0I=
-github.com/dictyBase/go-genproto v0.0.0-20210914223342-8fbbef2bfced h1:/6a3OJAqpscwx2t2fhSxRbpc3+sfWyQKUPpIxBN7148=
-github.com/dictyBase/go-genproto v0.0.0-20210914223342-8fbbef2bfced/go.mod h1:KY6iUqXl1lLq81WTW9u5DfZE58xM61PsGLSLwwtePlk=
 github.com/dictyBase/go-genproto v0.0.0-20211001224012-6cf691015622 h1:UqICH4tshsyfhtwFv/0i48bddx9cJXcPsYEbZFVyULE=
 github.com/dictyBase/go-genproto v0.0.0-20211001224012-6cf691015622/go.mod h1:KY6iUqXl1lLq81WTW9u5DfZE58xM61PsGLSLwwtePlk=
-github.com/dictyBase/go-obograph v1.3.0 h1:RXHs0v5b6w2QIlCU1hsDzplabAMNQnq/nDRyHSGeSj4=
-github.com/dictyBase/go-obograph v1.3.0/go.mod h1:RSriY6heWOLCBBNBZqOsHCYutyUcN1qJ64G6WPd87U0=
 github.com/dictyBase/go-obograph v1.4.0 h1:qh7eK+c0ptAOph1DD5mzgS8ZpyTHOL8D8kcZplybJLs=
 github.com/dictyBase/go-obograph v1.4.0/go.mod h1:RjW9RgQX7uG7TzWeV9ypz9sD3Yv/JIstKbTBmnKGCX8=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
@@ -279,8 +275,9 @@ github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5Cc
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
-github.com/urfave/cli v1.22.5 h1:lNq9sAHXK2qfdI8W+GRItjCEkI+2oR4d+MEHy1CKXoU=
 github.com/urfave/cli v1.22.5/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
+github.com/urfave/cli v1.22.8 h1:9ic0a+f2TCJ5tSbVRX/FSSCIHJacFLYxcuNexNMJF8Q=
+github.com/urfave/cli v1.22.8/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/urfave/negroni v1.0.0/go.mod h1:Meg73S6kFm/4PpbYdq35yYWoCZ9mS/YSx+lKnmiohz4=
 github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
 github.com/valyala/fasthttp v1.6.0/go.mod h1:FstJa9V+Pj9vQ7OJie2qMHdwemEDaDiSdBnvPM1Su9w=
