@@ -5,18 +5,18 @@ jobs:
     runs-on: ubuntu-latest
     services:
       arangodb:
-        image: arangodb:3.6.5
+        image: arangodb:3.8.7
         env:
           ARANGO_ROOT_PASSWORD: rootpass
         ports:
           - 8529/tcp
     steps:
       - name: set up golang
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
-          go-version: 1.17.x
+          go-version: 1.18
       - name: check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: unit test
         run: go test -parallel 4 -covermode=atomic -coverprofile=profile.cov -v ./...
         env:
@@ -26,7 +26,6 @@ jobs:
           ARANGO_PORT: ${{ job.services.arangodb.ports[8529] }}
           GOPROXY: https://proxy.golang.org
       - name: upload coverage to codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           file: ./profile.cov
-          token: ${{ secrets.CODECOV_TOKEN }}
