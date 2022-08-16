@@ -131,7 +131,7 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		return sc, nil
 	}
 	sc.Data = sdata[:len(sdata)-1]
-	sc.Meta.NextCursor = genNextCursorVal(sdata[len(sdata)-1].Attributes.CreatedAt)
+	sc.Meta.NextCursor = genNextCursorVal(sdata[len(sdata)-1].Attributes.CreatedAt.String())
 	sc.Meta.Total = int64(len(sdata))
 	return sc, nil
 }

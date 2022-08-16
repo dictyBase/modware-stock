@@ -100,7 +100,7 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 		return pc, nil
 	}
 	pc.Data = pdata[:len(pdata)-1]
-	pc.Meta.NextCursor = genNextCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt)
+	pc.Meta.NextCursor = genNextCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt.String())
 	pc.Meta.Total = int64(len(pdata))
 	return pc, nil
 }
