@@ -54,7 +54,11 @@ func defaultOptions() *aphgrpc.ServiceOptions {
 }
 
 // NewStockService is the constructor for creating a new instance of StockService
-func NewStockService(repo repository.StockRepository, pub message.Publisher, opt ...aphgrpc.Option) *StockService {
+func NewStockService(
+	repo repository.StockRepository,
+	pub message.Publisher,
+	opt ...aphgrpc.Option,
+) *StockService {
 	s := defaultOptions()
 	for _, optfn := range opt {
 		optfn(s)
@@ -69,7 +73,10 @@ func NewStockService(repo repository.StockRepository, pub message.Publisher, opt
 }
 
 // RemoveStock removes an existing stock
-func (s *StockService) RemoveStock(ctx context.Context, r *stock.StockId) (*empty.Empty, error) {
+func (s *StockService) RemoveStock(
+	ctx context.Context,
+	r *stock.StockId,
+) (*empty.Empty, error) {
 	e := &empty.Empty{}
 	if err := r.Validate(); err != nil {
 		return e, aphgrpc.HandleInvalidParamError(ctx, err)
@@ -80,13 +87,15 @@ func (s *StockService) RemoveStock(ctx context.Context, r *stock.StockId) (*empt
 	return e, nil
 }
 
-func (s *StockService) OboJSONFileUpload(stream stock.StockService_OboJSONFileUploadServer) error {
+func (s *StockService) OboJSONFileUpload(
+	stream stock.StockService_OboJSONFileUploadServer,
+) error {
 	in, out := io.Pipe()
 	grp := new(errgroup.Group)
 	defer in.Close()
 	oh := &oboStreamHandler{writer: out, stream: stream}
 	grp.Go(oh.Write)
-	m, err := s.repo.LoadOboJson(in)
+	m, err := s.repo.LoadOboJSON(in)
 	if err != nil {
 		return aphgrpc.HandleGenericError(context.Background(), err)
 	}
@@ -99,7 +108,9 @@ func (s *StockService) OboJSONFileUpload(stream stock.StockService_OboJSONFileUp
 	})
 }
 
-func uploadResponse(info *storage.UploadInformation) upload.FileUploadResponse_Status {
+func uploadResponse(
+	info *storage.UploadInformation,
+) upload.FileUploadResponse_Status {
 	if info.IsCreated {
 		return upload.FileUploadResponse_CREATED
 	}
@@ -157,7 +168,10 @@ func stockAQLStatement(filter string) (string, error) {
 func stockModelList(args *modelListParams) ([]*model.StockDoc, error) {
 	astmt, err := stockAQLStatement(args.stockParams.Filter)
 	if err != nil {
-		return []*model.StockDoc{}, aphgrpc.HandleInvalidParamError(args.ctx, err)
+		return []*model.StockDoc{}, aphgrpc.HandleInvalidParamError(
+			args.ctx,
+			err,
+		)
 	}
 	mc, err := args.fn(&stock.StockParameters{
 		Cursor: args.stockParams.Cursor,
@@ -198,7 +212,10 @@ func (oh *oboStreamHandler) Write() error {
 			}
 			return err
 		}
-		oh.writer.Write(req.Content)
+		_, err = oh.writer.Write(req.Content)
+		if err != nil {
+			return fmt.Errorf("error in writing context %s", err)
+		}
 	}
 	return nil
 }

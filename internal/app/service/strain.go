@@ -10,7 +10,10 @@ import (
 )
 
 // GetStrain handles getting a strain by its ID
-func (s *StockService) GetStrain(ctx context.Context, r *stock.StockId) (*stock.Strain, error) {
+func (s *StockService) GetStrain(
+	ctx context.Context,
+	r *stock.StockId,
+) (*stock.Strain, error) {
 	st := &stock.Strain{}
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
@@ -31,7 +34,10 @@ func (s *StockService) GetStrain(ctx context.Context, r *stock.StockId) (*stock.
 }
 
 // LoadStock loads strains with existing IDs into the database
-func (s *StockService) LoadStrain(ctx context.Context, r *stock.ExistingStrain) (*stock.Strain, error) {
+func (s *StockService) LoadStrain(
+	ctx context.Context,
+	r *stock.ExistingStrain,
+) (*stock.Strain, error) {
 	st := &stock.Strain{}
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
@@ -45,12 +51,18 @@ func (s *StockService) LoadStrain(ctx context.Context, r *stock.ExistingStrain) 
 		return st, aphgrpc.HandleInsertError(ctx, err)
 	}
 	st.Data = makeStrainData(m)
-	s.publisher.PublishStrain(s.Topics["stockCreate"], st)
+	err = s.publisher.PublishStrain(s.Topics["stockCreate"], st)
+	if err != nil {
+		return st, aphgrpc.HandleMessagingPubError(ctx, err)
+	}
 	return st, nil
 }
 
 // CreateStrain handles the creation of a new strain
-func (s *StockService) CreateStrain(ctx context.Context, r *stock.NewStrain) (*stock.Strain, error) {
+func (s *StockService) CreateStrain(
+	ctx context.Context,
+	r *stock.NewStrain,
+) (*stock.Strain, error) {
 	st := &stock.Strain{}
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
@@ -63,12 +75,18 @@ func (s *StockService) CreateStrain(ctx context.Context, r *stock.NewStrain) (*s
 		return st, aphgrpc.HandleInsertError(ctx, err)
 	}
 	st.Data = makeStrainData(m)
-	s.publisher.PublishStrain(s.Topics["stockCreate"], st)
+	err = s.publisher.PublishStrain(s.Topics["stockCreate"], st)
+	if err != nil {
+		return st, aphgrpc.HandleMessagingPubError(ctx, err)
+	}
 	return st, nil
 }
 
 // UpdateStrain handles updating an existing strain
-func (s *StockService) UpdateStrain(ctx context.Context, r *stock.StrainUpdate) (*stock.Strain, error) {
+func (s *StockService) UpdateStrain(
+	ctx context.Context,
+	r *stock.StrainUpdate,
+) (*stock.Strain, error) {
 	st := &stock.Strain{}
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
@@ -86,12 +104,18 @@ func (s *StockService) UpdateStrain(ctx context.Context, r *stock.StrainUpdate) 
 	}
 	st.Data = makeStrainData(m)
 	st.Data.Attributes.DictyStrainProperty = ""
-	s.publisher.PublishStrain(s.Topics["stockUpdate"], st)
+	err = s.publisher.PublishStrain(s.Topics["stockUpdate"], st)
+	if err != nil {
+		return st, aphgrpc.HandleMessagingPubError(ctx, err)
+	}
 	return st, nil
 }
 
 // ListStrainsByIds gets a list of strains from a list of strain identifiers
-func (s *StockService) ListStrainsByIds(ctx context.Context, r *stock.StockIdList) (*stock.StrainList, error) {
+func (s *StockService) ListStrainsByIds(
+	ctx context.Context,
+	r *stock.StockIdList,
+) (*stock.StrainList, error) {
 	sl := &stock.StrainList{}
 	if err := r.Validate(); err != nil {
 		return sl, aphgrpc.HandleInvalidParamError(ctx, err)
@@ -112,7 +136,10 @@ func (s *StockService) ListStrainsByIds(ctx context.Context, r *stock.StockIdLis
 }
 
 // ListStrains lists all existing strains
-func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters) (*stock.StrainCollection, error) {
+func (s *StockService) ListStrains(
+	ctx context.Context,
+	r *stock.StockParameters,
+) (*stock.StrainCollection, error) {
 	limit := limitVal(r.Limit)
 	sc := &stock.StrainCollection{Meta: &stock.Meta{Limit: limit}}
 	mc, err := stockModelList(&modelListParams{
@@ -131,7 +158,9 @@ func (s *StockService) ListStrains(ctx context.Context, r *stock.StockParameters
 		return sc, nil
 	}
 	sc.Data = sdata[:len(sdata)-1]
-	sc.Meta.NextCursor = genNextCursorVal(sdata[len(sdata)-1].Attributes.CreatedAt.String())
+	sc.Meta.NextCursor = genNextCursorVal(
+		sdata[len(sdata)-1].Attributes.CreatedAt.String(),
+	)
 	sc.Meta.Total = int64(len(sdata))
 	return sc, nil
 }
@@ -144,7 +173,9 @@ func makeStrainData(m *model.StockDoc) *stock.Strain_Data {
 	}
 }
 
-func strainModelToCollectionSlice(mc []*model.StockDoc) []*stock.StrainCollection_Data {
+func strainModelToCollectionSlice(
+	mc []*model.StockDoc,
+) []*stock.StrainCollection_Data {
 	var sdata []*stock.StrainCollection_Data
 	for _, m := range mc {
 		sdata = append(sdata, &stock.StrainCollection_Data{
