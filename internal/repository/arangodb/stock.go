@@ -21,7 +21,11 @@ func (ar *arangorepository) RemoveStock(id string) error {
 		id,
 	)
 	if err != nil {
-		return errors.Errorf("error in removing document with id %s %s", id, err)
+		return errors.Errorf(
+			"error in removing document with id %s %s",
+			id,
+			err,
+		)
 	}
 	return nil
 }
