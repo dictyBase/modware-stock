@@ -10,7 +10,10 @@ import (
 )
 
 // CreatePlasmid handles the creation of a new plasmid
-func (s *StockService) CreatePlasmid(ctx context.Context, r *stock.NewPlasmid) (*stock.Plasmid, error) {
+func (s *StockService) CreatePlasmid(
+	ctx context.Context,
+	r *stock.NewPlasmid,
+) (*stock.Plasmid, error) {
 	st := &stock.Plasmid{}
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
@@ -21,12 +24,18 @@ func (s *StockService) CreatePlasmid(ctx context.Context, r *stock.NewPlasmid) (
 		return st, aphgrpc.HandleInsertError(ctx, err)
 	}
 	st.Data = makePlasmidData(m)
-	s.publisher.PublishPlasmid(s.Topics["stockCreate"], st)
+	err = s.publisher.PublishPlasmid(s.Topics["stockCreate"], st)
+	if err != nil {
+		return st, aphgrpc.HandleMessagingPubError(ctx, err)
+	}
 	return st, nil
 }
 
 // GetPlasmid handles getting a plasmid by its ID
-func (s *StockService) GetPlasmid(ctx context.Context, r *stock.StockId) (*stock.Plasmid, error) {
+func (s *StockService) GetPlasmid(
+	ctx context.Context,
+	r *stock.StockId,
+) (*stock.Plasmid, error) {
 	st := &stock.Plasmid{}
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
@@ -48,7 +57,10 @@ func (s *StockService) GetPlasmid(ctx context.Context, r *stock.StockId) (*stock
 }
 
 // UpdatePlasmid handles updating an existing plasmid
-func (s *StockService) UpdatePlasmid(ctx context.Context, r *stock.PlasmidUpdate) (*stock.Plasmid, error) {
+func (s *StockService) UpdatePlasmid(
+	ctx context.Context,
+	r *stock.PlasmidUpdate,
+) (*stock.Plasmid, error) {
 	st := &stock.Plasmid{}
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
@@ -58,7 +70,10 @@ func (s *StockService) UpdatePlasmid(ctx context.Context, r *stock.PlasmidUpdate
 		return st, aphgrpc.HandleUpdateError(ctx, err)
 	}
 	if m.NotFound {
-		return st, aphgrpc.HandleNotFoundError(ctx, fmt.Errorf("could not find plasmid with ID %s", m.ID))
+		return st, aphgrpc.HandleNotFoundError(
+			ctx,
+			fmt.Errorf("could not find plasmid with ID %s", m.ID),
+		)
 	}
 	st.Data = &stock.Plasmid_Data{
 		Type: "plasmid",
@@ -76,12 +91,18 @@ func (s *StockService) UpdatePlasmid(ctx context.Context, r *stock.PlasmidUpdate
 			Name:            m.PlasmidProperties.Name,
 		},
 	}
-	s.publisher.PublishPlasmid(s.Topics["stockUpdate"], st)
+	err = s.publisher.PublishPlasmid(s.Topics["stockUpdate"], st)
+	if err != nil {
+		return st, aphgrpc.HandleMessagingPubError(ctx, err)
+	}
 	return st, nil
 }
 
 // ListPlasmids lists all existing plasmids
-func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameters) (*stock.PlasmidCollection, error) {
+func (s *StockService) ListPlasmids(
+	ctx context.Context,
+	r *stock.StockParameters,
+) (*stock.PlasmidCollection, error) {
 	limit := limitVal(r.Limit)
 	pc := &stock.PlasmidCollection{Meta: &stock.Meta{Limit: limit}}
 	mc, err := stockModelList(&modelListParams{
@@ -100,13 +121,18 @@ func (s *StockService) ListPlasmids(ctx context.Context, r *stock.StockParameter
 		return pc, nil
 	}
 	pc.Data = pdata[:len(pdata)-1]
-	pc.Meta.NextCursor = genNextCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt.String())
+	pc.Meta.NextCursor = genNextCursorVal(
+		pdata[len(pdata)-1].Attributes.CreatedAt.String(),
+	)
 	pc.Meta.Total = int64(len(pdata))
 	return pc, nil
 }
 
 // LoadPlasmid loads plasmids with existing IDs into the database
-func (s *StockService) LoadPlasmid(ctx context.Context, r *stock.ExistingPlasmid) (*stock.Plasmid, error) {
+func (s *StockService) LoadPlasmid(
+	ctx context.Context,
+	r *stock.ExistingPlasmid,
+) (*stock.Plasmid, error) {
 	st := &stock.Plasmid{}
 	if err := r.Validate(); err != nil {
 		return st, aphgrpc.HandleInvalidParamError(ctx, err)
@@ -118,7 +144,10 @@ func (s *StockService) LoadPlasmid(ctx context.Context, r *stock.ExistingPlasmid
 		return st, aphgrpc.HandleInsertError(ctx, err)
 	}
 	st.Data = makePlasmidData(m)
-	s.publisher.PublishPlasmid(s.Topics["stockCreate"], st)
+	err = s.publisher.PublishPlasmid(s.Topics["stockCreate"], st)
+	if err != nil {
+		return st, aphgrpc.HandleMessagingPubError(ctx, err)
+	}
 	return st, nil
 }
 
@@ -130,7 +159,9 @@ func makePlasmidData(m *model.StockDoc) *stock.Plasmid_Data {
 	}
 }
 
-func plasmidModelToCollectionSlice(mc []*model.StockDoc) []*stock.PlasmidCollection_Data {
+func plasmidModelToCollectionSlice(
+	mc []*model.StockDoc,
+) []*stock.PlasmidCollection_Data {
 	var pdata []*stock.PlasmidCollection_Data
 	for _, m := range mc {
 		pdata = append(pdata, &stock.PlasmidCollection_Data{

@@ -30,7 +30,10 @@ func RunServer(c *cli.Context) error {
 	srepo, err := arangodb.NewStockRepo(allParams(c))
 	if err != nil {
 		return cli.NewExitError(
-			fmt.Sprintf("cannot connect to arangodb stocks repository %s", err.Error()),
+			fmt.Sprintf(
+				"cannot connect to arangodb stocks repository %s",
+				err.Error(),
+			),
 			2,
 		)
 	}
@@ -80,7 +83,9 @@ func RunServer(c *cli.Context) error {
 		)
 	}
 	log.Printf("starting grpc server on %s", endP)
-	grpcS.Serve(lis)
+	if err := grpcS.Serve(lis); err != nil {
+		return fmt.Errorf("error in running grpc server %s", err)
+	}
 	return nil
 }
 
@@ -119,7 +124,9 @@ func getLogger(c *cli.Context) *logrus.Entry {
 	return logrus.NewEntry(log)
 }
 
-func allParams(c *cli.Context) (*manager.ConnectParams, *arangodb.CollectionParams, *ontoarango.CollectionParams) {
+func allParams(
+	c *cli.Context,
+) (*manager.ConnectParams, *arangodb.CollectionParams, *ontoarango.CollectionParams) {
 	arPort, _ := strconv.Atoi(c.String("arangodb-port"))
 	connP := &manager.ConnectParams{
 		User:     c.String("arangodb-user"),

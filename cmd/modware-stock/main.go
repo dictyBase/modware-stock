@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -38,7 +39,10 @@ func main() {
 			Flags:  allFlags(),
 		},
 	}
-	app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		fmt.Printf("error in running the app %s", err)
+		os.Exit(1)
+	}
 }
 
 func allFlags() []cli.Flag {
@@ -48,10 +52,7 @@ func allFlags() []cli.Flag {
 	f = append(f, collection.FilterFlags(
 		oboflag.OntologyFlags(),
 		func(f cli.Flag) bool {
-			if strings.HasPrefix(f.GetName(), "obojson") {
-				return false
-			}
-			return true
+			return !strings.HasPrefix(f.GetName(), "obojson")
 		})...)
 	return append(f, aphgrpc.NatsFlag()...)
 }

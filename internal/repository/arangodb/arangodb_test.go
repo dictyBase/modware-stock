@@ -189,7 +189,9 @@ func setUp(t *testing.T) (*require.Assertions, repository.StockRepository) {
 }
 
 func tearDown(repo repository.StockRepository) {
-	repo.Dbh().Drop()
+	if err := repo.Dbh().Drop(); err != nil {
+		panic(err)
+	}
 }
 
 func oboReader() (*os.File, error) {
