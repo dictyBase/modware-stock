@@ -133,7 +133,9 @@ func (ar *arangorepository) termID(term, onto string) (string, error) {
 	return id, nil
 }
 
-func (ar *arangorepository) LoadOboJson(r io.Reader) (*ontostorage.UploadInformation, error) {
+func (ar *arangorepository) LoadOboJSON(
+	r io.Reader,
+) (*ontostorage.UploadInformation, error) {
 	ds, err := ontoarango.NewDataSourceFromDb(ar.database,
 		&ontoarango.CollectionParams{
 			OboGraph:     ar.ontoc.Obog.Name(),

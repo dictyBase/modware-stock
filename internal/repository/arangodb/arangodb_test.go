@@ -3,7 +3,6 @@ package arangodb
 import (
 	"bufio"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,12 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-const (
-	charSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-)
-
-var seedRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 func getOntoParams() *ontoarango.CollectionParams {
 	return &ontoarango.CollectionParams{
@@ -69,13 +62,17 @@ func newUpdatableTestStrain(createdby string) *stock.NewStrain {
 		Data: &stock.NewStrain_Data{
 			Type: "strain",
 			Attributes: &stock.NewStrainAttributes{
-				CreatedBy:           createdby,
-				UpdatedBy:           createdby,
-				Depositor:           createdby,
-				Summary:             "Radiation-sensitive mutant.",
-				EditableSummary:     "Radiation-sensitive mutant.",
-				Genes:               []string{"DDB_G0348394", "DDB_G098058933"},
-				Publications:        []string{"48428304983", "83943", "839434936743"},
+				CreatedBy:       createdby,
+				UpdatedBy:       createdby,
+				Depositor:       createdby,
+				Summary:         "Radiation-sensitive mutant.",
+				EditableSummary: "Radiation-sensitive mutant.",
+				Genes:           []string{"DDB_G0348394", "DDB_G098058933"},
+				Publications: []string{
+					"48428304983",
+					"83943",
+					"839434936743",
+				},
 				Label:               "yS13",
 				Species:             "Dictyostelium discoideum",
 				DictyStrainProperty: "general strain",
@@ -89,12 +86,19 @@ func newTestStrain(createdby string) *stock.NewStrain {
 		Data: &stock.NewStrain_Data{
 			Type: "strain",
 			Attributes: &stock.NewStrainAttributes{
-				CreatedBy:           createdby,
-				UpdatedBy:           createdby,
-				Depositor:           "george@costanza.com",
-				Summary:             "Radiation-sensitive mutant.",
-				EditableSummary:     "Radiation-sensitive mutant.",
-				Dbxrefs:             []string{"5466867", "4536935", "d2578", "d0319", "d2020/1033268", "d2580"},
+				CreatedBy:       createdby,
+				UpdatedBy:       createdby,
+				Depositor:       "george@costanza.com",
+				Summary:         "Radiation-sensitive mutant.",
+				EditableSummary: "Radiation-sensitive mutant.",
+				Dbxrefs: []string{
+					"5466867",
+					"4536935",
+					"d2578",
+					"d0319",
+					"d2020/1033268",
+					"d2580",
+				},
 				Genes:               []string{"DDB_G0348394", "DDB_G098058933"},
 				Publications:        []string{"4849343943", "48394394"},
 				Label:               "yS13",
@@ -174,7 +178,11 @@ func setUp(t *testing.T) (*require.Assertions, repository.StockRepository) {
 		getCollectionParams(),
 		getOntoParams(),
 	)
-	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
+	assert.NoErrorf(
+		err,
+		"expect no error connecting to stock repository, received %s",
+		err,
+	)
 	err = loadData(ta)
 	assert.NoError(err, "expect no error from loading ontology")
 	return assert, repo
@@ -256,7 +264,7 @@ func TestLoadOboJson(t *testing.T) {
 	fh, err := oboReader()
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	defer fh.Close()
-	m, err := repo.LoadOboJson(bufio.NewReader(fh))
+	m, err := repo.LoadOboJSON(bufio.NewReader(fh))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.True(m.IsCreated, "should match created status")
 }
@@ -292,21 +300,6 @@ func testModelListSort(m []*model.StockDoc, t *testing.T) {
 			cm.CreatedAt.String(),
 		)
 	}
-}
-
-func stringWithCharset(length int, charset string) string {
-	var b []byte
-	for i := 0; i < length; i++ {
-		b = append(
-			b,
-			charset[seedRand.Intn(len(charset))],
-		)
-	}
-	return string(b)
-}
-
-func RandString(length int) string {
-	return stringWithCharset(length, charSet)
 }
 
 func toTimestamp(t time.Time) int64 {

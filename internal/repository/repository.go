@@ -24,5 +24,5 @@ type StockRepository interface {
 	LoadPlasmid(id string, ep *stock.ExistingPlasmid) (*model.StockDoc, error)
 	RemoveStock(id string) error
 	Dbh() *manager.Database
-	LoadOboJson(r io.Reader) (*storage.UploadInformation, error)
+	LoadOboJSON(r io.Reader) (*storage.UploadInformation, error)
 }

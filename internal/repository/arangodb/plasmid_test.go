@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dictyBase/aphgrpc"
+	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 )
 
@@ -39,7 +40,11 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 	}
 	um, err := repo.LoadPlasmid("DBP0000098", ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Equal("DBP0000098", um.StockID, "should match given plasmid stock id")
+	assert.Equal(
+		"DBP0000098",
+		um.StockID,
+		"should match given plasmid stock id",
+	)
 	assert.Equal(um.Key, um.StockID, "should have identical key and stock ID")
 	assert.Equal(
 		um.CreatedBy,
@@ -86,7 +91,9 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 	defer tearDown(repo)
 	// add 10 new test plasmids
 	for i := 1; i <= 10; i++ {
-		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
+		np := newTestPlasmid(
+			fmt.Sprintf("%s@cye.com", testarango.RandomString(15, 25)),
+		)
 		_, err := repo.AddPlasmid(np)
 		assert.NoErrorf(err, "expect no error, received %s", err)
 	}
@@ -167,7 +174,9 @@ func TestListPlasmids(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	for i := 1; i <= 10; i++ {
-		np := newTestPlasmid(fmt.Sprintf("%s@cye.com", RandString(10)))
+		np := newTestPlasmid(
+			fmt.Sprintf("%s@cye.com", testarango.RandomString(15, 20)),
+		)
 		_, err := repo.AddPlasmid(np)
 		assert.NoErrorf(err, "expect no error adding plasmid, received %s", err)
 	}

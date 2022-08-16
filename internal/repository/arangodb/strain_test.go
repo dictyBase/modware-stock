@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dictyBase/aphgrpc"
+	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 )
 
@@ -195,7 +196,10 @@ func TestListStrainsWithFilter(t *testing.T) {
 	// add 10 new test strains
 	for i := 1; i <= 10; i++ {
 		ns := newTestStrain(
-			fmt.Sprintf("%s@kramericaindustries.com", RandString(10)),
+			fmt.Sprintf(
+				"%s@kramericaindustries.com",
+				testarango.RandomString(15, 20),
+			),
 		)
 		_, err := repo.AddStrain(ns)
 		assert.NoErrorf(err, "expect no error adding strain, received %s", err)
@@ -294,7 +298,10 @@ func TestListStrains(t *testing.T) {
 	// add 10 new test strains
 	for i := 1; i <= 10; i++ {
 		ns := newTestStrain(
-			fmt.Sprintf("%s@kramericaindustries.com", RandString(10)),
+			fmt.Sprintf(
+				"%s@kramericaindustries.com",
+				testarango.RandomString(15, 25),
+			),
 		)
 		_, err := repo.AddStrain(ns)
 		assert.NoErrorf(err, "expect no error adding strain, received %s", err)
@@ -400,7 +407,10 @@ func TestListStrainsByIds(t *testing.T) {
 	ids := make([]string, 0)
 	for i := 1; i <= 30; i++ {
 		ns := newTestStrain(
-			fmt.Sprintf("%s@kramericaindustries.com", RandString(10)),
+			fmt.Sprintf(
+				"%s@kramericaindustries.com",
+				testarango.RandomString(15, 25),
+			),
 		)
 		m, err := repo.AddStrain(ns)
 		assert.NoErrorf(err, "expect no error adding strain, received %s", err)
@@ -446,7 +456,9 @@ func TestListStrainsByIds(t *testing.T) {
 	)
 	pids := make([]string, 0)
 	for i := 1; i <= 30; i++ {
-		ns := newTestStrain(fmt.Sprintf("%s@mailman.com", RandString(10)))
+		ns := newTestStrain(
+			fmt.Sprintf("%s@mailman.com", testarango.RandomString(15, 25)),
+		)
 		ns.Data.Attributes.Parent = pm.StockID
 		m, err := repo.AddStrain(ns)
 		assert.NoErrorf(

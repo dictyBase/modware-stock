@@ -11,7 +11,9 @@ import (
 )
 
 // AddStrain creates a new strain stock
-func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, error) {
+func (ar *arangorepository) AddStrain(
+	ns *stock.NewStrain,
+) (*model.StockDoc, error) {
 	return ar.persistStrain(&persistStrainParams{
 		parent:          ns.Data.Attributes.Parent,
 		dictyStrainProp: ns.Data.Attributes.DictyStrainProperty,
@@ -28,7 +30,9 @@ func (ar *arangorepository) AddStrain(ns *stock.NewStrain) (*model.StockDoc, err
 }
 
 // EditStrain updates an existing strain
-func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc, error) {
+func (ar *arangorepository) EditStrain(
+	us *stock.StrainUpdate,
+) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	propKey, err := ar.checkStock(us.Data.Id)
 	if err != nil {
@@ -76,7 +80,10 @@ func (ar *arangorepository) EditStrain(us *stock.StrainUpdate) (*model.StockDoc,
 
 // LoadStrain will insert existing strain data into the database.
 // It receives the already existing strain ID and the data to go with it.
-func (ar *arangorepository) LoadStrain(id string, es *stock.ExistingStrain) (*model.StockDoc, error) {
+func (ar *arangorepository) LoadStrain(
+	id string,
+	es *stock.ExistingStrain,
+) (*model.StockDoc, error) {
 	return ar.persistStrain(&persistStrainParams{
 		parent:          es.Data.Attributes.Parent,
 		dictyStrainProp: es.Data.Attributes.DictyStrainProperty,
@@ -92,7 +99,9 @@ func (ar *arangorepository) LoadStrain(id string, es *stock.ExistingStrain) (*mo
 	})
 }
 
-func existingStrainBindParams(attr *stock.ExistingStrainAttributes) map[string]interface{} {
+func existingStrainBindParams(
+	attr *stock.ExistingStrainAttributes,
+) map[string]interface{} {
 	return map[string]interface{}{
 		"summary":          normalizeStrBindParam(attr.Summary),
 		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
@@ -111,7 +120,9 @@ func existingStrainBindParams(attr *stock.ExistingStrainAttributes) map[string]i
 	}
 }
 
-func getUpdatableStrainBindParams(attr *stock.StrainUpdateAttributes) map[string]interface{} {
+func getUpdatableStrainBindParams(
+	attr *stock.StrainUpdateAttributes,
+) map[string]interface{} {
 	bindVars := map[string]interface{}{
 		"updated_by": attr.UpdatedBy,
 	}
@@ -136,7 +147,9 @@ func getUpdatableStrainBindParams(attr *stock.StrainUpdateAttributes) map[string
 	return bindVars
 }
 
-func getUpdatableStrainPropBindParams(attr *stock.StrainUpdateAttributes) map[string]interface{} {
+func getUpdatableStrainPropBindParams(
+	attr *stock.StrainUpdateAttributes,
+) map[string]interface{} {
 	bindVars := make(map[string]interface{})
 	if len(attr.Label) > 0 {
 		bindVars["label"] = attr.Label
@@ -153,7 +166,9 @@ func getUpdatableStrainPropBindParams(attr *stock.StrainUpdateAttributes) map[st
 	return bindVars
 }
 
-func addableStrainBindParams(attr *stock.NewStrainAttributes) map[string]interface{} {
+func addableStrainBindParams(
+	attr *stock.NewStrainAttributes,
+) map[string]interface{} {
 	return map[string]interface{}{
 		"summary":          normalizeStrBindParam(attr.Summary),
 		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
@@ -170,7 +185,9 @@ func addableStrainBindParams(attr *stock.NewStrainAttributes) map[string]interfa
 	}
 }
 
-func (ar *arangorepository) handleEditStrainWithParent(parent, id string) (map[string]interface{}, string, error) {
+func (ar *arangorepository) handleEditStrainWithParent(
+	parent, id string,
+) (map[string]interface{}, string, error) {
 	pVar := map[string]interface{}{
 		"parent_graph": ar.stockc.strain2Parent.Name(),
 		"strain_key":   id,
@@ -208,7 +225,11 @@ func (ar *arangorepository) handleEditStrainWithParent(parent, id string) (map[s
 func (ar *arangorepository) validateParent(parent string) error {
 	ok, err := ar.stockc.stock.DocumentExists(context.Background(), parent)
 	if err != nil {
-		return errors.Errorf("error in checking for parent id %s %s", parent, err)
+		return errors.Errorf(
+			"error in checking for parent id %s %s",
+			parent,
+			err,
+		)
 	}
 	if !ok {
 		return errors.Errorf("parent id %s does not exist in database", parent)
@@ -216,7 +237,9 @@ func (ar *arangorepository) validateParent(parent string) error {
 	return nil
 }
 
-func (ar *arangorepository) handleAddStrainWithParent(parent string) (map[string]interface{}, error) {
+func (ar *arangorepository) handleAddStrainWithParent(
+	parent string,
+) (map[string]interface{}, error) {
 	qVar := map[string]interface{}{
 		"@stock_collection": ar.stockc.stock.Name(),
 		"id":                parent,
@@ -240,7 +263,9 @@ func (ar *arangorepository) handleAddStrainWithParent(parent string) (map[string
 	}, nil
 }
 
-func (ar *arangorepository) persistStrain(args *persistStrainParams) (*model.StockDoc, error) {
+func (ar *arangorepository) persistStrain(
+	args *persistStrainParams,
+) (*model.StockDoc, error) {
 	m := &model.StockDoc{
 		StrainProperties: &model.StrainProperties{
 			DictyStrainProperty: args.dictyStrainProp,
