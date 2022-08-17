@@ -97,7 +97,7 @@ const (
 					FOR prop,etype IN 1..1 OUTBOUND stock GRAPH @stockprop_graph
 						FILTER cvterm.graph_id == cv._id
 						FILTER etype.type == 'strain'
-						@filter
+						FILTER @filter
 						SORT stock.created_at DESC
 						LIMIT @limit
 						RETURN MERGE(stock,{
@@ -113,11 +113,11 @@ const (
 	StrainListFilterWithCursor = `
 		FOR cvterm in @@cvterm_collection
 			FOR cv IN @@cv_collection
-				FOR stock IN 1..1 INBOUND cvterm GRAPH @stockonto_graph
+				FOR stock IN 1..1 INBOUND cvterm GRAPH @stock_cvterm_graph
 					FOR prop,etype IN 1..1 OUTBOUND stock GRAPH @stockprop_graph
 						FILTER cvterm.graph_id == cv._id
 						FILTER etype.type == 'strain'
-						@filter
+						FILTER @filter
 						FILTER stock.created_at <= DATE_ISO8601(@cursor)
 						SORT stock.created_at DESC
 						LIMIT @limit
