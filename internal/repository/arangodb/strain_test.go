@@ -204,7 +204,7 @@ func TestListStrainsWithFilter(t *testing.T) {
 		_, err := repo.AddStrain(ns)
 		assert.NoErrorf(err, "expect no error adding strain, received %s", err)
 	}
-	filterOne := `FILTER s.depositor == 'george@costanza.com'`
+	filterOne := `FILTER stock.depositor == 'george@costanza.com'`
 	sf, err := repo.ListStrains(
 		&stock.StockParameters{Limit: 10, Filter: filterOne},
 	)
@@ -223,7 +223,10 @@ func TestListStrainsWithFilter(t *testing.T) {
 		assert.Equal(m.StrainProperties.Label, "yS13", "should match label")
 	}
 
-	filterTwo := `FILTER s.depositor == 'george@costanza.com' AND s.depositor == 'rg@gmail.com'`
+	filterTwo := `FILTER stock.depositor == 'george@costanza.com' 
+			AND 
+		      stock.depositor == 'rg@gmail.com'
+	 	`
 	n, err := repo.ListStrains(
 		&stock.StockParameters{Limit: 100, Filter: filterTwo},
 	)
@@ -235,9 +238,9 @@ func TestListStrainsWithFilter(t *testing.T) {
 	assert.Len(n, 0, "should list no strains")
 
 	filterThree := `LET x = (
-						FILTER 'gammaS13' IN s.names 
-						RETURN 1
-					)`
+				FILTER 'gammaS13' IN stock.names 
+				RETURN 1
+			)`
 	// do a check for array filter
 	as, err := repo.ListStrains(
 		&stock.StockParameters{
@@ -253,7 +256,7 @@ func TestListStrainsWithFilter(t *testing.T) {
 	)
 	assert.Len(as, 5, "should list five strains")
 
-	filterFour := `FILTER s.created_at <= DATE_ISO8601('2019')`
+	filterFour := `FILTER stock.created_at <= DATE_ISO8601('2019')`
 	da, err := repo.ListStrains(
 		&stock.StockParameters{
 			Cursor: toTimestamp(sf[5].CreatedAt),
@@ -268,7 +271,7 @@ func TestListStrainsWithFilter(t *testing.T) {
 	)
 	assert.Len(da, 0, "should list no strains")
 
-	filterFive := `FILTER v.label =~ 'yS'`
+	filterFive := `FILTER prop.label =~ 'yS'`
 	ff, err := repo.ListStrains(
 		&stock.StockParameters{Limit: 10, Filter: filterFive},
 	)
@@ -279,7 +282,7 @@ func TestListStrainsWithFilter(t *testing.T) {
 	)
 	assert.Len(ff, 10, "should list ten strains")
 
-	filterSix := `FILTER s.summary =~ 'mutant'`
+	filterSix := `FILTER stock.summary =~ 'mutant'`
 	fs, err := repo.ListStrains(
 		&stock.StockParameters{Limit: 10, Filter: filterSix},
 	)
