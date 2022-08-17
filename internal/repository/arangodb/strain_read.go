@@ -1,8 +1,6 @@
 package arangodb
 
 import (
-	"fmt"
-
 	"github.com/cockroachdb/errors"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
@@ -37,28 +35,28 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 
 // ListStrains provides a list of all strains
 func (ar *arangorepository) ListStrains(
-	p *stock.StockParameters,
+	param *stock.StockParameters,
 ) ([]*model.StockDoc, error) {
-	var om []*model.StockDoc
-	stmt := ar.strainStmtNoFilter(p)
-	if len(p.Filter) > 0 {
-		stmt = ar.strainStmtWithFilter(p)
+	omd := make([]*model.StockDoc, 0)
+	stmt, paramsBind := ar.strainStmtNoFilter(param)
+	if len(param.Filter) > 0 {
+		stmt, paramsBind = ar.strainStmtWithFilter(param)
 	}
-	rs, err := ar.database.Search(stmt)
+	rs, err := ar.database.SearchRows(stmt, paramsBind)
 	if err != nil {
-		return om, err
+		return omd, err
 	}
 	if rs.IsEmpty() {
-		return om, nil
+		return omd, nil
 	}
 	for rs.Scan() {
 		m := &model.StockDoc{}
 		if err := rs.Read(m); err != nil {
-			return om, err
+			return omd, err
 		}
-		om = append(om, m)
+		omd = append(omd, m)
 	}
-	return om, nil
+	return omd, nil
 }
 
 func (ar *arangorepository) ListStrainsByIds(
@@ -95,42 +93,38 @@ func (ar *arangorepository) ListStrainsByIds(
 }
 
 func (ar *arangorepository) strainStmtWithFilter(
-	p *stock.StockParameters,
-) string {
-	if p.Cursor == 0 { // no cursor so return first set of results with filter
-		return fmt.Sprintf(
-			statement.StrainListFilter,
-			ar.stockc.stock.Name(),
-			ar.stockc.stockPropType.Name(),
-			p.Filter, p.Limit+1,
-		)
+	param *stock.StockParameters,
+) (string, map[string]interface{}) {
+	stmt := statement.StrainListFilter
+	stmtMap := map[string]interface{}{
+		"@cvterm_collection": ar.ontoc.Term.Name(),
+		"@cv_collection":     ar.ontoc.Cv.Name(),
+		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
+		"stockprop_graph":    ar.stockc.stockPropType.Name(),
+		"filter":             param.Filter,
+		"limit":              param.Limit + 1,
+	}
+	if param.Cursor != 0 { // no cursor so return first set of results with filter
+		stmt = statement.StrainListFilterWithCursor
+		stmtMap["cursor"] = param.Cursor
 	}
 	// else include both filter and cursor
-	return fmt.Sprintf(
-		statement.StrainListFilterWithCursor,
-		ar.stockc.stock.Name(),
-		ar.stockc.stockPropType.Name(),
-		p.Filter, p.Cursor, p.Limit+1,
-	)
+	return stmt, stmtMap
 }
 
 func (ar *arangorepository) strainStmtNoFilter(
-	p *stock.StockParameters,
-) string {
-	// otherwise use query statement without filter
-	if p.Cursor == 0 { // no cursor so return first set of result
-		return fmt.Sprintf(
-			statement.StrainList,
-			ar.stockc.stock.Name(),
-			ar.stockc.stockPropType.Name(),
-			p.Limit+1,
-		)
+	param *stock.StockParameters,
+) (string, map[string]interface{}) {
+	stmt := statement.StrainList
+	stmtMap := map[string]interface{}{
+		"@stock_collection": ar.stockc.stock.Name(),
+		"graph":             ar.stockc.stockPropType.Name(),
+		"limit":             param.Limit + 1,
 	}
-	// add cursor if it exists
-	return fmt.Sprintf(
-		statement.StrainListWithCursor,
-		ar.stockc.stock.Name(),
-		ar.stockc.stockPropType.Name(),
-		p.Cursor, p.Limit+1,
-	)
+	if param.Cursor != 0 {
+		stmt = statement.StrainListFilter
+		stmtMap["cursor"] = param.Cursor
+	}
+
+	return stmt, stmtMap
 }
