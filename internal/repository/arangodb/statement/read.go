@@ -97,7 +97,7 @@ const (
 					FOR prop,etype IN 1..1 OUTBOUND stock GRAPH @stockprop_graph
 						FILTER cvterm.graph_id == cv._id
 						FILTER etype.type == 'strain'
-						FILTER @filter
+						%s
 						SORT stock.created_at DESC
 						LIMIT @limit
 						RETURN MERGE(stock,{
@@ -117,7 +117,7 @@ const (
 					FOR prop,etype IN 1..1 OUTBOUND stock GRAPH @stockprop_graph
 						FILTER cvterm.graph_id == cv._id
 						FILTER etype.type == 'strain'
-						FILTER @filter
+						%s
 						FILTER stock.created_at <= DATE_ISO8601(@cursor)
 						SORT stock.created_at DESC
 						LIMIT @limit

@@ -1,6 +1,8 @@
 package arangodb
 
 import (
+	"fmt"
+
 	"github.com/cockroachdb/errors"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
@@ -95,20 +97,19 @@ func (ar *arangorepository) ListStrainsByIds(
 func (ar *arangorepository) strainStmtWithFilter(
 	param *stock.StockParameters,
 ) (string, map[string]interface{}) {
-	stmt := statement.StrainListFilter
 	stmtMap := map[string]interface{}{
 		"@cvterm_collection": ar.ontoc.Term.Name(),
 		"@cv_collection":     ar.ontoc.Cv.Name(),
 		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
 		"stockprop_graph":    ar.stockc.stockPropType.Name(),
-		"filter":             param.Filter,
 		"limit":              param.Limit + 1,
 	}
 	if param.Cursor != 0 { // no cursor so return first set of results with filter
-		stmt = statement.StrainListFilterWithCursor
+		stmt := fmt.Sprintf(statement.StrainListFilterWithCursor, param.Filter)
 		stmtMap["cursor"] = param.Cursor
+		return stmt, stmtMap
 	}
-	// else include both filter and cursor
+	stmt := fmt.Sprintf(statement.StrainListFilter, param.Filter)
 	return stmt, stmtMap
 }
 
@@ -122,7 +123,7 @@ func (ar *arangorepository) strainStmtNoFilter(
 		"limit":             param.Limit + 1,
 	}
 	if param.Cursor != 0 {
-		stmt = statement.StrainListFilter
+		stmt = statement.StrainListWithCursor
 		stmtMap["cursor"] = param.Cursor
 	}
 
