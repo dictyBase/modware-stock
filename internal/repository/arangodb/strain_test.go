@@ -376,27 +376,6 @@ func TestListStrains(t *testing.T) {
 	testModelListSort(ls, t)
 	testModelListSort(ls2, t)
 	testModelListSort(ls3, t)
-
-	filter := `FILTER s.depositor == 'george@costanza.com'`
-	sf, err := repo.ListStrains(
-		&stock.StockParameters{Limit: 10, Filter: filter},
-	)
-	assert.NoErrorf(
-		err,
-		"expect no error in getting list of strains with depositor george@costanza.com, received %s",
-		err,
-	)
-	assert.Len(sf, 10, "should list ten strains")
-
-	cs, err := repo.ListStrains(
-		&stock.StockParameters{Cursor: toTimestamp(sf[4].CreatedAt), Limit: 10},
-	)
-	assert.NoErrorf(
-		err,
-		"expect no error getting list of strains with cursor, received %s",
-		err,
-	)
-	assert.Len(cs, 6, "should list six strains")
 }
 
 func TestListStrainsByIds(t *testing.T) {
