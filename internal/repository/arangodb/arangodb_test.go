@@ -21,6 +21,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type StrainType int64
+
+const (
+	Undefined StrainType = iota
+	Bacterial
+	Gwdi
+	General
+)
+
+func (stype StrainType) String() string {
+	switch stype {
+	case Bacterial:
+		return "bacterial strain"
+	case Gwdi:
+		return "REMI-seq"
+	case General:
+		return "general strain"
+	}
+	return "general strain"
+}
+
 func getOntoParams() *ontoarango.CollectionParams {
 	return &ontoarango.CollectionParams{
 		GraphInfo:    "cv",
@@ -57,7 +78,10 @@ func getCollectionParams() *CollectionParams {
 	}
 }
 
-func newUpdatableTestStrain(createdby string) *stock.NewStrain {
+func newUpdatableTestStrain(
+	createdby string,
+	stype StrainType,
+) *stock.NewStrain {
 	return &stock.NewStrain{
 		Data: &stock.NewStrain_Data{
 			Type: "strain",
@@ -75,13 +99,13 @@ func newUpdatableTestStrain(createdby string) *stock.NewStrain {
 				},
 				Label:               "yS13",
 				Species:             "Dictyostelium discoideum",
-				DictyStrainProperty: "general strain",
+				DictyStrainProperty: stype.String(),
 			},
 		},
 	}
 }
 
-func newTestStrain(createdby string) *stock.NewStrain {
+func newTestStrain(createdby string, stype StrainType) *stock.NewStrain {
 	return &stock.NewStrain{
 		Data: &stock.NewStrain_Data{
 			Type: "strain",
@@ -105,7 +129,7 @@ func newTestStrain(createdby string) *stock.NewStrain {
 				Species:             "Dictyostelium discoideum",
 				Plasmid:             "DBP0000027",
 				Names:               []string{"gammaS13", "gammaS-13", "γS-13"},
-				DictyStrainProperty: "general strain",
+				DictyStrainProperty: stype.String(),
 			},
 		},
 	}
@@ -274,7 +298,7 @@ func TestLoadOboJson(t *testing.T) {
 func TestRemoveStock(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	ns := newTestStrain("george@costanza.com")
+	ns := newTestStrain("george@costanza.com", General)
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	err = repo.RemoveStock(m.Key)
