@@ -11,6 +11,20 @@ import (
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 )
 
+const (
+	filterOne = `FILTER stock.depositor == 'george@costanza.com'`
+	filterTwo = `FILTER stock.depositor == 'george@costanza.com' 
+		      AND stock.depositor == 'rg@gmail.com'
+	 	     `
+	filterThree = `LET x = (
+				FILTER 'gammaS13' IN stock.names 
+				RETURN 1
+			)`
+	filterFour = `FILTER stock.created_at <= DATE_ISO8601('2019')`
+	filterFive = `FILTER prop.label =~ 'yS'`
+	filterSix  = `FILTER stock.summary =~ 'mutant'`
+)
+
 func TestLoadStrainWithID(t *testing.T) {
 	t.Parallel()
 	assert, repo := setUp(t)
@@ -193,7 +207,6 @@ func TestListStrainsWithFilter(t *testing.T) {
 	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	// add 10 new test strains
 	for i := 1; i <= 10; i++ {
 		ns := newTestStrain(
 			fmt.Sprintf(
@@ -202,17 +215,12 @@ func TestListStrainsWithFilter(t *testing.T) {
 			),
 		)
 		_, err := repo.AddStrain(ns)
-		assert.NoErrorf(err, "expect no error adding strain, received %s", err)
+		assert.NoError(err, "expect no error in adding strain")
 	}
-	filterOne := `FILTER stock.depositor == 'george@costanza.com'`
 	sf, err := repo.ListStrains(
 		&stock.StockParameters{Limit: 10, Filter: filterOne},
 	)
-	assert.NoErrorf(
-		err,
-		"expect no error getting list of strains, received %s",
-		err,
-	)
+	assert.NoError(err, "expect no error in getting list of strains")
 	assert.Len(sf, 10, "should list ten strains")
 	for _, m := range sf {
 		assert.Equal(
@@ -222,25 +230,14 @@ func TestListStrainsWithFilter(t *testing.T) {
 		)
 		assert.Equal(m.StrainProperties.Label, "yS13", "should match label")
 	}
-
-	filterTwo := `FILTER stock.depositor == 'george@costanza.com' 
-			AND 
-		      stock.depositor == 'rg@gmail.com'
-	 	`
 	n, err := repo.ListStrains(
 		&stock.StockParameters{Limit: 100, Filter: filterTwo},
 	)
-	assert.NoErrorf(
+	assert.NoError(
 		err,
-		"expect no error getting list of stocks with two depositors with AND logic, received %s",
-		err,
+		"expect no error getting list of stocks with two depositors with AND logic",
 	)
 	assert.Len(n, 0, "should list no strains")
-
-	filterThree := `LET x = (
-				FILTER 'gammaS13' IN stock.names 
-				RETURN 1
-			)`
 	// do a check for array filter
 	as, err := repo.ListStrains(
 		&stock.StockParameters{
@@ -249,14 +246,11 @@ func TestListStrainsWithFilter(t *testing.T) {
 			Filter: filterThree,
 		},
 	)
-	assert.NoErrorf(
+	assert.NoError(
 		err,
-		"expect no error getting list of stocks with cursor and filter, received %s",
-		err,
+		"expect no error getting list of stocks with cursor and filter",
 	)
 	assert.Len(as, 5, "should list five strains")
-
-	filterFour := `FILTER stock.created_at <= DATE_ISO8601('2019')`
 	da, err := repo.ListStrains(
 		&stock.StockParameters{
 			Cursor: toTimestamp(sf[5].CreatedAt),
@@ -264,33 +258,23 @@ func TestListStrainsWithFilter(t *testing.T) {
 			Filter: filterFour,
 		},
 	)
-	assert.NoErrorf(
+	assert.NoError(
 		err,
-		"expect no error getting list of stocks with cursor and date filter, received %s",
-		err,
+		"expect no error getting list of stocks with cursor and date filter",
 	)
 	assert.Len(da, 0, "should list no strains")
-
-	filterFive := `FILTER prop.label =~ 'yS'`
 	ff, err := repo.ListStrains(
 		&stock.StockParameters{Limit: 10, Filter: filterFive},
 	)
-	assert.NoErrorf(
+	assert.NoError(
 		err,
-		"expect no error getting list of strains with label substring, received %s",
-		err,
+		"expect no error getting list of strains with label substring",
 	)
 	assert.Len(ff, 10, "should list ten strains")
-
-	filterSix := `FILTER stock.summary =~ 'mutant'`
 	fs, err := repo.ListStrains(
 		&stock.StockParameters{Limit: 10, Filter: filterSix},
 	)
-	assert.NoErrorf(
-		err,
-		"expect no error getting list of strains with summary substring, received %s",
-		err,
-	)
+	assert.NoError(err, "expect no error in matching summary substring")
 	assert.Len(fs, 10, "should list ten strains")
 }
 
