@@ -9,6 +9,7 @@ import (
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/repository"
 )
 
 const (
@@ -24,6 +25,81 @@ const (
 	filterFive = `FILTER prop.label =~ 'yS'`
 	filterSix  = `FILTER stock.summary =~ 'mutant'`
 )
+
+func createTestStrainsWithParent(
+	count int,
+	stype StrainType,
+	repo repository.StockRepository,
+	pid string,
+) ([]string, error) {
+	ids := make([]string, 0)
+	start := 1
+	for start <= count {
+		ns := newTestStrain(
+			fmt.Sprintf(
+				"%s@kramericaindustries.com",
+				testarango.RandomString(15, 20),
+			),
+			stype,
+		)
+		ns.Data.Attributes.Parent = pid
+		nps, err := repo.AddStrain(ns)
+		if err != nil {
+			return ids, err
+		}
+		ids = append(ids, nps.StockID)
+		start++
+	}
+	return ids, nil
+}
+
+func createTestStrainsWithIDs(
+	count int,
+	stype StrainType,
+	repo repository.StockRepository,
+) ([]string, error) {
+	ids := make([]string, 0)
+	start := 1
+	for start <= count {
+		ns := newTestStrain(
+			fmt.Sprintf(
+				"%s@kramericaindustries.com",
+				testarango.RandomString(15, 20),
+			),
+			stype,
+		)
+		nps, err := repo.AddStrain(ns)
+		if err != nil {
+			return ids, err
+		}
+		ids = append(ids, nps.StockID)
+		start++
+	}
+	return ids, nil
+}
+
+func createTestStrains(
+	count int,
+	stype StrainType,
+	repo repository.StockRepository,
+) error {
+	start := 1
+	for start <= count {
+		ns := newTestStrain(
+			fmt.Sprintf(
+				"%s@kramericaindustries.com",
+				testarango.RandomString(15, 20),
+			),
+			stype,
+		)
+		_, err := repo.AddStrain(ns)
+		if err != nil {
+			return err
+		}
+		start++
+	}
+	return nil
+}
 
 func TestLoadStrainWithID(t *testing.T) {
 	t.Parallel()
@@ -207,16 +283,8 @@ func TestListStrainsWithFilter(t *testing.T) {
 	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	for i := 1; i <= 10; i++ {
-		ns := newTestStrain(
-			fmt.Sprintf(
-				"%s@kramericaindustries.com",
-				testarango.RandomString(15, 20),
-			),
-		)
-		_, err := repo.AddStrain(ns)
-		assert.NoError(err, "expect no error in adding strain")
-	}
+	err := createTestStrains(10, General, repo)
+	assert.NoError(err, "expect no error from creating strains")
 	sf, err := repo.ListStrains(
 		&stock.StockParameters{Limit: 10, Filter: filterOne},
 	)
@@ -283,16 +351,8 @@ func TestListStrains(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	// add 10 new test strains
-	for i := 1; i <= 10; i++ {
-		ns := newTestStrain(
-			fmt.Sprintf(
-				"%s@kramericaindustries.com",
-				testarango.RandomString(15, 25),
-			),
-		)
-		_, err := repo.AddStrain(ns)
-		assert.NoErrorf(err, "expect no error adding strain, received %s", err)
-	}
+	err := createTestStrains(10, General, repo)
+	assert.NoError(err, "expect no error from creating strains")
 	// get first five results
 	ls, err := repo.ListStrains(&stock.StockParameters{Limit: 4})
 	assert.NoErrorf(
@@ -370,27 +430,12 @@ func TestListStrainsByIds(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	// add 10 new test strains
-	ids := make([]string, 0)
-	for i := 1; i <= 30; i++ {
-		ns := newTestStrain(
-			fmt.Sprintf(
-				"%s@kramericaindustries.com",
-				testarango.RandomString(15, 25),
-			),
-		)
-		m, err := repo.AddStrain(ns)
-		assert.NoErrorf(err, "expect no error adding strain, received %s", err)
-		ids = append(ids, m.StockID)
-	}
+	ids, err := createTestStrainsWithIDs(30, General, repo)
+	assert.NoError(err, "expect no error from creating strains")
 	// get first five results
 	ls, err := repo.ListStrainsByIds(&stock.StockIdList{Id: ids})
-	assert.NoErrorf(
-		err,
-		"expect no error in getting 30 stocks, received %s",
-		err,
-	)
+	assert.NoError(err, "expect no error in getting strains")
 	assert.Len(ls, 30, "should match the provided limit number")
-
 	for _, stock := range ls {
 		assert.Equal(
 			stock.Depositor,
@@ -420,28 +465,11 @@ func TestListStrainsByIds(t *testing.T) {
 		"expect no error in creating parent strain, received %s",
 		err,
 	)
-	pids := make([]string, 0)
-	for i := 1; i <= 30; i++ {
-		ns := newTestStrain(
-			fmt.Sprintf("%s@mailman.com", testarango.RandomString(15, 25)),
-		)
-		ns.Data.Attributes.Parent = pm.StockID
-		m, err := repo.AddStrain(ns)
-		assert.NoErrorf(
-			err,
-			"expect no error adding strain with parent, received %s",
-			err,
-		)
-		pids = append(pids, m.StockID)
-	}
+	pids, err := createTestStrainsWithParent(30, General, repo, pm.StockID)
+	assert.NoError(err, "expect no error from creating strains")
 	pls, err := repo.ListStrainsByIds(&stock.StockIdList{Id: pids})
-	assert.NoErrorf(
-		err,
-		"expect no error in getting 30 stocks with parents, received %s",
-		err,
-	)
+	assert.NoError(err, "expect no error in getting 30 stocks with parents")
 	assert.Len(pls, 30, "should match the provided limit number")
-
 	for _, stock := range pls {
 		assert.Equal(
 			stock.Depositor,
@@ -481,7 +509,7 @@ func TestGetStrain(t *testing.T) {
 	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	ns := newTestStrain("george@costanza.com")
+	ns := newTestStrain("george@costanza.com", General)
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	g, err := repo.GetStrain(m.StockID)
@@ -558,7 +586,7 @@ func TestGetStrain(t *testing.T) {
 		"should match updated time of stock",
 	)
 
-	ns2 := newTestStrain("dead@cells.com")
+	ns2 := newTestStrain("dead@cells.com", General)
 	ns2.Data.Attributes.Parent = m.StockID
 	m2, err := repo.AddStrain(ns2)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -634,7 +662,7 @@ func TestAddStrain(t *testing.T) {
 	assert.Empty(m.StrainProperties.Plasmid, "should not have any plasmid")
 	assert.Empty(m.StrainProperties.Parent, "should not have any parent")
 
-	ns := newTestStrain("pennypacker@penny.com")
+	ns := newTestStrain("pennypacker@penny.com", General)
 	ns.Data.Attributes.Parent = m.StockID
 	m2, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -690,7 +718,7 @@ func TestEditStrain(t *testing.T) {
 	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	ns := newUpdatableTestStrain("todd@gagg.com")
+	ns := newUpdatableTestStrain("todd@gagg.com", General)
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	us := &stock.StrainUpdate{
@@ -780,7 +808,7 @@ func TestEditStrainWithParent(t *testing.T) {
 	defer tearDown(repo)
 	pm, err := repo.AddStrain(newTestParentStrain("tim@watley.org"))
 	assert.NoErrorf(err, "expect no error, received %s", err)
-	ns := newUpdatableTestStrain("todd@gagg.com")
+	ns := newUpdatableTestStrain("todd@gagg.com", General)
 	ust, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	us2 := &stock.StrainUpdate{
@@ -851,7 +879,9 @@ func TestEditStrainWithParent(t *testing.T) {
 	)
 	// add another new strain, let's make this one a parent
 	// so we can test updating parent if one already exists
-	pu, err := repo.AddStrain(newUpdatableTestStrain("castle@vania.org"))
+	pu, err := repo.AddStrain(
+		newUpdatableTestStrain("castle@vania.org", General),
+	)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	us3 := &stock.StrainUpdate{
 		Data: &stock.StrainUpdate_Data{
