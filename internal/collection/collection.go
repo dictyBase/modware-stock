@@ -4,17 +4,15 @@ import (
 	"github.com/urfave/cli"
 )
 
-// MapString applies the given function to each element of string a, returning string slice of
+// Map applies the given function to each element of slice a, returning slice of
 // results
-func MapString(a []string, fn func(string) string) []string {
-	if len(a) == 0 {
-		return a
+func Map[T any, M any](a []T, fn func(T) M) []M {
+	anySlice := make([]M, 0)
+	for _, elem := range a {
+		anySlice = append(anySlice, fn(elem))
 	}
-	sl := make([]string, len(a))
-	for i, v := range a {
-		sl[i] = fn(v)
-	}
-	return sl
+
+	return anySlice
 }
 
 // FilterFlags returns a new slice of cli Flags that
