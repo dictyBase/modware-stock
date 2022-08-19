@@ -9,6 +9,7 @@ import (
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/collection"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
 )
@@ -353,7 +354,7 @@ func TestListStrainsWithType(t *testing.T) {
 		"should match all types of strains count",
 	)
 	assert.ElementsMatch(
-		anySliceMap(allStrains, stockToID),
+		collection.Map(allStrains, stockToID),
 		append(bids, append(rids, gwids...)...),
 		"should match all stock ids",
 	)
@@ -985,13 +986,4 @@ func TestEditStrainWithParent(t *testing.T) {
 
 func stockToID(model *model.StockDoc) string {
 	return model.StockID
-}
-
-func anySliceMap[T any, M any](a []T, fn func(T) M) []M {
-	anySlice := make([]M, 0)
-	for _, elem := range a {
-		anySlice = append(anySlice, fn(elem))
-	}
-
-	return anySlice
 }
