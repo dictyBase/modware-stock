@@ -14,17 +14,17 @@ import (
 )
 
 const (
-	filterOne = `FILTER stock.depositor == 'george@costanza.com'`
-	filterTwo = `FILTER stock.depositor == 'george@costanza.com' 
-		      AND stock.depositor == 'rg@gmail.com'
+	filterOne = `FILTER s.depositor == 'george@costanza.com'`
+	filterTwo = `FILTER s.depositor == 'george@costanza.com' 
+		      AND s.depositor == 'rg@gmail.com'
 	 	     `
 	filterThree = `LET x = (
-				FILTER 'gammaS13' IN stock.names 
+				FILTER 'gammaS13' IN s.names 
 				RETURN 1
 			)`
-	filterFour          = `FILTER stock.created_at <= DATE_ISO8601('2019')`
-	filterFive          = `FILTER prop.label =~ 'yS'`
-	filterSix           = `FILTER stock.summary =~ 'mutant'`
+	filterFour          = `FILTER s.created_at <= DATE_ISO8601('2019')`
+	filterFive          = `FILTER stock_prop.label =~ 'yS'`
+	filterSix           = `FILTER s.summary =~ 'mutant'`
 	filterRegularStrain = `FILTER cv.metadata.namespace == 'dicty_strain_property'
 				AND cvterm.label == 'general strain'
 	`

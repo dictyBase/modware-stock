@@ -20,7 +20,7 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 			"ontology":           ar.strainOnto,
 			"stock_collection":   ar.stockc.stock.Name(),
 			"parent_graph":       ar.stockc.strain2Parent.Name(),
-			"prop_graph":         ar.stockc.stockPropType.Name(),
+			"stock_prop_graph":   ar.stockc.stockPropType.Name(),
 			"@stock_collection":  ar.stockc.stock.Name(),
 			"@cv_collection":     ar.ontoc.Cv.Name(),
 		})
@@ -73,7 +73,7 @@ func (ar *arangorepository) ListStrainsByIds(
 			"ontology":           ar.strainOnto,
 			"stock_collection":   ar.stockc.stock.Name(),
 			"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
-			"prop_graph":         ar.stockc.stockPropType.Name(),
+			"stock_prop_graph":   ar.stockc.stockPropType.Name(),
 			"parent_graph":       ar.stockc.strain2Parent.Name(),
 			"@stock_collection":  ar.stockc.stock.Name(),
 			"@cv_collection":     ar.ontoc.Cv.Name(),
@@ -101,7 +101,7 @@ func (ar *arangorepository) strainStmtWithFilter(
 		"@cvterm_collection": ar.ontoc.Term.Name(),
 		"@cv_collection":     ar.ontoc.Cv.Name(),
 		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
-		"stockprop_graph":    ar.stockc.stockPropType.Name(),
+		"stock_prop_graph":   ar.stockc.stockPropType.Name(),
 		"limit":              param.Limit + 1,
 	}
 	if param.Cursor != 0 { // no cursor so return first set of results with filter
@@ -119,7 +119,7 @@ func (ar *arangorepository) strainStmtNoFilter(
 	stmt := statement.StrainList
 	stmtMap := map[string]interface{}{
 		"@stock_collection": ar.stockc.stock.Name(),
-		"graph":             ar.stockc.stockPropType.Name(),
+		"stock_prop_graph":  ar.stockc.stockPropType.Name(),
 		"limit":             param.Limit + 1,
 	}
 	if param.Cursor != 0 {

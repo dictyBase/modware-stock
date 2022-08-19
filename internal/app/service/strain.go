@@ -138,31 +138,31 @@ func (s *StockService) ListStrainsByIds(
 // ListStrains lists all existing strains
 func (s *StockService) ListStrains(
 	ctx context.Context,
-	r *stock.StockParameters,
+	param *stock.StockParameters,
 ) (*stock.StrainCollection, error) {
-	limit := limitVal(r.Limit)
-	sc := &stock.StrainCollection{Meta: &stock.Meta{Limit: limit}}
+	limit := limitVal(param.Limit)
+	scn := &stock.StrainCollection{Meta: &stock.Meta{Limit: limit}}
 	mc, err := stockModelList(&modelListParams{
 		ctx:         ctx,
-		stockParams: r,
+		stockParams: param,
 		limit:       limit,
 		fn:          s.repo.ListStrains,
 	})
 	if err != nil {
-		return sc, err
+		return scn, err
 	}
 	sdata := strainModelToCollectionSlice(mc)
 	if len(sdata) < int(limit)-2 { // fewer results than limit
-		sc.Data = sdata
-		sc.Meta.Total = int64(len(sdata))
-		return sc, nil
+		scn.Data = sdata
+		scn.Meta.Total = int64(len(sdata))
+		return scn, nil
 	}
-	sc.Data = sdata[:len(sdata)-1]
-	sc.Meta.NextCursor = genNextCursorVal(
+	scn.Data = sdata[:len(sdata)-1]
+	scn.Meta.NextCursor = genNextCursorVal(
 		sdata[len(sdata)-1].Attributes.CreatedAt.String(),
 	)
-	sc.Meta.Total = int64(len(sdata))
-	return sc, nil
+	scn.Meta.Total = int64(len(sdata))
+	return scn, nil
 }
 
 func makeStrainData(m *model.StockDoc) *stock.Strain_Data {
