@@ -54,7 +54,7 @@ func (ar *arangorepository) checkStock(id string) (string, error) {
 		statement.StockFindIdQ,
 		map[string]interface{}{
 			"stock_collection": ar.stockc.stock.Name(),
-			"stock_prop_graph":            ar.stockc.stockPropType.Name(),
+			"stock_prop_graph": ar.stockc.stockPropType.Name(),
 			"stock_id":         id,
 		})
 	if err != nil {
