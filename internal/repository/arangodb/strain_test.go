@@ -9,6 +9,7 @@ import (
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
 )
 
@@ -21,9 +22,25 @@ const (
 				FILTER 'gammaS13' IN stock.names 
 				RETURN 1
 			)`
-	filterFour = `FILTER stock.created_at <= DATE_ISO8601('2019')`
-	filterFive = `FILTER prop.label =~ 'yS'`
-	filterSix  = `FILTER stock.summary =~ 'mutant'`
+	filterFour          = `FILTER stock.created_at <= DATE_ISO8601('2019')`
+	filterFive          = `FILTER prop.label =~ 'yS'`
+	filterSix           = `FILTER stock.summary =~ 'mutant'`
+	filterRegularStrain = `FILTER cv.metadata.namespace == 'dicty_strain_property'
+				AND cvterm.label == 'general strain'
+	`
+	filterGwdiStrain = `FILTER cv.metadata.namespace == 'dicty_strain_property'
+				AND cvterm.label == 'REMI-seq'
+	`
+	filterBacterialStrain = `FILTER cv.metadata.namespace == 'dicty_strain_property'
+				AND cvterm.label == 'bacterial strain'
+	`
+	filterAllStrain = `FILTER cv.metadata.namespace == 'dicty_strain_property'
+				AND (
+					cvterm.label == 'bacterial strain'
+					OR cvterm.label == 'REMI-seq'
+					OR cvterm.label == 'general strain'
+				)
+	`
 )
 
 func createTestStrainsWithParent(
@@ -59,8 +76,8 @@ func createTestStrainsWithIDs(
 	repo repository.StockRepository,
 ) ([]string, error) {
 	ids := make([]string, 0)
-	start := 1
-	for start <= count {
+	start := 0
+	for start < count {
 		ns := newTestStrain(
 			fmt.Sprintf(
 				"%s@kramericaindustries.com",
@@ -276,6 +293,68 @@ func TestLoadStockWithParent(t *testing.T) {
 		m2.StrainProperties.Parent,
 		ns.Data.Attributes.Parent,
 		"should match parent entry",
+	)
+}
+
+func TestListStrainsWithType(t *testing.T) {
+	t.Parallel()
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	gwids, err := createTestStrainsWithIDs(15, Gwdi, repo)
+	assert.NoError(err, "expect no error from creating gwdi strains")
+	gwStrains, err := repo.ListStrains(
+		&stock.StockParameters{Limit: 100, Filter: filterGwdiStrain},
+	)
+	assert.NoError(err, "expect no error in getting list of strains")
+	assert.Lenf(
+		gwStrains,
+		15,
+		"expect to have 15 gwdi strains, received %d",
+		len(gwStrains),
+	)
+	rids, err := createTestStrainsWithIDs(10, General, repo)
+	assert.NoError(err, "expect no error from creating regular strains")
+	regStrains, err := repo.ListStrains(
+		&stock.StockParameters{Limit: 100, Filter: filterRegularStrain},
+	)
+	assert.NoError(err, "expect no error in getting list of strains")
+	assert.Lenf(
+		regStrains,
+		10,
+		"expect to have 15 gwdi strains, received %d",
+		len(regStrains),
+	)
+	bids, err := createTestStrainsWithIDs(10, Bacterial, repo)
+	assert.NoError(err, "expect no error from creating bacterial strains")
+	bacStrains, err := repo.ListStrains(
+		&stock.StockParameters{Limit: 100, Filter: filterBacterialStrain},
+	)
+	assert.NoError(err, "expect no error in getting list of strains")
+	assert.Lenf(
+		bacStrains,
+		10,
+		"expect to have 15 gwdi strains, received %d",
+		len(bacStrains),
+	)
+	allStrains, err := repo.ListStrains(
+		&stock.StockParameters{Limit: 99, Filter: filterAllStrain},
+	)
+	assert.NoError(err, "expect no error in getting list of strains")
+	assert.Lenf(
+		allStrains,
+		35,
+		"expect to have 35 strains received %d",
+		len(allStrains),
+	)
+	assert.Equal(
+		len(allStrains),
+		len(gwids)+len(rids)+len(bids),
+		"should match all types of strains count",
+	)
+	assert.ElementsMatch(
+		anySliceMap(allStrains, stockToID),
+		append(bids, append(rids, gwids...)...),
+		"should match all stock ids",
 	)
 }
 
@@ -906,4 +985,17 @@ func TestEditStrainWithParent(t *testing.T) {
 		um3.StrainProperties.Plasmid,
 		"plasmid should not have been updated",
 	)
+}
+
+func stockToID(model *model.StockDoc) string {
+	return model.StockID
+}
+
+func anySliceMap[T any, M any](a []T, fn func(T) M) []M {
+	anySlice := make([]M, 0)
+	for _, elem := range a {
+		anySlice = append(anySlice, fn(elem))
+	}
+
+	return anySlice
 }
