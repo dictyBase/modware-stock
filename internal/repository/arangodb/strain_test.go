@@ -41,6 +41,7 @@ const (
 					OR cvterm.label == 'general strain'
 				)
 	`
+	filterBad = `FILTER borat.acting == 'funny`
 )
 
 func createTestStrainsWithParent(
@@ -423,6 +424,10 @@ func TestListStrainsWithFilter(t *testing.T) {
 	)
 	assert.NoError(err, "expect no error in matching summary substring")
 	assert.Len(fs, 10, "should list ten strains")
+	_, err = repo.ListStrains(
+		&stock.StockParameters{Limit: 2, Filter: filterBad},
+	)
+	assert.Error(err, "expect have error with the query")
 }
 
 func TestListStrains(t *testing.T) {
@@ -434,13 +439,8 @@ func TestListStrains(t *testing.T) {
 	assert.NoError(err, "expect no error from creating strains")
 	// get first five results
 	ls, err := repo.ListStrains(&stock.StockParameters{Limit: 4})
-	assert.NoErrorf(
-		err,
-		"expect no error in getting first five stocks, received %s",
-		err,
-	)
+	assert.NoError(err, "expect no error in getting first five stocks")
 	assert.Len(ls, 5, "should match the provided limit number + 1")
-
 	for _, stock := range ls {
 		assert.Equal(
 			stock.Depositor,
@@ -465,11 +465,7 @@ func TestListStrains(t *testing.T) {
 
 	// get next five results (5-9)
 	ls2, err := repo.ListStrains(&stock.StockParameters{Cursor: ti, Limit: 4})
-	assert.NoErrorf(
-		err,
-		"expect no error in getting stocks 5-9, received %s",
-		err,
-	)
+	assert.NoError(err, "expect no error in getting stocks 5-9")
 	assert.Len(ls2, 5, "should match the provided limit number + 1")
 	assert.Exactly(
 		ls2[0],
