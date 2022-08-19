@@ -13,6 +13,15 @@ import (
 
 const (
 	georgeFilter = `FILTER s.depositor == 'george@costanza.com'`
+	pfilterTwo   = `FILTER s.depositor == 'george@costanza.com' AND s.depositor == 'rg@gmail.com'`
+	pfilterThree = `LET x = (
+				FILTER '1348970' IN s.publications 
+				RETURN 1
+			)`
+	pfilterFour  = `FILTER s.created_at <= DATE_ISO8601('2019')`
+	pfilterFive  = `FILTER stock_prop.sequence =~ 'ttttt'`
+	pfilterSix   = `FILTER s.summary =~ 'test'`
+	pfilterSeven = `FILTER s.depositor == 'george@costanza.com' OR stock_prop.name == 'gammaS13'`
 )
 
 func TestLoadStockWithPlasmids(t *testing.T) {
@@ -110,60 +119,45 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 		)
 		assert.Equal(um.PlasmidProperties.Name, "p123456", "should match name")
 	}
-
-	filterTwo := `FILTER s.depositor == 'george@costanza.com' AND s.depositor == 'rg@gmail.com'`
 	n, err := repo.ListPlasmids(
-		&stock.StockParameters{Limit: 100, Filter: filterTwo},
+		&stock.StockParameters{Limit: 100, Filter: pfilterTwo},
 	)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(n, 0, "should list no plasmids")
-
-	filterThree := `LET x = (
-						FILTER '1348970' IN s.publications 
-						RETURN 1
-					)`
 	// do a check for array filter
 	as, err := repo.ListPlasmids(
 		&stock.StockParameters{
 			Cursor: toTimestamp(sf[5].CreatedAt),
 			Limit:  10,
-			Filter: filterThree,
+			Filter: pfilterThree,
 		},
 	)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(as, 5, "should list five plasmids")
-
-	filterFour := `FILTER s.created_at <= DATE_ISO8601('2019')`
 	da, err := repo.ListPlasmids(
 		&stock.StockParameters{
 			Cursor: toTimestamp(sf[5].CreatedAt),
 			Limit:  10,
-			Filter: filterFour,
+			Filter: pfilterFour,
 		},
 	)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(da, 0, "should list no plasmids")
-
-	filterFive := `FILTER v.sequence =~ 'ttttt'`
 	ff, err := repo.ListPlasmids(
-		&stock.StockParameters{Limit: 10, Filter: filterFive},
+		&stock.StockParameters{Limit: 10, Filter: pfilterFive},
 	)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(ff, 10, "should list ten plasmids")
-
-	filterSix := `FILTER s.summary =~ 'test'`
 	fs, err := repo.ListPlasmids(
-		&stock.StockParameters{Limit: 10, Filter: filterSix},
+		&stock.StockParameters{Limit: 10, Filter: pfilterSix},
 	)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(fs, 10, "should list ten plasmids")
-
-	filterSeven := `FILTER s.depositor == 'george@costanza.com' OR v.name == 'gammaS13'`
 	fv, err := repo.ListPlasmids(
 		&stock.StockParameters{
 			Cursor: toTimestamp(sf[5].CreatedAt),
 			Limit:  10,
-			Filter: filterSeven,
+			Filter: pfilterSeven,
 		},
 	)
 	assert.NoErrorf(err, "expect no error, received %s", err)
