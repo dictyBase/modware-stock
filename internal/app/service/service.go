@@ -122,17 +122,17 @@ func genNextCursorVal(c string) int64 {
 	return t.UnixNano() / 1000000
 }
 
-func stockAQLStatement(filter string) (string, error) {
+func stockAQLStatement(fstr string) (string, error) {
 	var vert bool
 	var astmt string
-	p, err := query.ParseFilterString(filter)
+	filterSlice, err := query.ParseFilterString(fstr)
 	if err != nil {
 		return astmt,
 			fmt.Errorf("error in parsing filter string %s", err)
 	}
 	// need to check if filter contains an item found in strain properties
-	for _, n := range p {
-		if _, ok := stockProp[n.Field]; ok {
+	for _, filter := range filterSlice {
+		if _, ok := stockProp[filter.Field]; ok {
 			vert = true
 			break
 		}
@@ -140,8 +140,8 @@ func stockAQLStatement(filter string) (string, error) {
 	if vert {
 		astmt, err := query.GenAQLFilterStatement(&query.StatementParameters{
 			Fmap:    arangodb.FMap,
-			Filters: p,
-			Vert:    "v",
+			Filters: filterSlice,
+			Vert:    "stock_prop",
 		})
 		if err != nil {
 			return astmt,
@@ -150,7 +150,7 @@ func stockAQLStatement(filter string) (string, error) {
 	} else {
 		astmt, err := query.GenAQLFilterStatement(&query.StatementParameters{
 			Fmap:    arangodb.FMap,
-			Filters: p,
+			Filters: filterSlice,
 			Doc:     "s",
 		})
 		if err != nil {

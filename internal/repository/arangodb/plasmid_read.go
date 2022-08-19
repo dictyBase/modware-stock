@@ -9,7 +9,9 @@ import (
 )
 
 // ListPlasmids provides a list of all plasmids
-func (ar *arangorepository) ListPlasmids(p *stock.StockParameters) ([]*model.StockDoc, error) {
+func (ar *arangorepository) ListPlasmids(
+	p *stock.StockParameters,
+) ([]*model.StockDoc, error) {
 	var om []*model.StockDoc
 	stmt := ar.plasmidStmtNoFilter(p)
 	// if filter string exists, it needs to be included in statement
@@ -41,7 +43,7 @@ func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 		map[string]interface{}{
 			"id":                id,
 			"@stock_collection": ar.stockc.stock.Name(),
-			"graph":             ar.stockc.stockPropType.Name(),
+			"stock_prop_graph":  ar.stockc.stockPropType.Name(),
 		})
 	if err != nil {
 		return m, err
@@ -54,7 +56,9 @@ func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 	return m, err
 }
 
-func (ar *arangorepository) plasmidStmtWithFilter(p *stock.StockParameters) string {
+func (ar *arangorepository) plasmidStmtWithFilter(
+	p *stock.StockParameters,
+) string {
 	if p.Cursor == 0 { // no cursor so return first set of result
 		return fmt.Sprintf(
 			statement.PlasmidListFilter,
@@ -72,7 +76,9 @@ func (ar *arangorepository) plasmidStmtWithFilter(p *stock.StockParameters) stri
 	)
 }
 
-func (ar *arangorepository) plasmidStmtNoFilter(p *stock.StockParameters) string {
+func (ar *arangorepository) plasmidStmtNoFilter(
+	p *stock.StockParameters,
+) string {
 	// otherwise use query statement without filter
 	if p.Cursor == 0 { // no cursor so return first set of result
 		return fmt.Sprintf(
