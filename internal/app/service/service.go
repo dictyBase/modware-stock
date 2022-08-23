@@ -29,17 +29,6 @@ type modelListParams struct {
 	fn          listFn
 }
 
-var stockProp = map[string]int{
-	"label":        1,
-	"species":      1,
-	"plasmid":      1,
-	"parent":       1,
-	"name":         1,
-	"image_map":    1,
-	"sequence":     1,
-	"plasmid_name": 1,
-}
-
 // StockService is the container for managing stock service
 // definition
 type StockService struct {
@@ -123,46 +112,22 @@ func genNextCursorVal(c string) int64 {
 }
 
 func stockAQLStatement(fstr string) (string, error) {
-	var vert bool
-	var astmt string
 	filterSlice, err := query.ParseFilterString(fstr)
 	if err != nil {
-		return astmt,
-			fmt.Errorf("error in parsing filter string %s", err)
+		return "", fmt.Errorf("error in parsing filter string %s", err)
 	}
-	// need to check if filter contains an item found in strain properties
-	for _, filter := range filterSlice {
-		if _, ok := stockProp[filter.Field]; ok {
-			vert = true
-			break
-		}
-	}
-	if vert {
-		astmt, err := query.GenAQLFilterStatement(&query.StatementParameters{
-			Fmap:    arangodb.FMap,
-			Filters: filterSlice,
-			Vert:    "stock_prop",
-		})
-		if err != nil {
-			return astmt,
-				fmt.Errorf("error in generating AQL statement %s", err)
-		}
-	} else {
-		astmt, err := query.GenAQLFilterStatement(&query.StatementParameters{
-			Fmap:    arangodb.FMap,
-			Filters: filterSlice,
-			Doc:     "s",
-		})
-		if err != nil {
-			return astmt,
-				fmt.Errorf("error in generating AQL statement %s", err)
-		}
+	stmt, err := query.GenQualifiedAQLFilterStatement(
+		arangodb.FMap,
+		filterSlice,
+	)
+	if err != nil {
+		return stmt, fmt.Errorf("error in generating AQL statement %s", err)
 	}
 	// if the parsed statement is empty FILTER, just return empty string
-	if astmt == "FILTER " {
-		astmt = ""
+	if stmt == "FILTER " {
+		stmt = ""
 	}
-	return astmt, nil
+	return stmt, nil
 }
 
 func stockModelList(args *modelListParams) ([]*model.StockDoc, error) {
@@ -218,4 +183,8 @@ func (oh *oboStreamHandler) Write() error {
 		}
 	}
 	return nil
+}
+
+func filterToField(filter *query.Filter) string {
+	return filter.Field
 }
