@@ -1,10 +1,10 @@
 module github.com/dictyBase/modware-stock
 
 require (
-	github.com/arangodb/go-driver v0.0.0-20210804111724-721038b2c5bd
+	github.com/arangodb/go-driver v1.3.3
 	github.com/cockroachdb/errors v1.9.0
 	github.com/dictyBase/aphgrpc v1.4.2
-	github.com/dictyBase/arangomanager v0.3.3
+	github.com/dictyBase/arangomanager v0.3.4
 	github.com/dictyBase/go-genproto v0.0.0-20211001224012-6cf691015622
 	github.com/dictyBase/go-obograph v1.4.1
 	github.com/go-playground/validator/v10 v10.11.0
@@ -13,6 +13,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli v1.22.9
+	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/grpc v1.48.0
 	google.golang.org/protobuf v1.28.1
@@ -43,10 +44,9 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
-	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
+	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
+	golang.org/x/sys v0.0.0-20220818161305-2296e01440c6 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20210816143620-e15ff196659d // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
