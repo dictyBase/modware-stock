@@ -184,7 +184,3 @@ func (oh *oboStreamHandler) Write() error {
 	}
 	return nil
 }
-
-func filterToField(filter *query.Filter) string {
-	return filter.Field
-}
