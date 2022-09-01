@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager/query"
@@ -18,7 +17,7 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
 	"golang.org/x/sync/errgroup"
 	empty "google.golang.org/protobuf/types/known/emptypb"
-	 "google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type listFn func(*stock.StockParameters) ([]*model.StockDoc, error)
