@@ -18,6 +18,7 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
 	"golang.org/x/sync/errgroup"
 	empty "google.golang.org/protobuf/types/known/emptypb"
+	 "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type listFn func(*stock.StockParameters) ([]*model.StockDoc, error)
@@ -106,9 +107,9 @@ func uploadResponse(
 	return upload.FileUploadResponse_UPDATED
 }
 
-func genNextCursorVal(c string) int64 {
-	t, _ := time.Parse("2006-01-02T15:04:05Z", c)
-	return t.UnixNano() / 1000000
+func genNextCursorVal(pts *timestamppb.Timestamp) int64 {
+	tstmp := aphgrpc.ProtoTimeStamp(pts)
+	return tstmp.UnixMilli()
 }
 
 func stockAQLStatement(fstr string) (string, error) {
