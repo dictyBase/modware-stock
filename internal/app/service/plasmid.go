@@ -122,7 +122,7 @@ func (s *StockService) ListPlasmids(
 	}
 	pc.Data = pdata[:len(pdata)-1]
 	pc.Meta.NextCursor = genNextCursorVal(
-		pdata[len(pdata)-1].Attributes.CreatedAt.String(),
+		pdata[len(pdata)-1].Attributes.CreatedAt,
 	)
 	pc.Meta.Total = int64(len(pdata))
 	return pc, nil
