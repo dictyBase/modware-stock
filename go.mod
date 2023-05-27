@@ -7,7 +7,7 @@ require (
 	github.com/dictyBase/arangomanager v0.3.4
 	github.com/dictyBase/go-genproto v0.0.0-20211001224012-6cf691015622
 	github.com/dictyBase/go-obograph v1.4.1
-	github.com/go-playground/validator/v10 v10.13.0
+	github.com/go-playground/validator/v10 v10.14.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/nats-io/go-nats v1.7.2
 	github.com/sirupsen/logrus v1.9.2
@@ -26,6 +26,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/getsentry/sentry-go v0.12.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -34,7 +35,7 @@ require (
 	github.com/jinzhu/now v1.0.0 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/leodido/go-urn v1.2.3 // indirect
+	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mwitkow/go-proto-validators v0.2.0 // indirect
 	github.com/nats-io/gnatsd v1.4.1 // indirect
 	github.com/nats-io/nkeys v0.3.0 // indirect
