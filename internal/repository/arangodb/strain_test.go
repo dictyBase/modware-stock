@@ -12,6 +12,7 @@ import (
 	"github.com/dictyBase/modware-stock/internal/collection"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -196,10 +197,10 @@ func TestLoadStrainWithID(t *testing.T) {
 	assert.Empty(m.StrainProperties.Parent, "should not have any parent")
 }
 
-func TestLoadStockWithParent(t *testing.T) {
-	t.Parallel()
-	assert, repo := setUp(t)
-	defer tearDown(repo)
+func setUpTestData(
+	repo repository.StockRepository,
+	assert *require.Assertions,
+) *stock.ExistingStrain {
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
 	est := &stock.ExistingStrain{
 		Data: &stock.ExistingStrain_Data{
@@ -242,8 +243,18 @@ func TestLoadStockWithParent(t *testing.T) {
 			},
 		},
 	}
+	return ns
+}
+
+func TestLoadStockWithParent(t *testing.T) {
+	t.Parallel()
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+
+	ns := setUpTestData(repo, assert)
 	m2, err := repo.LoadStrain("DBS0235412", ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
+
 	assert.Equal("DBS0235412", m2.StockID, "should match given stock id")
 	assert.Equal(m2.Key, m2.StockID, "should have identical key and stock ID")
 	assert.Equal(
