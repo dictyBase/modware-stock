@@ -601,11 +601,39 @@ func TestGetStrain(t *testing.T) {
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	g, err := repo.GetStrain(m.StockID)
 	assert.NoErrorf(err, "expect no error, received %s", err)
+	assertRegexp(assert, g.StockID)
+	assertStrainProperties(assert, g, ns)
+	assert.Equal(
+		g.StrainProperties.Parent,
+		"",
+		"should not have parent",
+	)
+	assert.Len(g.Dbxrefs, 6, "should match length of six dbxrefs")
+	assert.Equal(
+		g.CreatedAt,
+		m.CreatedAt,
+		"should match created time of stock",
+	)
+	assert.Equal(
+		g.UpdatedAt,
+		m.UpdatedAt,
+		"should match updated time of stock",
+	)
+}
+
+func assertRegexp(assert *require.Assertions, stockID string) {
 	assert.Regexp(
 		regexp.MustCompile(`^DBS0\d{6,}$`),
-		g.StockID,
+		stockID,
 		"should have a strain stock id",
 	)
+}
+
+func assertStrainProperties(
+	assert *require.Assertions,
+	g *model.StockDoc,
+	ns *stock.NewStrain,
+) {
 	assert.Equal(
 		g.CreatedBy,
 		ns.Data.Attributes.CreatedBy,
@@ -616,7 +644,11 @@ func TestGetStrain(t *testing.T) {
 		ns.Data.Attributes.UpdatedBy,
 		"should match updated_by id",
 	)
-	assert.Equal(g.Summary, ns.Data.Attributes.Summary, "should match summary")
+	assert.Equal(
+		g.Summary,
+		ns.Data.Attributes.Summary,
+		"should match summary",
+	)
 	assert.Equal(
 		g.EditableSummary,
 		ns.Data.Attributes.EditableSummary,
@@ -657,40 +689,14 @@ func TestGetStrain(t *testing.T) {
 		ns.Data.Attributes.Plasmid,
 		"should match plasmid",
 	)
-	assert.Empty(g.StrainProperties.Parent, "should not have parent")
 	assert.Equal(
 		g.StrainProperties.DictyStrainProperty,
 		"general strain",
 		"should match ontology strain property",
 	)
-	assert.Len(g.Dbxrefs, 6, "should match length of six dbxrefs")
-	assert.True(
-		m.CreatedAt.Equal(g.CreatedAt),
-		"should match created time of stock",
-	)
-	assert.True(
-		m.UpdatedAt.Equal(g.UpdatedAt),
-		"should match updated time of stock",
-	)
-
-	ns2 := newTestStrain("dead@cells.com", General)
-	ns2.Data.Attributes.Parent = m.StockID
-	m2, err := repo.AddStrain(ns2)
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	g2, err := repo.GetStrain(m2.StockID)
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Equal(g2.StrainProperties.Parent, m.StockID, "should match parent")
-	assert.Equal(
-		g2.StrainProperties.DictyStrainProperty,
-		"general strain",
-		"should match ontology strain property",
-	)
-	ne, err := repo.GetStrain("DBS01")
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.True(ne.NotFound, "entry should not exist")
 }
 
-func TestAddStrain(t *testing.T) {
+func TestAddParentStrain(t *testing.T) {
 	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
@@ -748,9 +754,16 @@ func TestAddStrain(t *testing.T) {
 	)
 	assert.Empty(m.StrainProperties.Plasmid, "should not have any plasmid")
 	assert.Empty(m.StrainProperties.Parent, "should not have any parent")
+	testAddChildStrain(repo, assert, m.StockID)
+}
 
+func testAddChildStrain(
+	repo repository.StockRepository,
+	assert *require.Assertions,
+	id string,
+) {
 	ns := newTestStrain("pennypacker@penny.com", General)
-	ns.Data.Attributes.Parent = m.StockID
+	ns.Data.Attributes.Parent = id
 	m2, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
