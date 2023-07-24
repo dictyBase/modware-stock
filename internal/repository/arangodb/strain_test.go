@@ -984,6 +984,16 @@ func TestEditStrainWithParent(t *testing.T) {
 		us2.Data.Attributes.Species,
 		"species should be updated",
 	)
+	testMoreEditWithParent(repo, assert, ust, um2, ns)
+}
+
+func testMoreEditWithParent(
+	repo repository.StockRepository,
+	assert *require.Assertions,
+	ust *model.StockDoc,
+	um2 *model.StockDoc,
+	ns *stock.NewStrain,
+) {
 	// add another new strain, let's make this one a parent
 	// so we can test updating parent if one already exists
 	pu, err := repo.AddStrain(
