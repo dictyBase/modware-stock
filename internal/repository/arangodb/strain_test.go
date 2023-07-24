@@ -814,14 +814,11 @@ func testAddChildStrain(
 	)
 }
 
-func TestEditStrain(t *testing.T) {
-	t.Parallel()
-	assert, repo := setUp(t)
-	defer tearDown(repo)
-	ns := newUpdatableTestStrain("todd@gagg.com", General)
-	m, err := repo.AddStrain(ns)
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	us := &stock.StrainUpdate{
+func strainUpdateInstance(
+	ns *stock.NewStrain,
+	m *model.StockDoc,
+) *stock.StrainUpdate {
+	return &stock.StrainUpdate{
 		Data: &stock.StrainUpdate_Data{
 			Type: ns.Data.Type,
 			Id:   m.StockID,
@@ -842,6 +839,16 @@ func TestEditStrain(t *testing.T) {
 			},
 		},
 	}
+}
+
+func TestEditStrain(t *testing.T) {
+	t.Parallel()
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	ns := newUpdatableTestStrain("todd@gagg.com", General)
+	m, err := repo.AddStrain(ns)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	us := strainUpdateInstance(ns, m)
 	um, err := repo.EditStrain(us)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um.StockID, m.StockID, "should match the stock id")
