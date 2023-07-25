@@ -402,13 +402,11 @@ func TestEditPlasmid(t *testing.T) {
 	)
 }
 
-func TestEditPlasmidGene(t *testing.T) {
-	assert, repo := setUp(t)
-	defer tearDown(repo)
-	ns := newUpdatableTestPlasmid("art@vandelay.org")
-	um, err := repo.AddPlasmid(ns)
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	us2 := &stock.PlasmidUpdate{
+func PlasmidUpdateInstance(
+	um *model.StockDoc,
+	ns *stock.NewPlasmid,
+) *stock.PlasmidUpdate {
+	return &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
 			Type: ns.Data.Type,
 			Id:   um.StockID,
@@ -423,6 +421,15 @@ func TestEditPlasmidGene(t *testing.T) {
 			},
 		},
 	}
+}
+
+func TestEditPlasmidGene(t *testing.T) {
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	ns := newUpdatableTestPlasmid("art@vandelay.org")
+	um, err := repo.AddPlasmid(ns)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	us2 := PlasmidUpdateInstance(um, ns)
 	um2, err := repo.EditPlasmid(us2)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um2.StockID, um.StockID, "should match the previous stock id")
