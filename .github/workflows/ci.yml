@@ -32,7 +32,6 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           file: ./profile.cov
-          token: ${{ secrets.CODECOV_TOKEN }}
   build:
     needs: test
     runs-on: ubuntu-latest
