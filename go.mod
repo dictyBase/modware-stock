@@ -1,18 +1,18 @@
 module github.com/dictyBase/modware-stock
 
 require (
-	github.com/arangodb/go-driver v1.5.2
+	github.com/arangodb/go-driver v1.6.0
 	github.com/cockroachdb/errors v1.9.1
 	github.com/dictyBase/aphgrpc v1.4.2
 	github.com/dictyBase/arangomanager v0.3.4
 	github.com/dictyBase/go-genproto v0.0.0-20211001224012-6cf691015622
-	github.com/dictyBase/go-obograph v1.4.1
-	github.com/go-playground/validator/v10 v10.14.0
+	github.com/dictyBase/go-obograph v1.4.2
+	github.com/go-playground/validator/v10 v10.14.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/nats-io/go-nats v1.7.2
-	github.com/sirupsen/logrus v1.9.2
-	github.com/stretchr/testify v1.8.3
-	github.com/urfave/cli v1.22.13
+	github.com/sirupsen/logrus v1.9.3
+	github.com/stretchr/testify v1.8.4
+	github.com/urfave/cli v1.22.14
 	golang.org/x/sync v0.2.0
 	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0
