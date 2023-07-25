@@ -9,6 +9,9 @@ import (
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/model"
+	"github.com/dictyBase/modware-stock/internal/repository"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -199,11 +202,19 @@ func TestListPlasmids(t *testing.T) {
 		ls[1].CreatedBy,
 		"should have different created_by",
 	)
+	testMoreListPlasmids(repo, assert, t, ls)
+}
+
+func testMoreListPlasmids(
+	repo repository.StockRepository,
+	assert *require.Assertions,
+	t *testing.T,
+	ls []*model.StockDoc,
+) {
 	// convert fifth result to numeric timestamp in milliseconds
 	// so we can use this as cursor
-	ti := toTimestamp(ls[len(ls)-1].CreatedAt)
-
 	// get next five results (5-9)
+	ti := toTimestamp(ls[len(ls)-1].CreatedAt)
 	ls2, err := repo.ListPlasmids(&stock.StockParameters{Cursor: ti, Limit: 4})
 	assert.NoErrorf(
 		err,
