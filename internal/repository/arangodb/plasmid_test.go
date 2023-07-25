@@ -9,6 +9,9 @@ import (
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager/testarango"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/model"
+	"github.com/dictyBase/modware-stock/internal/repository"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -199,11 +202,19 @@ func TestListPlasmids(t *testing.T) {
 		ls[1].CreatedBy,
 		"should have different created_by",
 	)
+	testMoreListPlasmids(repo, assert, t, ls)
+}
+
+func testMoreListPlasmids(
+	repo repository.StockRepository,
+	assert *require.Assertions,
+	t *testing.T,
+	ls []*model.StockDoc,
+) {
 	// convert fifth result to numeric timestamp in milliseconds
 	// so we can use this as cursor
-	ti := toTimestamp(ls[len(ls)-1].CreatedAt)
-
 	// get next five results (5-9)
+	ti := toTimestamp(ls[len(ls)-1].CreatedAt)
 	ls2, err := repo.ListPlasmids(&stock.StockParameters{Cursor: ti, Limit: 4})
 	assert.NoErrorf(
 		err,
@@ -391,13 +402,11 @@ func TestEditPlasmid(t *testing.T) {
 	)
 }
 
-func TestEditPlasmidGene(t *testing.T) {
-	assert, repo := setUp(t)
-	defer tearDown(repo)
-	ns := newUpdatableTestPlasmid("art@vandelay.org")
-	um, err := repo.AddPlasmid(ns)
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	us2 := &stock.PlasmidUpdate{
+func PlasmidUpdateInstance(
+	um *model.StockDoc,
+	ns *stock.NewPlasmid,
+) *stock.PlasmidUpdate {
+	return &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
 			Type: ns.Data.Type,
 			Id:   um.StockID,
@@ -412,6 +421,15 @@ func TestEditPlasmidGene(t *testing.T) {
 			},
 		},
 	}
+}
+
+func TestEditPlasmidGene(t *testing.T) {
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	ns := newUpdatableTestPlasmid("art@vandelay.org")
+	um, err := repo.AddPlasmid(ns)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	us2 := PlasmidUpdateInstance(um, ns)
 	um2, err := repo.EditPlasmid(us2)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um2.StockID, um.StockID, "should match the previous stock id")
