@@ -9,7 +9,6 @@ require (
 	github.com/dictyBase/go-obograph v1.4.1
 	github.com/go-playground/validator/v10 v10.14.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/nats-io/go-nats v1.7.2
 	github.com/nats-io/nats.go v1.28.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
@@ -39,7 +38,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mwitkow/go-proto-validators v0.2.0 // indirect
-	github.com/nats-io/gnatsd v1.4.1 // indirect
 	github.com/nats-io/nats-server/v2 v2.9.20 // indirect
 	github.com/nats-io/nkeys v0.4.4 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
