@@ -8,7 +8,7 @@ RUN apt-get -qq update \
     && apt-get -yqq install upx
 RUN mkdir -p /modware-stock
 WORKDIR /modware-stock
-COPY go.mod /
+COPY go.mod ./
 COPY go.sum ./
 RUN go mod download
 ADD cmd cmd
