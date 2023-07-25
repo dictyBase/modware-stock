@@ -5,16 +5,21 @@ import (
 
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/message"
-	gnats "github.com/nats-io/go-nats"
-	"github.com/nats-io/go-nats/encoders/protobuf"
+	"github.com/nats-io/nats.go/encoders/protobuf"
+	gnats "github.com/nats-io/nats.go"
 )
 
 type natsPublisher struct {
 	econn *gnats.EncodedConn
 }
 
-func NewPublisher(host, port string, options ...gnats.Option) (message.Publisher, error) {
-	nc, err := gnats.Connect(fmt.Sprintf("nats://%s:%s", host, port), options...)
+func NewPublisher(
+	host, port string,
+	options ...gnats.Option,
+) (message.Publisher, error) {
+	nc, err := gnats.Connect(
+		fmt.Sprintf("nats://%s:%s", host, port),
+		options...)
 	if err != nil {
 		return &natsPublisher{}, err
 	}
