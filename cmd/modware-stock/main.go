@@ -3,13 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/dictyBase/aphgrpc"
+	arango "github.com/dictyBase/arangomanager/command/flag"
 	oboflag "github.com/dictyBase/go-obograph/command/flag"
 	"github.com/dictyBase/modware-stock/internal/app/server"
 	"github.com/dictyBase/modware-stock/internal/app/validate"
-	"github.com/dictyBase/modware-stock/internal/collection"
 	"github.com/urfave/cli"
 )
 
@@ -49,11 +48,16 @@ func allFlags() []cli.Flag {
 	f := make([]cli.Flag, 0)
 	f = append(f, serverFlags()...)
 	f = append(f, dbCollectionFlags()...)
-	f = append(f, collection.FilterFlags(
-		oboflag.OntologyFlags(),
-		func(f cli.Flag) bool {
-			return !strings.HasPrefix(f.GetName(), "obojson")
-		})...)
+	f = append(f, arango.ArangoFlags()...)
+	f = append(f, []cli.Flag{
+		cli.StringFlag{
+			Name:   "arangodb-database, db",
+			EnvVar: "ARANGODB_DATABASE",
+			Usage:  "arangodb database name",
+			Value:  "stock",
+		},
+	}...)
+	f = append(f, oboflag.OntologyFlagsOnly()...)
 	return append(f, aphgrpc.NatsFlag()...)
 }
 
