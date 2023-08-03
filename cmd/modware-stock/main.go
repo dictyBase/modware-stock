@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dictyBase/aphgrpc"
+	arango "github.com/dictyBase/arangomanager/command/flag"
 	oboflag "github.com/dictyBase/go-obograph/command/flag"
 	"github.com/dictyBase/modware-stock/internal/app/server"
 	"github.com/dictyBase/modware-stock/internal/app/validate"
@@ -49,6 +50,7 @@ func allFlags() []cli.Flag {
 	f := make([]cli.Flag, 0)
 	f = append(f, serverFlags()...)
 	f = append(f, dbCollectionFlags()...)
+	f = append(f, arango.ArangoFlags()...)
 	f = append(f, collection.FilterFlags(
 		oboflag.OntologyFlags(),
 		func(f cli.Flag) bool {
