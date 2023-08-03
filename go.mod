@@ -4,9 +4,9 @@ require (
 	github.com/arangodb/go-driver v1.6.0
 	github.com/cockroachdb/errors v1.10.0
 	github.com/dictyBase/aphgrpc v1.4.2
-	github.com/dictyBase/arangomanager v0.3.4
+	github.com/dictyBase/arangomanager v0.4.0
 	github.com/dictyBase/go-genproto v0.0.0-20211001224012-6cf691015622
-	github.com/dictyBase/go-obograph v1.4.1
+	github.com/dictyBase/go-obograph v1.5.1
 	github.com/go-playground/validator/v10 v10.14.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/nats-io/nats.go v1.28.0
@@ -32,7 +32,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/jinzhu/now v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
