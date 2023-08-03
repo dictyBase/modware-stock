@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dictyBase/aphgrpc"
-	"github.com/dictyBase/arangomanager/testarango"
+	"github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/collection"
 	"github.com/dictyBase/modware-stock/internal/model"
@@ -58,7 +58,7 @@ func createTestStrainsWithParent(
 		ns := newTestStrain(
 			fmt.Sprintf(
 				"%s@kramericaindustries.com",
-				testarango.RandomString(15, 20),
+				arangomanager.RandomString(15, 20),
 			),
 			stype,
 		)
@@ -84,7 +84,7 @@ func createTestStrainsWithIDs(
 		ns := newTestStrain(
 			fmt.Sprintf(
 				"%s@kramericaindustries.com",
-				testarango.RandomString(15, 20),
+				arangomanager.RandomString(15, 20),
 			),
 			stype,
 		)
@@ -108,7 +108,7 @@ func createTestStrains(
 		ns := newTestStrain(
 			fmt.Sprintf(
 				"%s@kramericaindustries.com",
-				testarango.RandomString(15, 20),
+				arangomanager.RandomString(15, 20),
 			),
 			stype,
 		)

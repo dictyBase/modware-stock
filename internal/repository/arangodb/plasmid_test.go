@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dictyBase/aphgrpc"
-	"github.com/dictyBase/arangomanager/testarango"
+	"github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
@@ -104,7 +104,7 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 	// add 10 new test plasmids
 	for i := 1; i <= 10; i++ {
 		np := newTestPlasmid(
-			fmt.Sprintf("%s@cye.com", testarango.RandomString(15, 25)),
+			fmt.Sprintf("%s@cye.com", arangomanager.RandomString(15, 25)),
 		)
 		_, err := repo.AddPlasmid(np)
 		assert.NoErrorf(err, "expect no error, received %s", err)
@@ -172,7 +172,7 @@ func TestListPlasmids(t *testing.T) {
 	defer tearDown(repo)
 	for i := 1; i <= 10; i++ {
 		np := newTestPlasmid(
-			fmt.Sprintf("%s@cye.com", testarango.RandomString(15, 20)),
+			fmt.Sprintf("%s@cye.com", arangomanager.RandomString(15, 20)),
 		)
 		_, err := repo.AddPlasmid(np)
 		assert.NoErrorf(err, "expect no error adding plasmid, received %s", err)
