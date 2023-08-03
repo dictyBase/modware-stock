@@ -51,6 +51,14 @@ func allFlags() []cli.Flag {
 	f = append(f, serverFlags()...)
 	f = append(f, dbCollectionFlags()...)
 	f = append(f, arango.ArangoFlags()...)
+	f = append(f, []cli.Flag{
+		cli.StringFlag{
+			Name:   "arangodb-database, db",
+			EnvVar: "ARANGODB_DATABASE",
+			Usage:  "arangodb database name",
+			Value:  "stock",
+		},
+	}...)
 	f = append(f, collection.FilterFlags(
 		oboflag.OntologyFlags(),
 		func(f cli.Flag) bool {
