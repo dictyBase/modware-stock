@@ -8,7 +8,7 @@ jobs:
     uses: dictyBase/workflows/.github/workflows/composite-deploy.yaml@main
     secrets: inherit
     with:
-      app: order
+      app: stock
       repository: ${{ github.repository }}
       ref: ${{ github.ref_name }}
       dockerfile: build/package/Dockerfile 
