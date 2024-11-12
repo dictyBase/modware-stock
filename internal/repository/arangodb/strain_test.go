@@ -16,6 +16,9 @@ import (
 )
 
 const (
+	filterGene     = `FILTER 'DDB_G0287317' IN s.genes`
+	filterGeneMore = `FILTER 'DDB_G098058933' IN s.genes`
+
 	filterOne = `FILTER s.depositor == 'george@costanza.com'`
 	filterTwo = `FILTER s.depositor == 'george@costanza.com' 
 		      AND s.depositor == 'rg@gmail.com'
@@ -906,6 +909,49 @@ func TestEditStrain(t *testing.T) {
 		um.StrainProperties.Names,
 		us.Data.Attributes.Names,
 		"should have updated list of strain names",
+	)
+}
+
+func TestListStrainsWithGeneFilter(t *testing.T) {
+	t.Parallel()
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	// Create test strain with specific gene
+	ns := newTestStrain("george@costanza.com", General)
+	ns.Data.Attributes.Genes = []string{"DDB_G0287317", "DDB_G0287318"}
+	_, err := repo.AddStrain(ns)
+	assert.NoError(err, "expect no error from creating strain with genes")
+
+	// Create additional strains without the specific gene
+	err = createTestStrains(5, General, repo)
+	assert.NoError(err, "expect no error from creating additional strains")
+
+	// Test filtering by gene
+	ls, err := repo.ListStrains(&stock.StockParameters{
+		Limit:  10,
+		Filter: filterGene,
+	})
+	assert.NoError(err, "expect no error in getting strains filtered by gene")
+	assert.Len(ls, 1, "should find exactly one strain with the specific gene")
+	assert.Contains(
+		ls[0].Genes,
+		"DDB_G0287317",
+		"returned strain should contain the filtered gene",
+	)
+	ls2, err := repo.ListStrains(&stock.StockParameters{
+		Limit:  10,
+		Filter: filterGeneMore,
+	})
+	assert.NoError(err, "expect no error in getting strains filtered by gene")
+	assert.Len(
+		ls2,
+		5,
+		"should find exactly five strains with the specific gene",
+	)
+	assert.Contains(
+		ls2[1].Genes,
+		"DDB_G098058933",
+		"returned strain should contain the filtered gene",
 	)
 }
 
