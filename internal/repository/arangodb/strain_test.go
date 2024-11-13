@@ -95,6 +95,7 @@ func createTestStrainsWithIDs(
 		if err != nil {
 			return ids, err
 		}
+		time.Sleep(100 * time.Millisecond)
 		ids = append(ids, nps.StockID)
 		start++
 	}
