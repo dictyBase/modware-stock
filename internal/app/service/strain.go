@@ -112,7 +112,7 @@ func (s *StockService) UpdateStrain(
 }
 
 // ListStrainsByIds gets a list of strains from a list of strain identifiers
-func (s *StockService) ListStrainsByIds(
+func (s *StockService) ListStrainsByIDs(
 	ctx context.Context,
 	r *stock.StockIdList,
 ) (*stock.StrainList, error) {
@@ -120,7 +120,7 @@ func (s *StockService) ListStrainsByIds(
 	if err := r.Validate(); err != nil {
 		return sl, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
-	mc, err := s.repo.ListStrainsByIds(r)
+	mc, err := s.repo.ListStrainsByIDs(r)
 	if err != nil {
 		return sl, aphgrpc.HandleGetError(ctx, err)
 	}
