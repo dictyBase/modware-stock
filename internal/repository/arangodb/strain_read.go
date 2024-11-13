@@ -61,12 +61,12 @@ func (ar *arangorepository) ListStrains(
 	return omd, nil
 }
 
-func (ar *arangorepository) ListStrainsByIds(
+func (ar *arangorepository) ListStrainsByIDs(
 	p *stock.StockIdList,
 ) ([]*model.StockDoc, error) {
 	ms := make([]*model.StockDoc, 0)
 	rs, err := ar.database.SearchRows(
-		statement.StrainListFromIds,
+		statement.StrainListFromIDs,
 		map[string]interface{}{
 			"ids":                p.Id,
 			"limit":              len(p.Id),

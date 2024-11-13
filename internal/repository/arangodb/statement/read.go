@@ -60,7 +60,7 @@ const (
 		FOR stock_prop,e IN 1..1 INBOUND @strain_key GRAPH @parent_graph
 			RETURN e._key
 	`
-	StrainListFromIds = `
+	StrainListFromIDs = `
 		FOR id IN @ids
 			FOR stock_prop, e IN 1..1 OUTBOUND CONCAT(@stock_collection,"/",id) GRAPH @stock_prop_graph
 				LET parent = (
