@@ -120,6 +120,7 @@ func createTestStrains(
 		if err != nil {
 			return err
 		}
+		time.Sleep(100 * time.Millisecond)
 		start++
 	}
 	return nil
@@ -516,7 +517,7 @@ func TestListStrains(t *testing.T) {
 	testModelListSort(ls3, t)
 }
 
-func TestListStrainsByIds(t *testing.T) {
+func TestListStrainsByIDs(t *testing.T) {
 	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
@@ -524,7 +525,7 @@ func TestListStrainsByIds(t *testing.T) {
 	ids, err := createTestStrainsWithIDs(30, General, repo)
 	assert.NoError(err, "expect no error from creating strains")
 	// get first five results
-	ls, err := repo.ListStrainsByIds(&stock.StockIdList{Id: ids})
+	ls, err := repo.ListStrainsByIDs(&stock.StockIdList{Id: ids})
 	assert.NoError(err, "expect no error in getting strains")
 	assert.Len(ls, 30, "should match the provided limit number")
 	for _, stock := range ls {
@@ -558,7 +559,7 @@ func TestListStrainsByIds(t *testing.T) {
 	)
 	pids, err := createTestStrainsWithParent(30, General, repo, pm.StockID)
 	assert.NoError(err, "expect no error from creating strains")
-	pls, err := repo.ListStrainsByIds(&stock.StockIdList{Id: pids})
+	pls, err := repo.ListStrainsByIDs(&stock.StockIdList{Id: pids})
 	assert.NoError(err, "expect no error in getting 30 stocks with parents")
 	assert.Len(pls, 30, "should match the provided limit number")
 	for _, stock := range pls {
@@ -585,7 +586,7 @@ func TestListStrainsByIds(t *testing.T) {
 		)
 	}
 	// Non-existing ids
-	els, err := repo.ListStrainsByIds(
+	els, err := repo.ListStrainsByIDs(
 		&stock.StockIdList{Id: []string{"DBN589343", "DBN48473232"}},
 	)
 	assert.NoErrorf(
