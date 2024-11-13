@@ -23,7 +23,6 @@ linters:
     - cyclop 
     - decorder
     - dogsled
-    # - dupl
     - errcheck
     - funlen
     - goconst
