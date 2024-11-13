@@ -9,4 +9,4 @@ jobs:
     uses: dictyBase/workflows/.github/workflows/golang-lint.yaml@develop
     with:
       repository: ${{ github.repository }}
-      ref: ${{ github.ref_name }}
+      ref: ${{ github.event.pull_request.head.sha }}
