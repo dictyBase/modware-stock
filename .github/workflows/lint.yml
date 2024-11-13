@@ -3,7 +3,6 @@ on:
   pull_request:
     branches-ignore:
       - master
-      - develop
 jobs:
   call-lint:
     uses: dictyBase/workflows/.github/workflows/golang-lint.yaml@develop
