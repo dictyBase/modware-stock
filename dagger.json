@@ -1,0 +1,10 @@
+{
+  "name": "modware-import",
+  "dependencies": [
+    {
+      "name": "golang",
+      "source": "github.com/dictybase-docker/dagger-of-dcr/golang@aa46f8610edad8ecfb0776e4c9fe85a486da87eb"
+    }
+  ],
+  "engineVersion": "v0.11.9"
+}
