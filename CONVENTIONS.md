@@ -1,0 +1,2 @@
+- use at least three letters variable names
+- use fmt.Sprintf for string concatenation

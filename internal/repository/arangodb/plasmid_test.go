@@ -108,6 +108,7 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 		)
 		_, err := repo.AddPlasmid(np)
 		assert.NoErrorf(err, "expect no error, received %s", err)
+		time.Sleep(100 * time.Millisecond)
 	}
 	sf, err := repo.ListPlasmids(
 		&stock.StockParameters{Limit: 10, Filter: georgeFilter},
@@ -176,6 +177,7 @@ func TestListPlasmids(t *testing.T) {
 		)
 		_, err := repo.AddPlasmid(np)
 		assert.NoErrorf(err, "expect no error adding plasmid, received %s", err)
+		time.Sleep(100 * time.Millisecond)
 	}
 	ls, err := repo.ListPlasmids(&stock.StockParameters{Limit: 4})
 	assert.NoErrorf(
