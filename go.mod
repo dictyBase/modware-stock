@@ -1,7 +1,7 @@
 module github.com/dictyBase/modware-stock
 
 require (
-	github.com/arangodb/go-driver v1.6.2
+	github.com/arangodb/go-driver v1.6.6
 	github.com/cockroachdb/errors v1.11.3
 	github.com/dictyBase/aphgrpc v1.4.2
 	github.com/dictyBase/arangomanager v0.4.0
