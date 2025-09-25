@@ -6,11 +6,11 @@ import (
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/message"
 	gnats "github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/encoders/protobuf"
+	"google.golang.org/protobuf/proto"
 )
 
 type natsPublisher struct {
-	econn *gnats.EncodedConn
+	conn *gnats.Conn
 }
 
 func NewPublisher(
@@ -23,22 +23,26 @@ func NewPublisher(
 	if err != nil {
 		return &natsPublisher{}, err
 	}
-	ec, err := gnats.NewEncodedConn(nc, protobuf.PROTOBUF_ENCODER)
-	if err != nil {
-		return &natsPublisher{}, err
-	}
-	return &natsPublisher{econn: ec}, nil
+	return &natsPublisher{conn: nc}, nil
 }
 
 func (n *natsPublisher) PublishStrain(subj string, s *stock.Strain) error {
-	return n.econn.Publish(subj, s)
+	data, err := proto.Marshal(s)
+	if err != nil {
+		return fmt.Errorf("failed to marshal strain: %w", err)
+	}
+	return n.conn.Publish(subj, data)
 }
 
 func (n *natsPublisher) PublishPlasmid(subj string, p *stock.Plasmid) error {
-	return n.econn.Publish(subj, p)
+	data, err := proto.Marshal(p)
+	if err != nil {
+		return fmt.Errorf("failed to marshal plasmid: %w", err)
+	}
+	return n.conn.Publish(subj, data)
 }
 
 func (n *natsPublisher) Close() error {
-	n.econn.Close()
+	n.conn.Close()
 	return nil
 }
