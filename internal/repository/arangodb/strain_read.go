@@ -14,7 +14,7 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	r, err := ar.database.GetRow(
 		statement.StockGetStrain,
-		map[string]interface{}{
+		map[string]any{
 			"id":                 id,
 			"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
 			"ontology":           ar.strainOnto,
@@ -67,7 +67,7 @@ func (ar *arangorepository) ListStrainsByIDs(
 	ms := make([]*model.StockDoc, 0)
 	rs, err := ar.database.SearchRows(
 		statement.StrainListFromIDs,
-		map[string]interface{}{
+		map[string]any{
 			"ids":                p.Id,
 			"limit":              len(p.Id),
 			"ontology":           ar.strainOnto,
@@ -96,8 +96,8 @@ func (ar *arangorepository) ListStrainsByIDs(
 
 func (ar *arangorepository) strainStmtWithFilter(
 	param *stock.StockParameters,
-) (string, map[string]interface{}) {
-	stmtMap := map[string]interface{}{
+) (string, map[string]any) {
+	stmtMap := map[string]any{
 		"@cvterm_collection": ar.ontoc.Term.Name(),
 		"@cv_collection":     ar.ontoc.Cv.Name(),
 		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
@@ -115,9 +115,9 @@ func (ar *arangorepository) strainStmtWithFilter(
 
 func (ar *arangorepository) strainStmtNoFilter(
 	param *stock.StockParameters,
-) (string, map[string]interface{}) {
+) (string, map[string]any) {
 	stmt := statement.StrainList
-	stmtMap := map[string]interface{}{
+	stmtMap := map[string]any{
 		"@stock_collection": ar.stockc.stock.Name(),
 		"stock_prop_graph":  ar.stockc.stockPropType.Name(),
 		"limit":             param.Limit + 1,

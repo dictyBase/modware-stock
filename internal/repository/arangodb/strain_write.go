@@ -19,7 +19,7 @@ func (ar *arangorepository) AddStrain(
 		dictyStrainProp: ns.Data.Attributes.DictyStrainProperty,
 		statement:       statement.StockStrainIns,
 		parentStatement: statement.StockStrainWithParentsIns,
-		bindVars: mergeBindParams(map[string]interface{}{
+		bindVars: mergeBindParams(map[string]any{
 			"@stock_collection":            ar.stockc.stock.Name(),
 			"@stock_key_generator":         ar.stockc.stockKey.Name(),
 			"@stock_properties_collection": ar.stockc.stockProp.Name(),
@@ -41,7 +41,7 @@ func (ar *arangorepository) EditStrain(
 	bindVars := getUpdatableStrainBindParams(us.Data.Attributes)
 	bindStVars := getUpdatableStrainPropBindParams(us.Data.Attributes)
 	cmBindVars := mergeBindParams(
-		map[string]interface{}{
+		map[string]any{
 			"@stock_properties_collection": ar.stockc.stockProp.Name(),
 			"@stock_collection":            ar.stockc.stock.Name(),
 			"key":                          us.Data.Id,
@@ -52,9 +52,9 @@ func (ar *arangorepository) EditStrain(
 	parent := us.Data.Attributes.Parent
 	stmt := statement.StrainUpd
 	if len(parent) > 0 { // in case parent is present
-		pVars, pStmt, err := ar.handleEditStrainWithParent(parent, us.Data.Id)
-		if err != nil {
-			return m, err
+		pVars, pStmt, nerr := ar.handleEditStrainWithParent(parent, us.Data.Id)
+		if nerr != nil {
+			return m, nerr
 		}
 		stmt = pStmt
 		cmBindVars = mergeBindParams(cmBindVars, pVars)
@@ -89,7 +89,7 @@ func (ar *arangorepository) LoadStrain(
 		dictyStrainProp: es.Data.Attributes.DictyStrainProperty,
 		statement:       statement.StockStrainLoad,
 		parentStatement: statement.StockStrainWithParentLoad,
-		bindVars: mergeBindParams(map[string]interface{}{
+		bindVars: mergeBindParams(map[string]any{
 			"stock_id":                     id,
 			"@stock_collection":            ar.stockc.stock.Name(),
 			"@stock_properties_collection": ar.stockc.stockProp.Name(),
@@ -101,8 +101,8 @@ func (ar *arangorepository) LoadStrain(
 
 func existingStrainBindParams(
 	attr *stock.ExistingStrainAttributes,
-) map[string]interface{} {
-	return map[string]interface{}{
+) map[string]any {
+	return map[string]any{
 		"summary":          normalizeStrBindParam(attr.Summary),
 		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
 		"genes":            normalizeSliceBindParam(attr.Genes),
@@ -122,8 +122,8 @@ func existingStrainBindParams(
 
 func getUpdatableStrainBindParams(
 	attr *stock.StrainUpdateAttributes,
-) map[string]interface{} {
-	bindVars := map[string]interface{}{
+) map[string]any {
+	bindVars := map[string]any{
 		"updated_by": attr.UpdatedBy,
 	}
 	if len(attr.Summary) > 0 {
@@ -149,8 +149,8 @@ func getUpdatableStrainBindParams(
 
 func getUpdatableStrainPropBindParams(
 	attr *stock.StrainUpdateAttributes,
-) map[string]interface{} {
-	bindVars := make(map[string]interface{})
+) map[string]any {
+	bindVars := make(map[string]any)
 	if len(attr.Label) > 0 {
 		bindVars["label"] = attr.Label
 	}
@@ -168,8 +168,8 @@ func getUpdatableStrainPropBindParams(
 
 func addableStrainBindParams(
 	attr *stock.NewStrainAttributes,
-) map[string]interface{} {
-	return map[string]interface{}{
+) map[string]any {
+	return map[string]any{
 		"summary":          normalizeStrBindParam(attr.Summary),
 		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
 		"genes":            normalizeSliceBindParam(attr.Genes),
@@ -187,8 +187,8 @@ func addableStrainBindParams(
 
 func (ar *arangorepository) handleEditStrainWithParent(
 	parent, id string,
-) (map[string]interface{}, string, error) {
-	pVar := map[string]interface{}{
+) (map[string]any, string, error) {
+	pVar := map[string]any{
 		"parent_graph": ar.stockc.strain2Parent.Name(),
 		"strain_key":   id,
 	}
@@ -210,7 +210,7 @@ func (ar *arangorepository) handleEditStrainWithParent(
 		}
 	}
 	stmt := statement.StrainWithNewParentUpd
-	cmBindVars := map[string]interface{}{
+	cmBindVars := map[string]any{
 		"parent":                    parent,
 		"stock_collection":          ar.stockc.stock.Name(),
 		"@parent_strain_collection": ar.stockc.parentStrain.Name(),
@@ -239,8 +239,8 @@ func (ar *arangorepository) validateParent(parent string) error {
 
 func (ar *arangorepository) handleAddStrainWithParent(
 	parent string,
-) (map[string]interface{}, error) {
-	qVar := map[string]interface{}{
+) (map[string]any, error) {
+	qVar := map[string]any{
 		"@stock_collection": ar.stockc.stock.Name(),
 		"id":                parent,
 	}
@@ -257,7 +257,7 @@ func (ar *arangorepository) handleAddStrainWithParent(
 		return qVar,
 			errors.Errorf("error in scanning the value %s %s", parent, err)
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		"pid":                       pid,
 		"@parent_strain_collection": ar.stockc.parentStrain.Name(),
 	}, nil
@@ -276,13 +276,13 @@ func (ar *arangorepository) persistStrain(
 		return m, err
 	}
 	stmt := args.statement
-	bindVars := mergeBindParams(map[string]interface{}{
+	bindVars := mergeBindParams(map[string]any{
 		"to": tid,
 	}, args.bindVars)
 	if len(args.parent) > 0 { // parent is present
-		pVars, err := ar.handleAddStrainWithParent(args.parent)
-		if err != nil {
-			return m, err
+		pVars, nerr := ar.handleAddStrainWithParent(args.parent)
+		if nerr != nil {
+			return m, nerr
 		}
 		bindVars = mergeBindParams(bindVars, pVars)
 		m.StrainProperties.Parent = args.parent

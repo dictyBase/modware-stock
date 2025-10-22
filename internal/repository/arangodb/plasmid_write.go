@@ -15,7 +15,7 @@ func (ar *arangorepository) LoadPlasmid(
 	ep *stock.ExistingPlasmid,
 ) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	bindVars := mergeBindParams(map[string]interface{}{
+	bindVars := mergeBindParams(map[string]any{
 		"stock_id":                     id,
 		"@stock_collection":            ar.stockc.stock.Name(),
 		"@stock_type_collection":       ar.stockc.stockType.Name(),
@@ -41,7 +41,7 @@ func (ar *arangorepository) EditPlasmid(
 	bindVars := getUpdatablePlasmidBindParams(us.Data.Attributes)
 	bindPlVars := getUpdatablePlasmidPropBindParams(us.Data.Attributes)
 	cmBindVars := mergeBindParams(
-		map[string]interface{}{
+		map[string]any{
 			"@stock_properties_collection": ar.stockc.stockProp.Name(),
 			"@stock_collection":            ar.stockc.stock.Name(),
 			"key":                          us.Data.Id,
@@ -67,7 +67,7 @@ func (ar *arangorepository) AddPlasmid(
 	ns *stock.NewPlasmid,
 ) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
-	bindVars := mergeBindParams(map[string]interface{}{
+	bindVars := mergeBindParams(map[string]any{
 		"@stock_collection":            ar.stockc.stock.Name(),
 		"@stock_key_generator":         ar.stockc.stockKey.Name(),
 		"@stock_type_collection":       ar.stockc.stockType.Name(),
@@ -83,8 +83,8 @@ func (ar *arangorepository) AddPlasmid(
 
 func addablePlasmidBindParams(
 	attr *stock.NewPlasmidAttributes,
-) map[string]interface{} {
-	return map[string]interface{}{
+) map[string]any {
+	return map[string]any{
 		"depositor":        attr.Depositor,
 		"created_by":       attr.CreatedBy,
 		"updated_by":       attr.UpdatedBy,
@@ -101,8 +101,8 @@ func addablePlasmidBindParams(
 
 func existingPlasmidBindParams(
 	attr *stock.ExistingPlasmidAttributes,
-) map[string]interface{} {
-	return map[string]interface{}{
+) map[string]any {
+	return map[string]any{
 		"created_at":       attr.CreatedAt.AsTime().UnixMilli(),
 		"updated_at":       attr.UpdatedAt.AsTime().UnixMilli(),
 		"depositor":        attr.Depositor,
@@ -121,8 +121,8 @@ func existingPlasmidBindParams(
 
 func getUpdatablePlasmidBindParams(
 	attr *stock.PlasmidUpdateAttributes,
-) map[string]interface{} {
-	bindVars := map[string]interface{}{
+) map[string]any {
+	bindVars := map[string]any{
 		"updated_by": attr.UpdatedBy,
 	}
 	if len(attr.Summary) > 0 {
@@ -148,8 +148,8 @@ func getUpdatablePlasmidBindParams(
 
 func getUpdatablePlasmidPropBindParams(
 	attr *stock.PlasmidUpdateAttributes,
-) map[string]interface{} {
-	bindVars := make(map[string]interface{})
+) map[string]any {
+	bindVars := make(map[string]any)
 	if len(attr.ImageMap) > 0 {
 		bindVars["image_map"] = attr.ImageMap
 	}
