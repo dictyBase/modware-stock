@@ -40,7 +40,7 @@ func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 	m := &model.StockDoc{}
 	r, err := ar.database.GetRow(
 		statement.StockGetPlasmid,
-		map[string]interface{}{
+		map[string]any{
 			"id":                id,
 			"@stock_collection": ar.stockc.stock.Name(),
 			"stock_prop_graph":  ar.stockc.stockPropType.Name(),
