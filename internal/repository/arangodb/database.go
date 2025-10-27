@@ -82,7 +82,8 @@ func docCollections(ar *arangorepository, collP *CollectionParams) error {
 				Type:      "autoincrement",
 				Increment: 1,
 				Offset:    collP.KeyOffset,
-			}})
+			},
+		})
 	if err != nil {
 		return errors.Errorf("error in creating collection %s %s", collP.StockKeyGenerator, err)
 	}

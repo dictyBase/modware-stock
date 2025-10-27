@@ -52,17 +52,21 @@ func (ar *arangorepository) EditPlasmid(
 	// term is the ontology term for the plasmid
 	term := us.Data.Attributes.DictyPlasmidProperty
 	if len(term) > 0 {
-		tid, err := ar.termID(term, ar.plasmidOnto)
-		if err != nil {
-			return m, err
+		tid, tidErr := ar.termID(term, ar.plasmidOnto)
+		if tidErr != nil {
+			return m, tidErr
 		}
+
 		// Run the UPSERT query to update the ontology term
-		_, err = ar.database.DoRun(statement.PlasmidTermUpd, map[string]any{
-			"@stock_collection":      ar.stockc.stock.Name(),
-			"@stock_term_collection": ar.stockc.stockTerm.Name(),
-			"key":                    us.Data.Id,
-			"to":                     tid,
-		})
+		_, err = ar.database.DoRun(
+			statement.PlasmidTermUpd,
+			map[string]any{
+				"@stock_collection":      ar.stockc.stock.Name(),
+				"@stock_term_collection": ar.stockc.stockTerm.Name(),
+				"key":                    us.Data.Id,
+				"to":                     tid,
+			},
+		)
 		if err != nil {
 			return m, err
 		}
@@ -110,7 +114,10 @@ func (ar *arangorepository) AddPlasmid(
 	if ns.Data.Attributes.DictyPlasmidProperty == "" {
 		ns.Data.Attributes.DictyPlasmidProperty = "cloning vector"
 	}
-	tid, err := ar.termID(ns.Data.Attributes.DictyPlasmidProperty, ar.plasmidOnto)
+	tid, err := ar.termID(
+		ns.Data.Attributes.DictyPlasmidProperty,
+		ar.plasmidOnto,
+	)
 	if err != nil {
 		return m, err
 	}
