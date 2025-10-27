@@ -45,7 +45,8 @@ type StrainProperties struct {
 
 // PlasmidProperties is the data structure for plasmid properties
 type PlasmidProperties struct {
-	ImageMap string `json:"image_map,omitempty"`
-	Sequence string `json:"sequence,omitempty"`
-	Name     string `json:"name"`
+	ImageMap             string `json:"image_map,omitempty"`
+	Sequence             string `json:"sequence,omitempty"`
+	Name                 string `json:"name"`
+	DictyPlasmidProperty string `json:"dicty_plasmid_property"`
 }
