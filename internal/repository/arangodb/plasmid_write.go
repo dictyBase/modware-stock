@@ -61,10 +61,12 @@ func (ar *arangorepository) EditPlasmid(
 		_, err = ar.database.DoRun(
 			statement.PlasmidTermUpd,
 			map[string]any{
-				"@stock_collection":      ar.stockc.stock.Name(),
+				// collection bind var for @@stock_term_collection
 				"@stock_term_collection": ar.stockc.stockTerm.Name(),
-				"key":                    us.Data.Id,
-				"to":                     tid,
+				// string bind var for CONCAT(@stock_collection, '/', @key)
+				"stock_collection": ar.stockc.stock.Name(),
+				"key":              us.Data.Id,
+				"to":               tid,
 			},
 		)
 		if err != nil {
