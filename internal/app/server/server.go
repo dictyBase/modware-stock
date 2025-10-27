@@ -66,6 +66,7 @@ func RunServer(c *cli.Context) error {
 					"stockDelete": "StockService.Delete",
 				}),
 			strainType(c.String("strain-term")),
+			plasmidType(c.String("plasmid-term")),
 		),
 	)
 	if c.Bool("reflection") {
@@ -90,7 +91,19 @@ func RunServer(c *cli.Context) error {
 
 func strainType(term string) aphgrpc.Option {
 	return func(so *aphgrpc.ServiceOptions) {
-		so.Params = map[string]string{"strain_term": term}
+		if so.Params == nil {
+			so.Params = map[string]string{}
+		}
+		so.Params["strain_term"] = term
+	}
+}
+
+func plasmidType(term string) aphgrpc.Option {
+	return func(so *aphgrpc.ServiceOptions) {
+		if so.Params == nil {
+			so.Params = map[string]string{}
+		}
+		so.Params["plasmid_term"] = term
 	}
 }
 
@@ -144,10 +157,12 @@ func allParams(
 		StockPropTypeGraph: c.String("stockproptype-graph"),
 		Strain2ParentGraph: c.String("strain2parent-graph"),
 		StrainOntology:     c.String("strain-ontology"),
+		PlasmidOntology:    c.String("plasmid-ontology"),
 		KeyOffset:          c.Int("keyoffset"),
 		StockTerm:          c.String("stock-term-edge"),
 		StockOntoGraph:     c.String("stockonto-graph"),
 	}
+
 	ontoP := &ontoarango.CollectionParams{
 		GraphInfo:    c.String("cv-collection"),
 		OboGraph:     c.String("obograph"),
