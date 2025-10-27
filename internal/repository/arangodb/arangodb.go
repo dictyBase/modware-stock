@@ -15,11 +15,12 @@ import (
 )
 
 type arangorepository struct {
-	ontoc      *ontoarango.OntoCollection
-	sess       *manager.Session
-	database   *manager.Database
-	stockc     *stockc
-	strainOnto string
+	ontoc       *ontoarango.OntoCollection
+	sess        *manager.Session
+	database    *manager.Database
+	stockc      *stockc
+	strainOnto  string
+	plasmidOnto string
 }
 
 // NewStockRepo acts as constructor for database
@@ -27,7 +28,10 @@ func NewStockRepo(connP *manager.ConnectParams,
 	collP *CollectionParams,
 	ontoP *ontoarango.CollectionParams,
 ) (repository.StockRepository, error) {
-	ar := &arangorepository{strainOnto: collP.StrainOntology}
+	ar := &arangorepository{
+		strainOnto:  collP.StrainOntology,
+		plasmidOnto: collP.PlasmidOntology,
+	}
 	validate := validator.New()
 	if err := validate.Struct(collP); err != nil {
 		return ar, err
@@ -52,7 +56,7 @@ func NewStockRepo(connP *manager.ConnectParams,
 func (ar *arangorepository) checkStock(id string) (string, error) {
 	r, err := ar.database.GetRow(
 		statement.StockFindIdQ,
-		map[string]interface{}{
+		map[string]any{
 			"stock_collection": ar.stockc.stock.Name(),
 			"stock_prop_graph": ar.stockc.stockPropType.Name(),
 			"stock_id":         id,
@@ -87,8 +91,8 @@ func normalizeStrBindParam(str string) string {
 	return ""
 }
 
-func mergeBindParams(bm ...map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
+func mergeBindParams(bm ...map[string]any) map[string]any {
+	result := make(map[string]any)
 	for _, m := range bm {
 		for k, v := range m {
 			result[k] = v
@@ -97,7 +101,7 @@ func mergeBindParams(bm ...map[string]interface{}) map[string]interface{} {
 	return result
 }
 
-func genAQLDocExpression(bindVars map[string]interface{}) string {
+func genAQLDocExpression(bindVars map[string]any) string {
 	var bindParams []string
 	for k := range bindVars {
 		bindParams = append(bindParams, fmt.Sprintf("%s: @%s", k, k))
