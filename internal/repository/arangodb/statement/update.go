@@ -73,8 +73,8 @@ const (
 		RETURN MERGE(s[0],prop[0])
 	`
 	PlasmidTermUpd = `
-		UPSERT { _from: CONCAT(@@stock_collection, '/', @key) }
-		INSERT { _from: CONCAT(@@stock_collection, '/', @key), _to: @to }
+		UPSERT { _from: CONCAT(@stock_collection, '/', @key) }
+		INSERT { _from: CONCAT(@stock_collection, '/', @key), _to: @to }
 		UPDATE { _to: @to }
 		IN @@stock_term_collection
 	`
