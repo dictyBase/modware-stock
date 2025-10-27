@@ -98,6 +98,14 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 		ns.Data.Attributes.Sequence,
 		"should match sequence",
 	)
+	// verify ontology term label is retrievable through GetPlasmid
+	gm, err := repo.GetPlasmid(um.StockID)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	assert.Equal(
+		"cloning vector",
+		gm.PlasmidProperties.DictyPlasmidProperty,
+		"should store ontology term label",
+	)
 }
 
 func TestListPlasmidsWithFilter(t *testing.T) {
@@ -558,4 +566,58 @@ func TestAddPlasmid(t *testing.T) {
 		ns.Data.Attributes.Name,
 		"should match name",
 	)
+	gm, err := repo.GetPlasmid(um.StockID)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	assert.Equal(
+		ns.Data.Attributes.DictyPlasmidProperty,
+		gm.PlasmidProperties.DictyPlasmidProperty,
+		"should include ontology label",
+	)
+}
+
+func TestAddPlasmidWithOntologyTerms(t *testing.T) {
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	terms := []string{"REMI vector", "GFP marker", "Gateway vector", "act15 promoter", "tetOFF vector"}
+	for _, term := range terms {
+		np := newTestPlasmid("pfey@dictybase.org")
+		np.Data.Attributes.DictyPlasmidProperty = term
+		um, err := repo.AddPlasmid(np)
+		assert.NoErrorf(err, "expect no error, received %s", err)
+		gm, err := repo.GetPlasmid(um.StockID)
+		assert.NoErrorf(err, "expect no error, received %s", err)
+		assert.Equal(term, gm.PlasmidProperties.DictyPlasmidProperty, "should store ontology term label")
+	}
+}
+
+func TestEditPlasmidOntologyUpdate(t *testing.T) {
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	ns := newUpdatableTestPlasmid("art@vandelay.org")
+	m, err := repo.AddPlasmid(ns)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	us := &stock.PlasmidUpdate{
+		Data: &stock.PlasmidUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   m.StockID,
+			Attributes: &stock.PlasmidUpdateAttributes{
+				UpdatedBy:            "peterman@jpeterman.com",
+				DictyPlasmidProperty: "doxON vector",
+			},
+		},
+	}
+	_, err = repo.EditPlasmid(us)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	gm, err := repo.GetPlasmid(m.StockID)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	assert.Equal("doxON vector", gm.PlasmidProperties.DictyPlasmidProperty, "should update ontology term")
+}
+
+func TestAddPlasmidInvalidOntologyTerm(t *testing.T) {
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	np := newTestPlasmid("pfey@dictybase.org")
+	np.Data.Attributes.DictyPlasmidProperty = "not a real ontology term"
+	_, err := repo.AddPlasmid(np)
+	assert.Error(err, "should error on invalid ontology term")
 }
