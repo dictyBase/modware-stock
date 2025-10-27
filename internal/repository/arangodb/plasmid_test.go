@@ -36,20 +36,22 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 			Type: "plasmid",
 			Id:   "DBP0000098",
 			Attributes: &stock.ExistingPlasmidAttributes{
-				CreatedAt:       aphgrpc.TimestampProto(tm),
-				UpdatedAt:       aphgrpc.TimestampProto(tm),
-				CreatedBy:       "george@costanza.com",
-				UpdatedBy:       "george@costanza.com",
-				Depositor:       "george@costanza.com",
-				Summary:         "this is a test plasmid",
-				EditableSummary: "this is a test plasmid",
-				Publications:    []string{"1348970"},
-				ImageMap:        "http://dictybase.org/data/plasmid/images/87.jpg",
-				Sequence:        "tttttyyyyjkausadaaaavvvvvv",
-				Name:            "p9999",
+				CreatedAt:            aphgrpc.TimestampProto(tm),
+				UpdatedAt:            aphgrpc.TimestampProto(tm),
+				CreatedBy:            "george@costanza.com",
+				UpdatedBy:            "george@costanza.com",
+				Depositor:            "george@costanza.com",
+				Summary:              "this is a test plasmid",
+				EditableSummary:      "this is a test plasmid",
+				Publications:         []string{"1348970"},
+				ImageMap:             "http://dictybase.org/data/plasmid/images/87.jpg",
+				Sequence:             "tttttyyyyjkausadaaaavvvvvv",
+				Name:                 "p9999",
+				DictyPlasmidProperty: "cloning vector",
 			},
 		},
 	}
+
 	um, err := repo.LoadPlasmid("DBP0000098", ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
