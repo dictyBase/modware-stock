@@ -168,7 +168,7 @@ func newUpdatableTestPlasmid(createdby string) *stock.NewPlasmid {
 				EditableSummary:      "update this plasmid",
 				Publications:         []string{"1348970", "48493483"},
 				Dbxrefs:              []string{"5466867", "4536935", "d2578"},
-				DictyPlasmidProperty: "spontaneous",
+				DictyPlasmidProperty: "cloning vector",
 			},
 		},
 	}
@@ -188,7 +188,7 @@ func newTestPlasmid(createdby string) *stock.NewPlasmid {
 				ImageMap:             "http://dictybase.org/data/plasmid/images/87.jpg",
 				Sequence:             "tttttyyyyjkausadaaaavvvvvv",
 				Name:                 "p123456",
-				DictyPlasmidProperty: "spontaneous",
+				DictyPlasmidProperty: "cloning vector",
 			},
 		},
 	}
