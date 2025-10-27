@@ -87,6 +87,16 @@ func serverFlags() []cli.Flag {
 			Usage: "default ontology term that will be used for creating strain",
 			Value: "general strain",
 		},
+		cli.StringFlag{
+			Name:  "plasmid-ontology",
+			Usage: "dictybase ontology that will be used for picking grouping term for plasmid",
+			Value: "plasmid_keywords",
+		},
+		cli.StringFlag{
+			Name:  "plasmid-term",
+			Usage: "default ontology term that will be used for creating plasmid",
+			Value: "cloning vector",
+		},
 	}
 }
 
