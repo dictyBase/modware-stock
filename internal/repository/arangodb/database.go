@@ -32,6 +32,8 @@ type CollectionParams struct {
 	StockOntoGraph string `validate:"required"`
 	// StrainOntology is the name ontology for storing strain group
 	StrainOntology string `validate:"required"`
+	// PlasmidOntology is the name ontology for storing plasmid keyword
+	PlasmidOntology string `validate:"required"`
 }
 
 type stockc struct {
