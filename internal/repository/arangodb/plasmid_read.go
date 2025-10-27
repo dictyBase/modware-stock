@@ -18,7 +18,11 @@ func (ar *arangorepository) ListPlasmids(
 	if len(p.Filter) > 0 {
 		stmt = ar.plasmidStmtWithFilter(p)
 	}
-	rs, err := ar.database.Search(stmt)
+	rs, err := ar.database.SearchRows(stmt, map[string]any{
+		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
+		"ontology":           ar.plasmidOnto,
+		"@cv_collection":     ar.ontoc.Cv.Name(),
+	})
 	if err != nil {
 		return om, err
 	}
@@ -41,9 +45,12 @@ func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 	r, err := ar.database.GetRow(
 		statement.StockGetPlasmid,
 		map[string]any{
-			"id":                id,
-			"@stock_collection": ar.stockc.stock.Name(),
-			"stock_prop_graph":  ar.stockc.stockPropType.Name(),
+			"id":                 id,
+			"@stock_collection":  ar.stockc.stock.Name(),
+			"stock_prop_graph":   ar.stockc.stockPropType.Name(),
+			"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
+			"ontology":           ar.plasmidOnto,
+			"@cv_collection":     ar.ontoc.Cv.Name(),
 		})
 	if err != nil {
 		return m, err
