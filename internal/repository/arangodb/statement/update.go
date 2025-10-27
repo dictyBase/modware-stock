@@ -72,6 +72,12 @@ const (
 
 		RETURN MERGE(s[0],prop[0])
 	`
+	PlasmidTermUpd = `
+		UPSERT { _from: CONCAT(@@stock_collection, '/', @key) }
+		INSERT { _from: CONCAT(@@stock_collection, '/', @key), _to: @to }
+		UPDATE { _to: @to }
+		IN @@stock_term_collection
+	`
 	PlasmidUpd = `
 		LET s = (
 			UPDATE { _key: @key } WITH { updated_at: DATE_ISO8601(DATE_NOW()), %s }
@@ -80,14 +86,11 @@ const (
 		LET p = (
 			UPDATE { _key: @propkey } WITH { %s }
 			IN @@stock_properties_collection
-			RETURN {
-				plasmid_properties: {
-					image_map: NEW.image_map,
-					sequence: NEW.sequence,
-					name: NEW.name
-				}
-			}
+			RETURN NEW
 		)
-		RETURN MERGE(s[0],p[0])
+		RETURN MERGE(
+			s[0],
+			{ plasmid_properties: p[0] }
+		)
 	`
 )
