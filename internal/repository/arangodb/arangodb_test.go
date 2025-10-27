@@ -64,17 +64,18 @@ func getConnectParamsFromDb(ta *testarango.TestArango) *manager.ConnectParams {
 
 func getCollectionParams() *CollectionParams {
 	return &CollectionParams{
-		Stock:              "stock",
-		StockTerm:          "stock_term",
-		StockProp:          "stockprop",
-		StockKeyGenerator:  "stock_key_generator",
-		StockType:          "stock_type",
-		StockOntoGraph:     "stockonto",
-		ParentStrain:       "parent_strain",
-		StockPropTypeGraph: "stockprop_type",
-		Strain2ParentGraph: "strain2parent",
+		Stock:              "stock_test",
+		StockProp:          "stock_properties_test",
+		StockType:          "stock_type_test",
+		StockKeyGenerator:  "stock_key_test",
+		ParentStrain:       "parent_strain_test",
+		StockTerm:          "stock_term_test",
+		StockPropTypeGraph: "stockprop_type_test",
+		Strain2ParentGraph: "strain2parent_test",
+		StockOntoGraph:     "stockonto_test",
 		KeyOffset:          370000,
 		StrainOntology:     "dicty_strain_property",
+		PlasmidOntology:    "plasmid_keywords",
 	}
 }
 
@@ -160,13 +161,14 @@ func newUpdatableTestPlasmid(createdby string) *stock.NewPlasmid {
 		Data: &stock.NewPlasmid_Data{
 			Type: "plasmid",
 			Attributes: &stock.NewPlasmidAttributes{
-				CreatedBy:       createdby,
-				UpdatedBy:       createdby,
-				Depositor:       createdby,
-				Summary:         "update this plasmid",
-				EditableSummary: "update this plasmid",
-				Publications:    []string{"1348970", "48493483"},
-				Dbxrefs:         []string{"5466867", "4536935", "d2578"},
+				CreatedBy:            createdby,
+				UpdatedBy:            createdby,
+				Depositor:            createdby,
+				Summary:              "update this plasmid",
+				EditableSummary:      "update this plasmid",
+				Publications:         []string{"1348970", "48493483"},
+				Dbxrefs:              []string{"5466867", "4536935", "d2578"},
+				DictyPlasmidProperty: "spontaneous",
 			},
 		},
 	}
@@ -177,15 +179,16 @@ func newTestPlasmid(createdby string) *stock.NewPlasmid {
 		Data: &stock.NewPlasmid_Data{
 			Type: "plasmid",
 			Attributes: &stock.NewPlasmidAttributes{
-				CreatedBy:       createdby,
-				UpdatedBy:       createdby,
-				Depositor:       "george@costanza.com",
-				Summary:         "this is a test plasmid",
-				EditableSummary: "this is a test plasmid",
-				Publications:    []string{"1348970"},
-				ImageMap:        "http://dictybase.org/data/plasmid/images/87.jpg",
-				Sequence:        "tttttyyyyjkausadaaaavvvvvv",
-				Name:            "p123456",
+				CreatedBy:            createdby,
+				UpdatedBy:            createdby,
+				Depositor:            "george@costanza.com",
+				Summary:              "this is a test plasmid",
+				EditableSummary:      "this is a test plasmid",
+				Publications:         []string{"1348970"},
+				ImageMap:             "http://dictybase.org/data/plasmid/images/87.jpg",
+				Sequence:             "tttttyyyyjkausadaaaavvvvvv",
+				Name:                 "p123456",
+				DictyPlasmidProperty: "spontaneous",
 			},
 		},
 	}
@@ -231,43 +234,48 @@ func oboReader() (*os.File, error) {
 }
 
 func loadData(ta *testarango.TestArango) error {
-	dir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("unable to get current dir %s", err)
+	for _, f := range []string{"dicty_strain_property.json", "dicty_plasmid_keywords.json"} {
+		dir, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("unable to get current dir %s", err)
+		}
+		r, err := os.Open(
+			filepath.Join(
+				filepath.Dir(dir), "testdata", f,
+			),
+		)
+		if err != nil {
+			return err
+		}
+		defer r.Close()
+		g, err := graph.BuildGraph(r)
+		if err != nil {
+			return fmt.Errorf("error in building graph %s", err)
+		}
+		collP := getOntoParams()
+		cp := &ontoarango.ConnectParams{
+			User:     ta.User,
+			Pass:     ta.Pass,
+			Host:     ta.Host,
+			Database: ta.Database,
+			Port:     ta.Port,
+			Istls:    ta.Istls,
+		}
+		clp := &ontoarango.CollectionParams{
+			Term:         collP.Term,
+			Relationship: collP.Relationship,
+			GraphInfo:    collP.GraphInfo,
+			OboGraph:     collP.OboGraph,
+		}
+		ds, err := ontoarango.NewDataSource(cp, clp)
+		if err != nil {
+			return err
+		}
+		if err := loadOboGraphInArango(g, ds); err != nil {
+			return err
+		}
 	}
-	r, err := os.Open(
-		filepath.Join(
-			filepath.Dir(dir), "testdata", "dicty_strain_property.json",
-		),
-	)
-	if err != nil {
-		return err
-	}
-	defer r.Close()
-	g, err := graph.BuildGraph(r)
-	if err != nil {
-		return fmt.Errorf("error in building graph %s", err)
-	}
-	collP := getOntoParams()
-	cp := &ontoarango.ConnectParams{
-		User:     ta.User,
-		Pass:     ta.Pass,
-		Host:     ta.Host,
-		Database: ta.Database,
-		Port:     ta.Port,
-		Istls:    ta.Istls,
-	}
-	clp := &ontoarango.CollectionParams{
-		Term:         collP.Term,
-		Relationship: collP.Relationship,
-		GraphInfo:    collP.GraphInfo,
-		OboGraph:     collP.OboGraph,
-	}
-	ds, err := ontoarango.NewDataSource(cp, clp)
-	if err != nil {
-		return err
-	}
-	return loadOboGraphInArango(g, ds)
+	return nil
 }
 
 func loadOboGraphInArango(g graph.OboGraph, ds storage.DataSource) error {
