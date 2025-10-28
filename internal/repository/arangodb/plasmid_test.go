@@ -578,15 +578,29 @@ func TestAddPlasmid(t *testing.T) {
 func TestAddPlasmidWithOntologyTerms(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	terms := []string{"REMI vector", "GFP marker", "Gateway vector", "act15 promoter", "tetOFF vector"}
-	for _, term := range terms {
-		np := newTestPlasmid("pfey@dictybase.org")
-		np.Data.Attributes.DictyPlasmidProperty = term
-		um, err := repo.AddPlasmid(np)
-		assert.NoErrorf(err, "expect no error, received %s", err)
-		gm, err := repo.GetPlasmid(um.StockID)
-		assert.NoErrorf(err, "expect no error, received %s", err)
-		assert.Equal(term, gm.PlasmidProperties.DictyPlasmidProperty, "should store ontology term label")
+
+	testCases := []struct {
+		name string
+		term string
+	}{
+		{"REMI vector", "REMI vector"},
+		{"GFP marker", "GFP marker"},
+		{"Gateway vector", "Gateway vector"},
+		{"act15 promoter", "act15 promoter"},
+		{"tetOFF vector", "tetOFF vector"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			np := newTestPlasmid("pfey@dictybase.org")
+			np.Data.Attributes.DictyPlasmidProperty = tc.term
+			um, err := repo.AddPlasmid(np)
+			assert.NoErrorf(err, "expect no error, received %s", err)
+			gm, err := repo.GetPlasmid(um.StockID)
+			assert.NoErrorf(err, "expect no error, received %s", err)
+			assert.Equal(tc.term, gm.PlasmidProperties.DictyPlasmidProperty,
+				"should store ontology term label")
+		})
 	}
 }
 
