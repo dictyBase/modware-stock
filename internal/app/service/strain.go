@@ -102,8 +102,12 @@ func (s *StockService) UpdateStrain(
 				fmt.Errorf("could not find strain with ID %s", m.ID),
 			)
 	}
-	st.Data = makeStrainData(m)
-	st.Data.Attributes.DictyStrainProperty = ""
+	// Fetch the complete strain record to get all fields including ontology
+	fullStrain, err := s.repo.GetStrain(r.Data.Id)
+	if err != nil {
+		return st, aphgrpc.HandleGetError(ctx, err)
+	}
+	st.Data = makeStrainData(fullStrain)
 	err = s.publisher.PublishStrain(s.Topics["stockUpdate"], st)
 	if err != nil {
 		return st, aphgrpc.HandleMessagingPubError(ctx, err)
@@ -111,7 +115,18 @@ func (s *StockService) UpdateStrain(
 	return st, nil
 }
 
-// ListStrainsByIds gets a list of strains from a list of strain identifiers
+// ListStrainsByIds gets a list of strains from a list of strain identifiers.
+// This method implements the proto-generated interface with the exact naming convention.
+//
+//nolint:revive // Method name must match proto-generated interface
+func (s *StockService) ListStrainsByIds(
+	ctx context.Context,
+	r *stock.StockIdList,
+) (*stock.StrainList, error) {
+	return s.ListStrainsByIDs(ctx, r)
+}
+
+// ListStrainsByIDs gets a list of strains from a list of strain identifiers
 func (s *StockService) ListStrainsByIDs(
 	ctx context.Context,
 	r *stock.StockIdList,
