@@ -78,6 +78,12 @@ const (
 		UPDATE { _to: @to }
 		IN @@stock_term_collection
 	`
+	StrainTermUpd = `
+		UPSERT { _from: @from }
+		INSERT { _from: @from, _to: @to }
+		UPDATE { _to: @to }
+		IN @@stock_term_collection
+	`
 	PlasmidUpd = `
 		LET s = (
 			UPDATE { _key: @key } WITH { updated_at: DATE_ISO8601(DATE_NOW()), %s }
