@@ -6,6 +6,7 @@ import (
 
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/collection"
 	"github.com/dictyBase/modware-stock/internal/model"
 )
 
@@ -155,15 +156,13 @@ func makePlasmidData(m *model.StockDoc) *stock.Plasmid_Data {
 func plasmidModelToCollectionSlice(
 	mc []*model.StockDoc,
 ) []*stock.PlasmidCollection_Data {
-	var pdata []*stock.PlasmidCollection_Data
-	for _, m := range mc {
-		pdata = append(pdata, &stock.PlasmidCollection_Data{
+	return collection.Map(mc, func(m *model.StockDoc) *stock.PlasmidCollection_Data {
+		return &stock.PlasmidCollection_Data{
 			Type:       "plasmid",
 			Id:         m.Key,
 			Attributes: makePlasmidAttr(m),
-		})
-	}
-	return pdata
+		}
+	})
 }
 
 func makePlasmidAttr(m *model.StockDoc) *stock.PlasmidAttributes {
