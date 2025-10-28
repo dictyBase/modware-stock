@@ -131,6 +131,9 @@ func (ar *arangorepository) AddPlasmid(
 	return stockDoc, nil
 }
 
+// addablePlasmidBindParams converts NewPlasmidAttributes to ArangoDB bind parameters
+// for INSERT operations. Empty string and slice values are normalized to ensure
+// consistent AQL query behavior.
 func addablePlasmidBindParams(
 	attr *stock.NewPlasmidAttributes,
 ) map[string]any {
@@ -149,6 +152,9 @@ func addablePlasmidBindParams(
 	}
 }
 
+// existingPlasmidBindParams converts ExistingPlasmidAttributes to ArangoDB bind
+// parameters for loading pre-existing plasmids with specific IDs. Timestamps are
+// converted to milliseconds for ArangoDB storage.
 func existingPlasmidBindParams(
 	attr *stock.ExistingPlasmidAttributes,
 ) map[string]any {
@@ -169,6 +175,9 @@ func existingPlasmidBindParams(
 	}
 }
 
+// getUpdatablePlasmidBindParams extracts updatable stock fields from
+// PlasmidUpdateAttributes. Only non-empty fields are included in the returned map
+// to enable partial updates without overwriting existing data.
 func getUpdatablePlasmidBindParams(
 	attr *stock.PlasmidUpdateAttributes,
 ) map[string]any {
@@ -196,6 +205,9 @@ func getUpdatablePlasmidBindParams(
 	return bindVars
 }
 
+// getUpdatablePlasmidPropBindParams extracts updatable plasmid property fields
+// from PlasmidUpdateAttributes. Only non-empty fields are included in the returned map
+// to enable partial updates of plasmid-specific properties.
 func getUpdatablePlasmidPropBindParams(
 	attr *stock.PlasmidUpdateAttributes,
 ) map[string]any {
