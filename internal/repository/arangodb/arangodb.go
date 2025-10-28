@@ -125,14 +125,14 @@ func (ar *arangorepository) termID(term, onto string) (string, error) {
 		})
 	if err != nil {
 		return id,
-			errors.Errorf("error in running obograph retrieving query %s", err)
+			fmt.Errorf("error in running obograph retrieving query: %w", err)
 	}
 	if r.IsEmpty() {
 		return id,
-			errors.Errorf("ontology %s and tag %s does not exist", onto, term)
+			fmt.Errorf("ontology %s and tag %s does not exist", onto, term)
 	}
 	if err := r.Read(&id); err != nil {
-		return id, errors.Errorf("error in retrieving obograph id %s", err)
+		return id, fmt.Errorf("error in retrieving obograph id: %w", err)
 	}
 	return id, nil
 }
