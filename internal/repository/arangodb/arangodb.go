@@ -3,6 +3,7 @@ package arangodb
 import (
 	"fmt"
 	"io"
+	"maps"
 	"strings"
 
 	"github.com/cockroachdb/errors"
@@ -94,9 +95,7 @@ func normalizeStrBindParam(str string) string {
 func mergeBindParams(bm ...map[string]any) map[string]any {
 	result := make(map[string]any)
 	for _, m := range bm {
-		for k, v := range m {
-			result[k] = v
-		}
+		maps.Copy(result, m)
 	}
 	return result
 }
