@@ -178,12 +178,9 @@ const (
 					}
 				)
 	`
-	PlasmidList = `
-		FOR s IN %s
-			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH '%s'
-				FILTER e.type == 'plasmid'
-				SORT s.created_at DESC
-				LIMIT %d
+	// ontologyTermSubquery retrieves the ontology term label for a stock item.
+	// Required bind variables: @stock_cvterm_graph, @@cv_collection, @ontology
+	ontologyTermSubquery = `
 				LET term = (
 					FOR cg IN 1..1 OUTBOUND s GRAPH @stock_cvterm_graph
 						FOR cv IN @@cv_collection
@@ -191,18 +188,26 @@ const (
 							FILTER cg.graph_id == cv._id
 							FILTER cv.metadata.namespace == @ontology
 							RETURN cg.label
-				)
+				)`
+
+	PlasmidList = `
+		FOR s IN %s
+			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH '%s'
+				FILTER e.type == 'plasmid'
+				SORT s.created_at DESC
+				LIMIT %d` +
+		ontologyTermSubquery + `
 				RETURN MERGE(
 					s,
 					{
-						plasmid_properties: { 
+						plasmid_properties: {
 							image_map: stock_prop.image_map,
 							sequence: stock_prop.sequence,
 							name: stock_prop.name,
 							dicty_plasmid_property: term[0]
-						} 
+						}
 					}
-				) 	
+				)
 	`
 
 	PlasmidListFilter = `
@@ -211,24 +216,17 @@ const (
 				FILTER e.type == 'plasmid'
 				%s
 				SORT s.created_at DESC
-				LIMIT %d
-				LET term = (
-					FOR cg IN 1..1 OUTBOUND s GRAPH @stock_cvterm_graph
-						FOR cv IN @@cv_collection
-							FILTER cg.deprecated == false
-							FILTER cg.graph_id == cv._id
-							FILTER cv.metadata.namespace == @ontology
-							RETURN cg.label
-				)
+				LIMIT %d` +
+		ontologyTermSubquery + `
 				RETURN MERGE(
 					s,
 					{
-						plasmid_properties: { 
+						plasmid_properties: {
 							image_map: stock_prop.image_map,
 							sequence: stock_prop.sequence,
 							name: stock_prop.name,
 							dicty_plasmid_property: term[0]
-						} 
+						}
 					}
 				)
 	`
@@ -238,26 +236,19 @@ const (
 				FILTER e.type == 'plasmid'
 				FILTER s.created_at <= DATE_ISO8601(%d)
 				SORT s.created_at DESC
-				LIMIT %d
-				LET term = (
-					FOR cg IN 1..1 OUTBOUND s GRAPH @stock_cvterm_graph
-						FOR cv IN @@cv_collection
-							FILTER cg.deprecated == false
-							FILTER cg.graph_id == cv._id
-							FILTER cv.metadata.namespace == @ontology
-							RETURN cg.label
-				)
+				LIMIT %d` +
+		ontologyTermSubquery + `
 				RETURN MERGE(
 					s,
 					{
-						plasmid_properties: { 
+						plasmid_properties: {
 							image_map: stock_prop.image_map,
 							sequence: stock_prop.sequence,
 							name: stock_prop.name,
 							dicty_plasmid_property: term[0]
-						} 
+						}
 					}
-				) 		
+				)
 	`
 
 	PlasmidListFilterWithCursor = `
@@ -267,24 +258,17 @@ const (
 				%s
 				FILTER s.created_at <= DATE_ISO8601(%d)
 				SORT s.created_at DESC
-				LIMIT %d
-				LET term = (
-					FOR cg IN 1..1 OUTBOUND s GRAPH @stock_cvterm_graph
-						FOR cv IN @@cv_collection
-							FILTER cg.deprecated == false
-							FILTER cg.graph_id == cv._id
-							FILTER cv.metadata.namespace == @ontology
-							RETURN cg.label
-				)
+				LIMIT %d` +
+		ontologyTermSubquery + `
 				RETURN MERGE(
 					s,
 					{
-						plasmid_properties: { 
+						plasmid_properties: {
 							image_map: stock_prop.image_map,
 							sequence: stock_prop.sequence,
 							name: stock_prop.name,
 							dicty_plasmid_property: term[0]
-						} 
+						}
 					}
 				)
 	`
