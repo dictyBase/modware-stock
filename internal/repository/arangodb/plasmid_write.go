@@ -14,13 +14,13 @@ func (ar *arangorepository) LoadPlasmid(
 	id string,
 	ep *stock.ExistingPlasmid,
 ) (*model.StockDoc, error) {
-	m := &model.StockDoc{PlasmidProperties: &model.PlasmidProperties{}}
+	stockDoc := &model.StockDoc{PlasmidProperties: &model.PlasmidProperties{}}
 	tid, err := ar.termID(
 		ep.Data.Attributes.DictyPlasmidProperty,
 		ar.plasmidOnto,
 	)
 	if err != nil {
-		return m, err
+		return stockDoc, err
 	}
 	bindVars := mergeBindParams(map[string]any{
 		"stock_id":                     id,
@@ -32,29 +32,29 @@ func (ar *arangorepository) LoadPlasmid(
 	}, existingPlasmidBindParams(ep.Data.Attributes))
 	r, err := ar.database.DoRun(statement.StockPlasmidLoad, bindVars)
 	if err != nil {
-		return m, err
+		return stockDoc, err
 	}
-	if err := r.Read(m); err != nil {
-		return m, err
+	if err := r.Read(stockDoc); err != nil {
+		return stockDoc, err
 	}
-	return m, nil
+	return stockDoc, nil
 }
 
 // EditPlasmid updates an existing plasmid
 func (ar *arangorepository) EditPlasmid(
 	us *stock.PlasmidUpdate,
 ) (*model.StockDoc, error) {
-	m := &model.StockDoc{}
+	stockDoc := &model.StockDoc{}
 	propKey, err := ar.checkStock(us.Data.Id)
 	if err != nil {
-		return m, err
+		return stockDoc, err
 	}
 	// term is the ontology term for the plasmid
 	term := us.Data.Attributes.DictyPlasmidProperty
 	if len(term) > 0 {
 		tid, tidErr := ar.termID(term, ar.plasmidOnto)
 		if tidErr != nil {
-			return m, tidErr
+			return stockDoc, tidErr
 		}
 
 		// Run the UPSERT query to update the ontology term
@@ -70,7 +70,7 @@ func (ar *arangorepository) EditPlasmid(
 			},
 		)
 		if err != nil {
-			return m, err
+			return stockDoc, err
 		}
 	}
 	bindVars := getUpdatablePlasmidBindParams(us.Data.Attributes)
@@ -81,12 +81,9 @@ func (ar *arangorepository) EditPlasmid(
 			"@stock_collection":            ar.stockc.stock.Name(),
 			"key":                          us.Data.Id,
 			"propkey":                      propKey,
-			"plasmid_ontology_graph":       ar.plasmidOnto,
 		},
 		bindVars, bindPlVars,
 	)
-	// pass the actual stock->ontology graph name for reading term label
-	delete(cmBindVars, "plasmid_ontology_graph")
 	rupd, err := ar.database.DoRun(
 		fmt.Sprintf(
 			statement.PlasmidUpd,
@@ -94,34 +91,31 @@ func (ar *arangorepository) EditPlasmid(
 			genAQLDocExpression(bindPlVars),
 		), cmBindVars)
 	if err != nil {
-		return m, err
+		return stockDoc, err
 	}
-	if err := rupd.Read(m); err != nil {
-		return m, err
+	if err := rupd.Read(stockDoc); err != nil {
+		return stockDoc, err
 	}
-	return m, nil
+	return stockDoc, nil
 }
 
 // AddPlasmid creates a new plasmid stock
 func (ar *arangorepository) AddPlasmid(
 	ns *stock.NewPlasmid,
 ) (*model.StockDoc, error) {
-	m := &model.StockDoc{PlasmidProperties: &model.PlasmidProperties{}}
+	stockDoc := &model.StockDoc{PlasmidProperties: &model.PlasmidProperties{}}
 	bindVars := mergeBindParams(map[string]any{
 		"@stock_collection":            ar.stockc.stock.Name(),
 		"@stock_key_generator":         ar.stockc.stockKey.Name(),
 		"@stock_type_collection":       ar.stockc.stockType.Name(),
 		"@stock_properties_collection": ar.stockc.stockProp.Name(),
 	}, addablePlasmidBindParams(ns.Data.Attributes))
-	if ns.Data.Attributes.DictyPlasmidProperty == "" {
-		ns.Data.Attributes.DictyPlasmidProperty = "cloning vector"
-	}
 	tid, err := ar.termID(
 		ns.Data.Attributes.DictyPlasmidProperty,
 		ar.plasmidOnto,
 	)
 	if err != nil {
-		return m, err
+		return stockDoc, err
 	}
 	bindVars = mergeBindParams(bindVars, map[string]any{
 		"to":                     tid,
@@ -129,12 +123,12 @@ func (ar *arangorepository) AddPlasmid(
 	})
 	r, err := ar.database.DoRun(statement.StockPlasmidIns, bindVars)
 	if err != nil {
-		return m, err
+		return stockDoc, err
 	}
-	if err := r.Read(m); err != nil {
-		return m, err
+	if err := r.Read(stockDoc); err != nil {
+		return stockDoc, err
 	}
-	return m, nil
+	return stockDoc, nil
 }
 
 func addablePlasmidBindParams(
