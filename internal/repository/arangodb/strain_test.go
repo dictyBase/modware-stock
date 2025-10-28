@@ -1076,3 +1076,212 @@ func testMoreEditWithParent(
 func stockToID(model *model.StockDoc) string {
 	return model.StockID
 }
+
+func TestEditStrainOntologyUpdate(t *testing.T) {
+	t.Parallel()
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+
+	// Create and add initial strain with "general strain" property
+	ns := newUpdatableTestStrain("art@vandelay.org", General)
+	m, err := repo.AddStrain(ns)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	assert.Equal(
+		"general strain",
+		m.StrainProperties.DictyStrainProperty,
+		"initial strain should have general strain property",
+	)
+
+	// Update with different ontology term
+	us := &stock.StrainUpdate{
+		Data: &stock.StrainUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   m.StockID,
+			Attributes: &stock.StrainUpdateAttributes{
+				UpdatedBy:           "peterman@jpeterman.com",
+				DictyStrainProperty: "bacterial strain",
+			},
+		},
+	}
+
+	_, err = repo.EditStrain(us)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+
+	// Verify the update
+	gm, err := repo.GetStrain(m.StockID)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	assert.Equal(
+		"bacterial strain",
+		gm.StrainProperties.DictyStrainProperty,
+		"should update ontology term to bacterial strain",
+	)
+	assert.Equal(
+		"peterman@jpeterman.com",
+		gm.UpdatedBy,
+		"should update updatedby field",
+	)
+}
+
+func TestEditStrainOntologyUpdateToGwdi(t *testing.T) {
+	t.Parallel()
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+
+	// Create and add initial strain with "general strain" property
+	ns := newUpdatableTestStrain("art@vandelay.org", General)
+	m, err := repo.AddStrain(ns)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+
+	// Update with REMI-seq ontology term
+	us := &stock.StrainUpdate{
+		Data: &stock.StrainUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   m.StockID,
+			Attributes: &stock.StrainUpdateAttributes{
+				UpdatedBy:           "peterman@jpeterman.com",
+				DictyStrainProperty: "REMI-seq",
+			},
+		},
+	}
+
+	_, err = repo.EditStrain(us)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+
+	// Verify the update
+	gm, err := repo.GetStrain(m.StockID)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	assert.Equal(
+		"REMI-seq",
+		gm.StrainProperties.DictyStrainProperty,
+		"should update ontology term to REMI-seq",
+	)
+}
+
+func TestEditStrainInvalidOntologyTerm(t *testing.T) {
+	t.Parallel()
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+
+	// Create and add initial strain
+	ns := newUpdatableTestStrain("art@vandelay.org", General)
+	m, err := repo.AddStrain(ns)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+
+	// Try to update with invalid ontology term
+	us := &stock.StrainUpdate{
+		Data: &stock.StrainUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   m.StockID,
+			Attributes: &stock.StrainUpdateAttributes{
+				UpdatedBy:           "peterman@jpeterman.com",
+				DictyStrainProperty: "invalid ontology term",
+			},
+		},
+	}
+
+	_, err = repo.EditStrain(us)
+	assert.Error(err, "should error on invalid ontology term")
+	assert.Contains(
+		err.Error(),
+		"invalid ontology term",
+		"error should mention invalid ontology term",
+	)
+}
+
+func TestEditStrainOntologyUpdateWithOtherFields(t *testing.T) {
+	t.Parallel()
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+
+	// Create and add initial strain
+	ns := newUpdatableTestStrain("art@vandelay.org", General)
+	m, err := repo.AddStrain(ns)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+
+	// Update ontology term along with other fields
+	us := &stock.StrainUpdate{
+		Data: &stock.StrainUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   m.StockID,
+			Attributes: &stock.StrainUpdateAttributes{
+				UpdatedBy:           "peterman@jpeterman.com",
+				DictyStrainProperty: "bacterial strain",
+				Summary:             "updated summary with ontology",
+				Label:               "updated-label",
+				Species:             "updated species",
+			},
+		},
+	}
+
+	_, err = repo.EditStrain(us)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+
+	// Verify all updates
+	gm, err := repo.GetStrain(m.StockID)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	assert.Equal(
+		"bacterial strain",
+		gm.StrainProperties.DictyStrainProperty,
+		"should update ontology term",
+	)
+	assert.Equal(
+		"updated summary with ontology",
+		gm.Summary,
+		"should update summary",
+	)
+	assert.Equal(
+		"updated-label",
+		gm.StrainProperties.Label,
+		"should update label",
+	)
+	assert.Equal(
+		"updated species",
+		gm.StrainProperties.Species,
+		"should update species",
+	)
+}
+
+func TestEditStrainWithoutOntologyUpdate(t *testing.T) {
+	t.Parallel()
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+
+	// Create and add initial strain with bacterial strain property
+	ns := newUpdatableTestStrain("art@vandelay.org", Bacterial)
+	m, err := repo.AddStrain(ns)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	assert.Equal(
+		"bacterial strain",
+		m.StrainProperties.DictyStrainProperty,
+		"initial strain should have bacterial strain property",
+	)
+
+	// Update without specifying ontology term (empty string)
+	us := &stock.StrainUpdate{
+		Data: &stock.StrainUpdate_Data{
+			Type: ns.Data.Type,
+			Id:   m.StockID,
+			Attributes: &stock.StrainUpdateAttributes{
+				UpdatedBy: "peterman@jpeterman.com",
+				Summary:   "updated summary only",
+			},
+		},
+	}
+
+	_, err = repo.EditStrain(us)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+
+	// Verify ontology term remains unchanged
+	gm, err := repo.GetStrain(m.StockID)
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	assert.Equal(
+		"bacterial strain",
+		gm.StrainProperties.DictyStrainProperty,
+		"ontology term should remain unchanged when not specified",
+	)
+	assert.Equal(
+		"updated summary only",
+		gm.Summary,
+		"summary should be updated",
+	)
+}
