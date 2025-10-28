@@ -14,23 +14,23 @@ func (s *StockService) CreatePlasmid(
 	ctx context.Context,
 	r *stock.NewPlasmid,
 ) (*stock.Plasmid, error) {
-	st := &stock.Plasmid{}
+	plasmid := &stock.Plasmid{}
 	if err := r.Validate(); err != nil {
-		return st, aphgrpc.HandleInvalidParamError(ctx, err)
+		return plasmid, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
 	if len(r.Data.Attributes.DictyPlasmidProperty) == 0 {
 		r.Data.Attributes.DictyPlasmidProperty = s.Params["plasmid_term"]
 	}
-	m, err := s.repo.AddPlasmid(r)
+	stockDoc, err := s.repo.AddPlasmid(r)
 	if err != nil {
-		return st, aphgrpc.HandleInsertError(ctx, err)
+		return plasmid, aphgrpc.HandleInsertError(ctx, err)
 	}
-	st.Data = makePlasmidData(m)
-	err = s.publisher.PublishPlasmid(s.Topics["stockCreate"], st)
+	plasmid.Data = makePlasmidData(stockDoc)
+	err = s.publisher.PublishPlasmid(s.Topics["stockCreate"], plasmid)
 	if err != nil {
-		return st, aphgrpc.HandleMessagingPubError(ctx, err)
+		return plasmid, aphgrpc.HandleMessagingPubError(ctx, err)
 	}
-	return st, nil
+	return plasmid, nil
 }
 
 // GetPlasmid handles getting a plasmid by its ID
@@ -38,23 +38,23 @@ func (s *StockService) GetPlasmid(
 	ctx context.Context,
 	r *stock.StockId,
 ) (*stock.Plasmid, error) {
-	pl := &stock.Plasmid{}
+	plasmid := &stock.Plasmid{}
 	if err := r.Validate(); err != nil {
-		return pl, aphgrpc.HandleInvalidParamError(ctx, err)
+		return plasmid, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
-	m, err := s.repo.GetPlasmid(r.Id)
+	stockDoc, err := s.repo.GetPlasmid(r.Id)
 	if err != nil {
-		return pl, aphgrpc.HandleGetError(ctx, err)
+		return plasmid, aphgrpc.HandleGetError(ctx, err)
 	}
-	if m.NotFound {
-		return pl,
+	if stockDoc.NotFound {
+		return plasmid,
 			aphgrpc.HandleNotFoundError(
 				ctx,
 				fmt.Errorf("could not find plasmid with ID %s", r.Id),
 			)
 	}
-	pl.Data = makePlasmidData(m)
-	return pl, nil
+	plasmid.Data = makePlasmidData(stockDoc)
+	return plasmid, nil
 }
 
 // LoadPlasmid loads plasmids with existing IDs into the database
@@ -62,28 +62,28 @@ func (s *StockService) LoadPlasmid(
 	ctx context.Context,
 	r *stock.ExistingPlasmid,
 ) (*stock.Plasmid, error) {
-	pl := &stock.Plasmid{}
+	plasmid := &stock.Plasmid{}
 	if err := r.Validate(); err != nil {
-		return pl, aphgrpc.HandleInvalidParamError(ctx, err)
+		return plasmid, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
 	if len(r.Data.Attributes.DictyPlasmidProperty) == 0 {
 		r.Data.Attributes.DictyPlasmidProperty = s.Params["plasmid_term"]
 	}
 	id := r.Data.Id
-	m, err := s.repo.LoadPlasmid(id, r)
+	stockDoc, err := s.repo.LoadPlasmid(id, r)
 	if err != nil {
-		return pl, aphgrpc.HandleInsertError(ctx, err)
+		return plasmid, aphgrpc.HandleInsertError(ctx, err)
 	}
-	pl.Data = makePlasmidData(m)
+	plasmid.Data = makePlasmidData(stockDoc)
 	// include ontology property if available
-	if m.PlasmidProperties != nil {
-		pl.Data.Attributes.DictyPlasmidProperty = m.PlasmidProperties.DictyPlasmidProperty
+	if stockDoc.PlasmidProperties != nil {
+		plasmid.Data.Attributes.DictyPlasmidProperty = stockDoc.PlasmidProperties.DictyPlasmidProperty
 	}
-	err = s.publisher.PublishPlasmid(s.Topics["stockCreate"], pl)
+	err = s.publisher.PublishPlasmid(s.Topics["stockCreate"], plasmid)
 	if err != nil {
-		return pl, aphgrpc.HandleMessagingPubError(ctx, err)
+		return plasmid, aphgrpc.HandleMessagingPubError(ctx, err)
 	}
-	return pl, nil
+	return plasmid, nil
 }
 
 // UpdatePlasmid handles updating an existing plasmid
@@ -91,27 +91,27 @@ func (s *StockService) UpdatePlasmid(
 	ctx context.Context,
 	r *stock.PlasmidUpdate,
 ) (*stock.Plasmid, error) {
-	pl := &stock.Plasmid{}
+	plasmid := &stock.Plasmid{}
 	if err := r.Validate(); err != nil {
-		return pl, aphgrpc.HandleInvalidParamError(ctx, err)
+		return plasmid, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
-	m, err := s.repo.EditPlasmid(r)
+	stockDoc, err := s.repo.EditPlasmid(r)
 	if err != nil {
-		return pl, aphgrpc.HandleUpdateError(ctx, err)
+		return plasmid, aphgrpc.HandleUpdateError(ctx, err)
 	}
-	if m.NotFound {
-		return pl,
+	if stockDoc.NotFound {
+		return plasmid,
 			aphgrpc.HandleNotFoundError(
 				ctx,
-				fmt.Errorf("could not find plasmid with ID %s", m.ID),
+				fmt.Errorf("could not find plasmid with ID %s", stockDoc.ID),
 			)
 	}
-	pl.Data = makePlasmidData(m)
-	err = s.publisher.PublishPlasmid(s.Topics["stockUpdate"], pl)
+	plasmid.Data = makePlasmidData(stockDoc)
+	err = s.publisher.PublishPlasmid(s.Topics["stockUpdate"], plasmid)
 	if err != nil {
-		return pl, aphgrpc.HandleMessagingPubError(ctx, err)
+		return plasmid, aphgrpc.HandleMessagingPubError(ctx, err)
 	}
-	return pl, nil
+	return plasmid, nil
 }
 
 // ListPlasmids lists all existing plasmids
@@ -167,20 +167,25 @@ func plasmidModelToCollectionSlice(
 }
 
 func makePlasmidAttr(m *model.StockDoc) *stock.PlasmidAttributes {
-	return &stock.PlasmidAttributes{
-		CreatedAt:            aphgrpc.TimestampProto(m.CreatedAt),
-		UpdatedAt:            aphgrpc.TimestampProto(m.UpdatedAt),
-		CreatedBy:            m.CreatedBy,
-		UpdatedBy:            m.UpdatedBy,
-		Summary:              m.Summary,
-		EditableSummary:      m.EditableSummary,
-		Depositor:            m.Depositor,
-		Genes:                m.Genes,
-		Dbxrefs:              m.Dbxrefs,
-		Publications:         m.Publications,
-		ImageMap:             m.PlasmidProperties.ImageMap,
-		Sequence:             m.PlasmidProperties.Sequence,
-		Name:                 m.PlasmidProperties.Name,
-		DictyPlasmidProperty: m.PlasmidProperties.DictyPlasmidProperty,
+	attr := &stock.PlasmidAttributes{
+		CreatedAt:       aphgrpc.TimestampProto(m.CreatedAt),
+		UpdatedAt:       aphgrpc.TimestampProto(m.UpdatedAt),
+		CreatedBy:       m.CreatedBy,
+		UpdatedBy:       m.UpdatedBy,
+		Summary:         m.Summary,
+		EditableSummary: m.EditableSummary,
+		Depositor:       m.Depositor,
+		Genes:           m.Genes,
+		Dbxrefs:         m.Dbxrefs,
+		Publications:    m.Publications,
 	}
+
+	if m.PlasmidProperties != nil {
+		attr.ImageMap = m.PlasmidProperties.ImageMap
+		attr.Sequence = m.PlasmidProperties.Sequence
+		attr.Name = m.PlasmidProperties.Name
+		attr.DictyPlasmidProperty = m.PlasmidProperties.DictyPlasmidProperty
+	}
+
+	return attr
 }
