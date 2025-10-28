@@ -45,11 +45,17 @@ type assertGrpcErrorParams struct {
 // MockPublisher is a mock implementation of the message.Publisher interface.
 type MockPublisher struct{}
 
-func (mp *MockPublisher) PublishStrain(subject string, strain *stock.Strain) error {
+func (mp *MockPublisher) PublishStrain(
+	subject string,
+	strain *stock.Strain,
+) error {
 	return nil
 }
 
-func (mp *MockPublisher) PublishPlasmid(subject string, plasmid *stock.Plasmid) error {
+func (mp *MockPublisher) PublishPlasmid(
+	subject string,
+	plasmid *stock.Plasmid,
+) error {
 	return nil
 }
 
@@ -494,7 +500,11 @@ func testGetExistingStrain(params *testParams) {
 
 	params.assert.NoError(err, "should get strain without error")
 	params.assert.NotNil(resp, "response should not be nil")
-	params.assert.Equal(createResp.Data.Id, resp.Data.Id, "strain ID should match")
+	params.assert.Equal(
+		createResp.Data.Id,
+		resp.Data.Id,
+		"strain ID should match",
+	)
 	params.assert.Equal("strain", resp.Data.Type, "type should be strain")
 	params.assert.Equal(
 		createReq.Data.Attributes.Label,
@@ -707,7 +717,11 @@ func testUpdateExistingStrain(params *testParams) {
 
 	params.assert.NoError(err, "should update strain without error")
 	params.assert.NotNil(resp, "response should not be nil")
-	params.assert.Equal(createResp.Data.Id, resp.Data.Id, "strain ID should match")
+	params.assert.Equal(
+		createResp.Data.Id,
+		resp.Data.Id,
+		"strain ID should match",
+	)
 	params.assert.Equal(
 		updateReq.Data.Attributes.UpdatedBy,
 		resp.Data.Attributes.UpdatedBy,
@@ -811,9 +825,12 @@ func testListStrainsByIDsWithExisting(params *testParams) {
 	params.t.Helper()
 	// Create multiple strains
 	var strainIDs []string
-	for idx := 0; idx < 3; idx++ {
+	for range 3 {
 		createReq := newTestStrain()
-		createResp, err := params.client.CreateStrain(params.ctx, createReq)
+		createResp, err := params.client.CreateStrain(
+			params.ctx,
+			createReq,
+		)
 		params.assert.NoError(err, "should create strain without error")
 		strainIDs = append(strainIDs, createResp.Data.Id)
 	}
@@ -831,13 +848,19 @@ func testListStrainsByIDsWithExisting(params *testParams) {
 	for idx, strain := range resp.Data {
 		returnedIDs[idx] = strain.Id
 	}
-	params.assert.ElementsMatch(strainIDs, returnedIDs, "returned IDs should match")
+	params.assert.ElementsMatch(
+		strainIDs,
+		returnedIDs,
+		"returned IDs should match",
+	)
 }
 
 // testListStrainsByIDsNonExistent tests listing with non-existent IDs.
 func testListStrainsByIDsNonExistent(params *testParams) {
 	params.t.Helper()
-	req := &stock.StockIdList{Id: []string{"DBS9999997", "DBS9999998", "DBS9999999"}}
+	req := &stock.StockIdList{
+		Id: []string{"DBS9999997", "DBS9999998", "DBS9999999"},
+	}
 
 	_, err := params.client.ListStrainsByIds(params.ctx, req)
 
@@ -940,7 +963,11 @@ func testListStrainsWithLimit(params *testParams) {
 		3,
 		"should respect limit",
 	)
-	params.assert.Equal(int64(3), resp.Meta.Limit, "meta limit should match request")
+	params.assert.Equal(
+		int64(3),
+		resp.Meta.Limit,
+		"meta limit should match request",
+	)
 }
 
 // testListStrainsWithCursor tests pagination with cursor.
@@ -1043,7 +1070,10 @@ func testUpdateStrainOntologyUpdate(params *testParams) {
 	)
 
 	// Verify persistence by fetching again
-	getResp, err := params.client.GetStrain(params.ctx, &stock.StockId{Id: createResp.Data.Id})
+	getResp, err := params.client.GetStrain(
+		params.ctx,
+		&stock.StockId{Id: createResp.Data.Id},
+	)
 	params.assert.NoError(err, "should get strain without error")
 	params.assert.Equal(
 		"bacterial strain",
