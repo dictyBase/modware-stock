@@ -33,10 +33,40 @@ func (ar *arangorepository) AddStrain(
 func (ar *arangorepository) EditStrain(
 	us *stock.StrainUpdate,
 ) (*model.StockDoc, error) {
-	m := &model.StockDoc{}
+	stockDoc := &model.StockDoc{}
 	propKey, err := ar.checkStock(us.Data.Id)
 	if err != nil {
-		return m, err
+		return stockDoc, err
+	}
+	// term is the ontology term for the strain
+	term := us.Data.Attributes.DictyStrainProperty
+	if len(term) > 0 {
+		tid, tidErr := ar.termID(term, ar.strainOnto)
+		if tidErr != nil {
+			return stockDoc, tidErr
+		}
+
+		// Run the UPSERT query to update the ontology term
+		_, err = ar.database.DoRun(
+			statement.StrainTermUpd,
+			map[string]any{
+				// collection bind var for @@stock_term_collection
+				"@stock_term_collection": ar.stockc.stockTerm.Name(),
+				"from": fmt.Sprintf(
+					"%s/%s",
+					ar.stockc.stock.Name(),
+					us.Data.Id,
+				),
+				"to": tid,
+			},
+		)
+		if err != nil {
+			return stockDoc, fmt.Errorf(
+				"failed to update strain ontology term for %s: %w",
+				us.Data.Id,
+				err,
+			)
+		}
 	}
 	bindVars := getUpdatableStrainBindParams(us.Data.Attributes)
 	bindStVars := getUpdatableStrainPropBindParams(us.Data.Attributes)
@@ -54,11 +84,11 @@ func (ar *arangorepository) EditStrain(
 	if len(parent) > 0 { // in case parent is present
 		pVars, pStmt, nerr := ar.handleEditStrainWithParent(parent, us.Data.Id)
 		if nerr != nil {
-			return m, nerr
+			return stockDoc, nerr
 		}
 		stmt = pStmt
 		cmBindVars = mergeBindParams(cmBindVars, pVars)
-		m.StrainProperties = &model.StrainProperties{Parent: parent}
+		stockDoc.StrainProperties = &model.StrainProperties{Parent: parent}
 	}
 	rupd, err := ar.database.DoRun(
 		fmt.Sprintf(
@@ -69,13 +99,13 @@ func (ar *arangorepository) EditStrain(
 		cmBindVars,
 	)
 	if err != nil {
-		return m, errors.Errorf(
+		return stockDoc, errors.Errorf(
 			"error in editing strain %s %s",
 			us.Data.Id, err,
 		)
 	}
-	err = rupd.Read(m)
-	return m, err
+	err = rupd.Read(stockDoc)
+	return stockDoc, err
 }
 
 // LoadStrain will insert existing strain data into the database.
