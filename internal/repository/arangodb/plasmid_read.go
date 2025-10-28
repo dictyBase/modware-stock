@@ -41,7 +41,7 @@ func (ar *arangorepository) ListPlasmids(
 
 // GetPlasmid retrieves a plasmid from the database
 func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
-	m := &model.StockDoc{}
+	stockDoc := &model.StockDoc{}
 	r, err := ar.database.GetRow(
 		statement.StockGetPlasmid,
 		map[string]any{
@@ -53,14 +53,14 @@ func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
 			"@cv_collection":     ar.ontoc.Cv.Name(),
 		})
 	if err != nil {
-		return m, err
+		return stockDoc, err
 	}
 	if r.IsEmpty() {
-		m.NotFound = true
-		return m, nil
+		stockDoc.NotFound = true
+		return stockDoc, nil
 	}
-	err = r.Read(m)
-	return m, err
+	err = r.Read(stockDoc)
+	return stockDoc, err
 }
 
 func (ar *arangorepository) plasmidStmtWithFilter(
