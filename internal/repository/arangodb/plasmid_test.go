@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	E "github.com/IBM/fp-go/either"
+	IOE "github.com/IBM/fp-go/ioeither"
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
@@ -13,6 +15,25 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/stretchr/testify/require"
 )
+
+// unwrapPlasmidEither is a test helper to unwrap IOEither[error, *model.StockDoc]
+func unwrapPlasmidEither(
+	ioeither IOE.IOEither[error, *model.StockDoc],
+) (*model.StockDoc, error) {
+	either := ioeither() // Execute IOEither to get Either
+	if E.IsLeft(either) {
+		err := E.Fold(
+			func(e error) error { return e },
+			func(*model.StockDoc) error { return nil },
+		)(either)
+		return nil, err
+	}
+	doc := E.Fold(
+		func(error) *model.StockDoc { return nil },
+		func(d *model.StockDoc) *model.StockDoc { return d },
+	)(either)
+	return doc, nil
+}
 
 const (
 	georgeFilter = `FILTER s.depositor == 'george@costanza.com'`
@@ -108,7 +129,7 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 		"should match sequence",
 	)
 	// verify ontology term label is retrievable through GetPlasmid
-	gm, err := repo.GetPlasmid(um.StockID)
+	gm, err := unwrapPlasmidEither(repo.GetPlasmid(um.StockID))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
 		OntologyTermCloningVector,
@@ -302,7 +323,7 @@ func TestGetPlasmid(t *testing.T) {
 	ns := newTestPlasmid("george@costanza.com")
 	um, err := repo.AddPlasmid(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
-	g, err := repo.GetPlasmid(um.StockID)
+	g, err := unwrapPlasmidEither(repo.GetPlasmid(um.StockID))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Regexp(
 		regexp.MustCompile(`^DBP0\d{6,}$`),
@@ -354,9 +375,9 @@ func TestGetPlasmid(t *testing.T) {
 		"should match updated time of stock",
 	)
 
-	ne, err := repo.GetPlasmid("DBP01")
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.True(ne.NotFound, "entry should not exist")
+	_, err = unwrapPlasmidEither(repo.GetPlasmid("DBP01"))
+	assert.Error(err, "expect error for non-existent plasmid")
+	assert.Contains(err.Error(), "not found", "error should indicate plasmid was not found")
 }
 
 func TestEditPlasmid(t *testing.T) {
@@ -576,7 +597,7 @@ func TestAddPlasmid(t *testing.T) {
 		ns.Data.Attributes.Name,
 		"should match name",
 	)
-	gm, err := repo.GetPlasmid(um.StockID)
+	gm, err := unwrapPlasmidEither(repo.GetPlasmid(um.StockID))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
 		ns.Data.Attributes.DictyPlasmidProperty,
@@ -606,7 +627,7 @@ func TestAddPlasmidWithOntologyTerms(t *testing.T) {
 			np.Data.Attributes.DictyPlasmidProperty = tc.term
 			um, err := repo.AddPlasmid(np)
 			assert.NoErrorf(err, "expect no error adding plasmid with ontology term %s, received %s", tc.term, err)
-			gm, err := repo.GetPlasmid(um.StockID)
+			gm, err := unwrapPlasmidEither(repo.GetPlasmid(um.StockID))
 			assert.NoErrorf(err, "expect no error retrieving plasmid %s, received %s", um.StockID, err)
 			assert.Equal(tc.term, gm.PlasmidProperties.DictyPlasmidProperty,
 				"AddPlasmid should store and GetPlasmid should retrieve ontology term label '%s' for plasmid %s",
@@ -633,7 +654,7 @@ func TestEditPlasmidOntologyUpdate(t *testing.T) {
 	}
 	_, err = repo.EditPlasmid(us)
 	assert.NoErrorf(err, "expect no error updating plasmid ontology, received %s", err)
-	gm, err := repo.GetPlasmid(m.StockID)
+	gm, err := unwrapPlasmidEither(repo.GetPlasmid(m.StockID))
 	assert.NoErrorf(err, "expect no error retrieving updated plasmid %s, received %s", m.StockID, err)
 	assert.Equal(OntologyTermDoxONVector, gm.PlasmidProperties.DictyPlasmidProperty,
 		"EditPlasmid should update ontology term from '%s' to '%s' for plasmid %s",
