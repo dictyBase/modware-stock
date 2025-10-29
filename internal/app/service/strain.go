@@ -6,6 +6,7 @@ import (
 
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/collection"
 	"github.com/dictyBase/modware-stock/internal/model"
 )
 
@@ -191,27 +192,23 @@ func makeStrainData(m *model.StockDoc) *stock.Strain_Data {
 func strainModelToCollectionSlice(
 	mc []*model.StockDoc,
 ) []*stock.StrainCollection_Data {
-	var sdata []*stock.StrainCollection_Data
-	for _, m := range mc {
-		sdata = append(sdata, &stock.StrainCollection_Data{
+	return collection.Map(mc, func(m *model.StockDoc) *stock.StrainCollection_Data {
+		return &stock.StrainCollection_Data{
 			Type:       "strain",
 			Id:         m.Key,
 			Attributes: makeStrainAttributes(m),
-		})
-	}
-	return sdata
+		}
+	})
 }
 
 func strainModelToListSlice(mc []*model.StockDoc) []*stock.StrainList_Data {
-	var sdata []*stock.StrainList_Data
-	for _, m := range mc {
-		sdata = append(sdata, &stock.StrainList_Data{
+	return collection.Map(mc, func(m *model.StockDoc) *stock.StrainList_Data {
+		return &stock.StrainList_Data{
 			Type:       "strain",
 			Id:         m.Key,
 			Attributes: makeStrainAttributes(m),
-		})
-	}
-	return sdata
+		}
+	})
 }
 
 func makeStrainAttributes(m *model.StockDoc) *stock.StrainAttributes {

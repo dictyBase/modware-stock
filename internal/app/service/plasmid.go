@@ -107,7 +107,12 @@ func (s *StockService) UpdatePlasmid(
 				fmt.Errorf("could not find plasmid with ID %s", stockDoc.ID),
 			)
 	}
-	plasmid.Data = makePlasmidData(stockDoc)
+	// Fetch the complete plasmid record to get all fields including ontology
+	fullPlasmid, err := s.repo.GetPlasmid(r.Data.Id)
+	if err != nil {
+		return plasmid, aphgrpc.HandleGetError(ctx, err)
+	}
+	plasmid.Data = makePlasmidData(fullPlasmid)
 	err = s.publisher.PublishPlasmid(s.Topics["stockUpdate"], plasmid)
 	if err != nil {
 		return plasmid, aphgrpc.HandleMessagingPubError(ctx, err)
@@ -121,28 +126,28 @@ func (s *StockService) ListPlasmids(
 	param *stock.StockParameters,
 ) (*stock.PlasmidCollection, error) {
 	limit := limitVal(param.Limit)
-	pc := &stock.PlasmidCollection{Meta: &stock.Meta{Limit: limit}}
-	mc, err := stockModelList(&modelListParams{
+	plasmidCollection := &stock.PlasmidCollection{Meta: &stock.Meta{Limit: limit}}
+	stockDocs, err := stockModelList(&modelListParams{
 		ctx:         ctx,
 		stockParams: param,
 		limit:       limit,
 		fn:          s.repo.ListPlasmids,
 	})
 	if err != nil {
-		return pc, err
+		return plasmidCollection, err
 	}
-	pdata := plasmidModelToCollectionSlice(mc)
+	pdata := plasmidModelToCollectionSlice(stockDocs)
 	if len(pdata) < int(limit)-2 { // fewer results than limit
-		pc.Data = pdata
-		pc.Meta.Total = int64(len(pdata))
-		return pc, nil
+		plasmidCollection.Data = pdata
+		plasmidCollection.Meta.Total = int64(len(pdata))
+		return plasmidCollection, nil
 	}
-	pc.Data = pdata[:len(pdata)-1]
-	pc.Meta.NextCursor = genNextCursorVal(
+	plasmidCollection.Data = pdata[:len(pdata)-1]
+	plasmidCollection.Meta.NextCursor = genNextCursorVal(
 		pdata[len(pdata)-1].Attributes.CreatedAt,
 	)
-	pc.Meta.Total = int64(len(pdata))
-	return pc, nil
+	plasmidCollection.Meta.Total = int64(len(pdata))
+	return plasmidCollection, nil
 }
 
 func makePlasmidData(m *model.StockDoc) *stock.Plasmid_Data {
