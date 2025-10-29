@@ -18,13 +18,22 @@ const (
 	georgeFilter = `FILTER s.depositor == 'george@costanza.com'`
 	pfilterTwo   = `FILTER s.depositor == 'george@costanza.com' AND s.depositor == 'rg@gmail.com'`
 	pfilterThree = `LET x = (
-				FILTER '1348970' IN s.publications 
+				FILTER '1348970' IN s.publications
 				RETURN 1
 			)`
 	pfilterFour  = `FILTER s.created_at <= DATE_ISO8601('2019')`
 	pfilterFive  = `FILTER stock_prop.sequence =~ 'ttttt'`
 	pfilterSix   = `FILTER s.summary =~ 'test'`
 	pfilterSeven = `FILTER s.depositor == 'george@costanza.com' OR stock_prop.name == 'gammaS13'`
+
+	// Ontology term constants for testing
+	OntologyTermCloningVector = "cloning vector"
+	OntologyTermREMIVector    = "REMI vector"
+	OntologyTermGFPMarker     = "GFP marker"
+	OntologyTermGatewayVector = "Gateway vector"
+	OntologyTermAct15Promoter = "act15 promoter"
+	OntologyTermTetOFFVector  = "tetOFF vector"
+	OntologyTermDoxONVector   = "doxON vector"
 )
 
 func TestLoadStockWithPlasmids(t *testing.T) {
@@ -47,7 +56,7 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 				ImageMap:             "http://dictybase.org/data/plasmid/images/87.jpg",
 				Sequence:             "tttttyyyyjkausadaaaavvvvvv",
 				Name:                 "p9999",
-				DictyPlasmidProperty: "cloning vector",
+				DictyPlasmidProperty: OntologyTermCloningVector,
 			},
 		},
 	}
@@ -102,9 +111,10 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 	gm, err := repo.GetPlasmid(um.StockID)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
-		"cloning vector",
+		OntologyTermCloningVector,
 		gm.PlasmidProperties.DictyPlasmidProperty,
-		"should store ontology term label",
+		"GetPlasmid should retrieve the ontology term label that was stored during LoadPlasmid for plasmid %s",
+		um.StockID,
 	)
 }
 
@@ -583,11 +593,11 @@ func TestAddPlasmidWithOntologyTerms(t *testing.T) {
 		name string
 		term string
 	}{
-		{"REMI vector", "REMI vector"},
-		{"GFP marker", "GFP marker"},
-		{"Gateway vector", "Gateway vector"},
-		{"act15 promoter", "act15 promoter"},
-		{"tetOFF vector", "tetOFF vector"},
+		{"REMI vector", OntologyTermREMIVector},
+		{"GFP marker", OntologyTermGFPMarker},
+		{"Gateway vector", OntologyTermGatewayVector},
+		{"act15 promoter", OntologyTermAct15Promoter},
+		{"tetOFF vector", OntologyTermTetOFFVector},
 	}
 
 	for _, tc := range testCases {
@@ -595,11 +605,12 @@ func TestAddPlasmidWithOntologyTerms(t *testing.T) {
 			np := newTestPlasmid("pfey@dictybase.org")
 			np.Data.Attributes.DictyPlasmidProperty = tc.term
 			um, err := repo.AddPlasmid(np)
-			assert.NoErrorf(err, "expect no error, received %s", err)
+			assert.NoErrorf(err, "expect no error adding plasmid with ontology term %s, received %s", tc.term, err)
 			gm, err := repo.GetPlasmid(um.StockID)
-			assert.NoErrorf(err, "expect no error, received %s", err)
+			assert.NoErrorf(err, "expect no error retrieving plasmid %s, received %s", um.StockID, err)
 			assert.Equal(tc.term, gm.PlasmidProperties.DictyPlasmidProperty,
-				"should store ontology term label")
+				"AddPlasmid should store and GetPlasmid should retrieve ontology term label '%s' for plasmid %s",
+				tc.term, um.StockID)
 		})
 	}
 }
@@ -616,22 +627,29 @@ func TestEditPlasmidOntologyUpdate(t *testing.T) {
 			Id:   m.StockID,
 			Attributes: &stock.PlasmidUpdateAttributes{
 				UpdatedBy:            "peterman@jpeterman.com",
-				DictyPlasmidProperty: "doxON vector",
+				DictyPlasmidProperty: OntologyTermDoxONVector,
 			},
 		},
 	}
 	_, err = repo.EditPlasmid(us)
-	assert.NoErrorf(err, "expect no error, received %s", err)
+	assert.NoErrorf(err, "expect no error updating plasmid ontology, received %s", err)
 	gm, err := repo.GetPlasmid(m.StockID)
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Equal("doxON vector", gm.PlasmidProperties.DictyPlasmidProperty, "should update ontology term")
+	assert.NoErrorf(err, "expect no error retrieving updated plasmid %s, received %s", m.StockID, err)
+	assert.Equal(OntologyTermDoxONVector, gm.PlasmidProperties.DictyPlasmidProperty,
+		"EditPlasmid should update ontology term from '%s' to '%s' for plasmid %s",
+		ns.Data.Attributes.DictyPlasmidProperty, OntologyTermDoxONVector, m.StockID)
 }
 
 func TestAddPlasmidInvalidOntologyTerm(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	np := newTestPlasmid("pfey@dictybase.org")
-	np.Data.Attributes.DictyPlasmidProperty = "not a real ontology term"
+	invalidTerm := "not a real ontology term"
+	np.Data.Attributes.DictyPlasmidProperty = invalidTerm
 	_, err := repo.AddPlasmid(np)
-	assert.Error(err, "should error on invalid ontology term")
+	assert.Error(
+		err,
+		"AddPlasmid should return an error when attempting to add plasmid with invalid ontology term '%s'",
+		invalidTerm,
+	)
 }
