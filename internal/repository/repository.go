@@ -3,6 +3,7 @@ package repository
 import (
 	"io"
 
+	IOE "github.com/IBM/fp-go/ioeither"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/go-obograph/storage"
@@ -12,7 +13,7 @@ import (
 // StockRepository is an interface for managing stock information
 type StockRepository interface {
 	GetStrain(id string) (*model.StockDoc, error)
-	GetPlasmid(id string) (*model.StockDoc, error)
+	GetPlasmid(id string) IOE.IOEither[error, *model.StockDoc]
 	AddStrain(ns *stock.NewStrain) (*model.StockDoc, error)
 	AddPlasmid(ns *stock.NewPlasmid) (*model.StockDoc, error)
 	EditStrain(us *stock.StrainUpdate) (*model.StockDoc, error)
