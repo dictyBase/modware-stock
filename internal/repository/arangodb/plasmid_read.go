@@ -3,6 +3,9 @@ package arangodb
 import (
 	"fmt"
 
+	fperrors "github.com/IBM/fp-go/errors"
+	F "github.com/IBM/fp-go/function"
+	IOE "github.com/IBM/fp-go/ioeither"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
@@ -39,28 +42,89 @@ func (ar *arangorepository) ListPlasmids(
 	return plasmids, nil
 }
 
-// GetPlasmid retrieves a plasmid from the database
-func (ar *arangorepository) GetPlasmid(id string) (*model.StockDoc, error) {
-	stockDoc := &model.StockDoc{}
-	r, err := ar.database.GetRow(
-		statement.StockGetPlasmid,
-		map[string]any{
-			"id":                 id,
-			"@stock_collection":  ar.stockc.stock.Name(),
-			"stock_prop_graph":   ar.stockc.stockPropType.Name(),
-			"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
-			"ontology":           ar.plasmidOnto,
-			"@cv_collection":     ar.ontoc.Cv.Name(),
-		})
-	if err != nil {
-		return stockDoc, err
+// GetPlasmid retrieves a plasmid from the database using IOEither monad
+func (ar *arangorepository) GetPlasmid(
+	id string,
+) IOE.IOEither[error, *model.StockDoc] {
+	return F.Pipe4(
+		id,
+		ar.buildPlasmidQueryParams,
+		ar.executePlasmidQuery,
+		IOE.Chain(ar.validatePlasmidQueryResult),
+		IOE.MapLeft[*model.StockDoc](
+			fperrors.OnError("failed to get plasmid"),
+		),
+	)
+}
+
+// buildPlasmidQueryParams creates the bind parameters for plasmid query
+func (ar *arangorepository) buildPlasmidQueryParams(
+	plasmidID string,
+) map[string]any {
+	return map[string]any{
+		"id":                 plasmidID,
+		"@stock_collection":  ar.stockc.stock.Name(),
+		"stock_prop_graph":   ar.stockc.stockPropType.Name(),
+		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
+		"ontology":           ar.plasmidOnto,
+		"@cv_collection":     ar.ontoc.Cv.Name(),
 	}
-	if r.IsEmpty() {
-		stockDoc.NotFound = true
+}
+
+// executePlasmidQuery executes the database query for plasmid retrieval using IOEither
+func (ar *arangorepository) executePlasmidQuery(
+	bindParams map[string]any,
+) IOE.IOEither[error, *dbQueryResult] {
+	return IOE.TryCatchError(
+		func() (*dbQueryResult, error) {
+			plasmidID, _ := bindParams["id"].(string)
+			row, err := ar.database.GetRow(
+				statement.StockGetPlasmid,
+				bindParams,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("database query failed: %w", err)
+			}
+			return &dbQueryResult{
+				row:       row,
+				plasmidID: plasmidID,
+			}, nil
+		},
+	)
+}
+
+// validatePlasmidQueryResult validates query result and reads stock document using IOEither
+func (ar *arangorepository) validatePlasmidQueryResult(
+	result *dbQueryResult,
+) IOE.IOEither[error, *model.StockDoc] {
+	fn := func() (*model.StockDoc, error) {
+		if result.row.IsEmpty() {
+			return nil, fmt.Errorf(
+				"plasmid not found with ID %s",
+				result.plasmidID,
+			)
+		}
+
+		stockDoc := &model.StockDoc{}
+		if err := result.row.Read(stockDoc); err != nil {
+			return nil, fmt.Errorf("failed to read stock document: %w", err)
+		}
+
 		return stockDoc, nil
 	}
-	err = r.Read(stockDoc)
-	return stockDoc, err
+	return IOE.TryCatchError(fn)
+}
+
+// dbQueryResult encapsulates database query result context
+type dbQueryResult struct {
+	row       dbRow
+	plasmidID string
+}
+
+// dbRow represents a database row interface
+type dbRow interface {
+	IsEmpty() bool
+	Read(interface{}) error
 }
 
 func (ar *arangorepository) plasmidStmtWithFilter(
