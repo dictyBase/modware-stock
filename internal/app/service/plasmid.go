@@ -4,11 +4,19 @@ import (
 	"context"
 	"fmt"
 
+	E "github.com/IBM/fp-go/either"
+	fperrors "github.com/IBM/fp-go/errors"
+	F "github.com/IBM/fp-go/function"
+	IOE "github.com/IBM/fp-go/ioeither"
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/collection"
 	"github.com/dictyBase/modware-stock/internal/model"
+	"github.com/dictyBase/modware-stock/internal/repository"
 )
+
+// StockRepository is a type alias for the repository interface
+type StockRepository = repository.StockRepository
 
 // CreatePlasmid handles the creation of a new plasmid
 func (s *StockService) CreatePlasmid(
@@ -34,28 +42,154 @@ func (s *StockService) CreatePlasmid(
 	return plasmid, nil
 }
 
-// GetPlasmid handles getting a plasmid by its ID
+// GetPlasmid handles getting a plasmid by its ID using IOEither composition
 func (s *StockService) GetPlasmid(
 	ctx context.Context,
-	r *stock.StockId,
+	req *stock.StockId,
 ) (*stock.Plasmid, error) {
-	plasmid := &stock.Plasmid{}
-	if err := r.Validate(); err != nil {
-		return plasmid, aphgrpc.HandleInvalidParamError(ctx, err)
-	}
-	stockDoc, err := s.repo.GetPlasmid(r.Id)
-	if err != nil {
-		return plasmid, aphgrpc.HandleGetError(ctx, err)
-	}
-	if stockDoc.NotFound {
-		return plasmid,
-			aphgrpc.HandleNotFoundError(
-				ctx,
-				fmt.Errorf("could not find plasmid with ID %s", r.Id),
+	workflow := s.getPlasmidWorkflow(ctx, req)
+	return toServiceResult(ctx)(workflow)
+}
+
+// getPlasmidWorkflow orchestrates the plasmid retrieval using IOEither Do/Bind
+func (s *StockService) getPlasmidWorkflow(
+	ctx context.Context,
+	req *stock.StockId,
+) IOE.IOEither[error, *stock.Plasmid] {
+	return F.Pipe4(
+		IOE.Of[error](getPlasmidContext{
+			ctx:     ctx,
+			request: req,
+			repo:    s.repo,
+		}),
+		IOE.Bind(
+			setValidatedRequest,
+			validatePlasmidRequest,
+		),
+		IOE.Bind(
+			setStockDocument,
+			retrievePlasmidFromRepository,
+		),
+		IOE.Let[error](
+			setPlasmidData,
+			transformToPlasmidData,
+		),
+		IOE.Map[error](func(pctx withPlasmidData) *stock.Plasmid {
+			return &stock.Plasmid{Data: pctx.plasmidData}
+		}),
+	)
+}
+
+// getPlasmidContext represents the initial context for plasmid retrieval
+type getPlasmidContext struct {
+	ctx     context.Context
+	request *stock.StockId
+	repo    StockRepository
+}
+
+// withValidatedRequest adds validated request to context
+type withValidatedRequest struct {
+	getPlasmidContext
+	validatedID string
+}
+
+// withStockDocument adds stock document to context
+type withStockDocument struct {
+	withValidatedRequest
+	stockDoc *model.StockDoc
+}
+
+// withPlasmidData adds plasmid data to context
+type withPlasmidData struct {
+	withStockDocument
+	plasmidData *stock.Plasmid_Data
+}
+
+// Curried setters for building context
+var (
+	// setValidatedRequest sets validated request ID in context
+	setValidatedRequest = F.Curry2(
+		func(validID string, pctx getPlasmidContext) withValidatedRequest {
+			return withValidatedRequest{
+				getPlasmidContext: pctx,
+				validatedID:       validID,
+			}
+		},
+	)
+
+	// setStockDocument sets stock document in context
+	setStockDocument = F.Curry2(
+		func(doc *model.StockDoc, pctx withValidatedRequest) withStockDocument {
+			return withStockDocument{
+				withValidatedRequest: pctx,
+				stockDoc:             doc,
+			}
+		},
+	)
+
+	// setPlasmidData sets plasmid data in context
+	setPlasmidData = F.Curry2(
+		func(data *stock.Plasmid_Data, pctx withStockDocument) withPlasmidData {
+			return withPlasmidData{
+				withStockDocument: pctx,
+				plasmidData:       data,
+			}
+		},
+	)
+)
+
+// validatePlasmidRequest validates the stock ID request
+func validatePlasmidRequest(
+	pctx getPlasmidContext,
+) IOE.IOEither[error, string] {
+	return func() E.Either[error, string] {
+		if err := pctx.request.Validate(); err != nil {
+			return E.Left[string](
+				fmt.Errorf("invalid request parameters: %w", err),
 			)
+		}
+		return E.Right[error](pctx.request.Id)
 	}
-	plasmid.Data = makePlasmidData(stockDoc)
-	return plasmid, nil
+}
+
+// retrievePlasmidFromRepository retrieves plasmid from repository
+func retrievePlasmidFromRepository(
+	pctx withValidatedRequest,
+) IOE.IOEither[error, *model.StockDoc] {
+	return F.Pipe1(
+		pctx.repo.GetPlasmid(pctx.validatedID),
+		IOE.MapLeft[*model.StockDoc](
+			fperrors.OnError(
+				fmt.Sprintf("failed to retrieve plasmid %s", pctx.validatedID),
+			),
+		),
+	)
+}
+
+// transformToPlasmidData transforms stock document to plasmid data
+func transformToPlasmidData(pctx withStockDocument) *stock.Plasmid_Data {
+	return makePlasmidData(pctx.stockDoc)
+}
+
+// toServiceResult converts IOEither result to service response with error handling
+func toServiceResult(
+	ctx context.Context,
+) func(IOE.IOEither[error, *stock.Plasmid]) (*stock.Plasmid, error) {
+	return func(ioe IOE.IOEither[error, *stock.Plasmid]) (*stock.Plasmid, error) {
+		either := ioe()
+		if E.IsLeft(either) {
+			err := E.Fold(
+				func(e error) error { return e },
+				func(*stock.Plasmid) error { return nil },
+			)(either)
+			return &stock.Plasmid{}, aphgrpc.HandleGetError(ctx, err)
+		}
+		plasmid := E.Fold(
+			func(error) *stock.Plasmid { return &stock.Plasmid{} },
+			func(p *stock.Plasmid) *stock.Plasmid { return p },
+		)(either)
+		return plasmid, nil
+	}
 }
 
 // LoadPlasmid loads plasmids with existing IDs into the database
@@ -108,10 +242,21 @@ func (s *StockService) UpdatePlasmid(
 			)
 	}
 	// Fetch the complete plasmid record to get all fields including ontology
-	fullPlasmid, err := s.repo.GetPlasmid(r.Data.Id)
-	if err != nil {
+	fullPlasmidEither := F.Pipe1(
+		s.repo.GetPlasmid(r.Data.Id),
+		toEither[*model.StockDoc],
+	)
+	if E.IsLeft(fullPlasmidEither) {
+		err := E.Fold(
+			func(e error) error { return e },
+			func(*model.StockDoc) error { return nil },
+		)(fullPlasmidEither)
 		return plasmid, aphgrpc.HandleGetError(ctx, err)
 	}
+	fullPlasmid := E.Fold(
+		func(error) *model.StockDoc { return nil },
+		func(doc *model.StockDoc) *model.StockDoc { return doc },
+	)(fullPlasmidEither)
 	plasmid.Data = makePlasmidData(fullPlasmid)
 	err = s.publisher.PublishPlasmid(s.Topics["stockUpdate"], plasmid)
 	if err != nil {
@@ -126,7 +271,9 @@ func (s *StockService) ListPlasmids(
 	param *stock.StockParameters,
 ) (*stock.PlasmidCollection, error) {
 	limit := limitVal(param.Limit)
-	plasmidCollection := &stock.PlasmidCollection{Meta: &stock.Meta{Limit: limit}}
+	plasmidCollection := &stock.PlasmidCollection{
+		Meta: &stock.Meta{Limit: limit},
+	}
 	stockDocs, err := stockModelList(&modelListParams{
 		ctx:         ctx,
 		stockParams: param,
@@ -161,13 +308,16 @@ func makePlasmidData(m *model.StockDoc) *stock.Plasmid_Data {
 func plasmidModelToCollectionSlice(
 	mc []*model.StockDoc,
 ) []*stock.PlasmidCollection_Data {
-	return collection.Map(mc, func(m *model.StockDoc) *stock.PlasmidCollection_Data {
-		return &stock.PlasmidCollection_Data{
-			Type:       "plasmid",
-			Id:         m.Key,
-			Attributes: makePlasmidAttr(m),
-		}
-	})
+	return collection.Map(
+		mc,
+		func(m *model.StockDoc) *stock.PlasmidCollection_Data {
+			return &stock.PlasmidCollection_Data{
+				Type:       "plasmid",
+				Id:         m.Key,
+				Attributes: makePlasmidAttr(m),
+			}
+		},
+	)
 }
 
 func makePlasmidAttr(m *model.StockDoc) *stock.PlasmidAttributes {
@@ -192,4 +342,9 @@ func makePlasmidAttr(m *model.StockDoc) *stock.PlasmidAttributes {
 	}
 
 	return attr
+}
+
+// toEither executes an IOEither to get an Either result
+func toEither[A any](ioe IOE.IOEither[error, A]) E.Either[error, A] {
+	return ioe()
 }
