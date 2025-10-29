@@ -12,31 +12,31 @@ import (
 func (ar *arangorepository) ListPlasmids(
 	p *stock.StockParameters,
 ) ([]*model.StockDoc, error) {
-	var om []*model.StockDoc
+	var plasmids []*model.StockDoc
 	stmt := ar.plasmidStmtNoFilter(p)
 	// if filter string exists, it needs to be included in statement
 	if len(p.Filter) > 0 {
 		stmt = ar.plasmidStmtWithFilter(p)
 	}
-	rs, err := ar.database.SearchRows(stmt, map[string]any{
+	rows, err := ar.database.SearchRows(stmt, map[string]any{
 		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
 		"ontology":           ar.plasmidOnto,
 		"@cv_collection":     ar.ontoc.Cv.Name(),
 	})
 	if err != nil {
-		return om, err
+		return plasmids, err
 	}
-	if rs.IsEmpty() {
-		return om, nil
+	if rows.IsEmpty() {
+		return plasmids, nil
 	}
-	for rs.Scan() {
-		m := &model.StockDoc{}
-		if err := rs.Read(m); err != nil {
-			return om, err
+	for rows.Scan() {
+		stockDoc := &model.StockDoc{}
+		if err := rows.Read(stockDoc); err != nil {
+			return plasmids, err
 		}
-		om = append(om, m)
+		plasmids = append(plasmids, stockDoc)
 	}
-	return om, nil
+	return plasmids, nil
 }
 
 // GetPlasmid retrieves a plasmid from the database

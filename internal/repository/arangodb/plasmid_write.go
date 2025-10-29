@@ -70,7 +70,11 @@ func (ar *arangorepository) EditPlasmid(
 			},
 		)
 		if err != nil {
-			return stockDoc, err
+			return stockDoc, fmt.Errorf(
+				"failed to update plasmid ontology term for %s: %w",
+				us.Data.Id,
+				err,
+			)
 		}
 	}
 	bindVars := getUpdatablePlasmidBindParams(us.Data.Attributes)
