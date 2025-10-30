@@ -11,35 +11,19 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 )
 
-// ListPlasmids provides a list of all plasmids
+// ListPlasmids provides a list of all plasmids returning IOEither monad
 func (ar *arangorepository) ListPlasmids(
-	p *stock.StockParameters,
-) ([]*model.StockDoc, error) {
-	var plasmids []*model.StockDoc
-	stmt := ar.plasmidStmtNoFilter(p)
-	// if filter string exists, it needs to be included in statement
-	if len(p.Filter) > 0 {
-		stmt = ar.plasmidStmtWithFilter(p)
-	}
-	rows, err := ar.database.SearchRows(stmt, map[string]any{
-		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
-		"ontology":           ar.plasmidOnto,
-		"@cv_collection":     ar.ontoc.Cv.Name(),
-	})
-	if err != nil {
-		return plasmids, err
-	}
-	if rows.IsEmpty() {
-		return plasmids, nil
-	}
-	for rows.Scan() {
-		stockDoc := &model.StockDoc{}
-		if err := rows.Read(stockDoc); err != nil {
-			return plasmids, err
-		}
-		plasmids = append(plasmids, stockDoc)
-	}
-	return plasmids, nil
+	params *stock.StockParameters,
+) IOE.IOEither[error, []*model.StockDoc] {
+	return F.Pipe4(
+		IOE.Right[error](params),
+		IOE.Map[error](ar.buildPlasmidListQueryParams),
+		IOE.Chain(ar.executePlasmidListQuery),
+		IOE.Chain(ar.scanPlasmidRows),
+		IOE.MapLeft[[]*model.StockDoc](
+			fperrors.OnError("failed to list plasmids"),
+		),
+	)
 }
 
 // GetPlasmid retrieves a plasmid from the database using IOEither monad
@@ -125,6 +109,91 @@ type dbQueryResult struct {
 type dbRow interface {
 	IsEmpty() bool
 	Read(interface{}) error
+}
+
+// dbRows represents a database rows interface for scanning multiple results
+type dbRows interface {
+	IsEmpty() bool
+	Scan() bool
+	Read(interface{}) error
+}
+
+// plasmidListQueryParams encapsulates parameters for plasmid list query
+type plasmidListQueryParams struct {
+	statement  string
+	bindParams map[string]any
+}
+
+// buildPlasmidListQueryParams creates query parameters for listing plasmids
+func (ar *arangorepository) buildPlasmidListQueryParams(
+	params *stock.StockParameters,
+) plasmidListQueryParams {
+	stmt := ar.selectPlasmidStatement(params)
+	bindParams := map[string]any{
+		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
+		"ontology":           ar.plasmidOnto,
+		"@cv_collection":     ar.ontoc.Cv.Name(),
+	}
+
+	return plasmidListQueryParams{
+		statement:  stmt,
+		bindParams: bindParams,
+	}
+}
+
+// selectPlasmidStatement selects appropriate statement based on filter presence
+func (ar *arangorepository) selectPlasmidStatement(
+	params *stock.StockParameters,
+) string {
+	if len(params.Filter) > 0 {
+		return ar.plasmidStmtWithFilter(params)
+	}
+	return ar.plasmidStmtNoFilter(params)
+}
+
+// executePlasmidListQuery executes the query and returns rows
+func (ar *arangorepository) executePlasmidListQuery(
+	queryParams plasmidListQueryParams,
+) IOE.IOEither[error, dbRows] {
+	return IOE.TryCatchError(
+		func() (dbRows, error) {
+			rows, err := ar.database.SearchRows(
+				queryParams.statement,
+				queryParams.bindParams,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("database query failed: %w", err)
+			}
+			return rows, nil
+		},
+	)
+}
+
+// scanPlasmidRows scans all rows into slice of StockDoc
+func (ar *arangorepository) scanPlasmidRows(
+	rows dbRows,
+) IOE.IOEither[error, []*model.StockDoc] {
+	return IOE.TryCatchError(
+		func() ([]*model.StockDoc, error) {
+			if rows.IsEmpty() {
+				return []*model.StockDoc{}, nil
+			}
+
+			plasmids := make([]*model.StockDoc, 0)
+			for rows.Scan() {
+				stockDoc := &model.StockDoc{}
+				if err := rows.Read(stockDoc); err != nil {
+					return nil, fmt.Errorf(
+						"failed to read stock document: %w",
+						err,
+					)
+				}
+				plasmids = append(plasmids, stockDoc)
+			}
+
+			return plasmids, nil
+		},
+	)
 }
 
 func (ar *arangorepository) plasmidStmtWithFilter(
