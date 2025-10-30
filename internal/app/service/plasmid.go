@@ -116,34 +116,29 @@ func (s *StockService) UpdatePlasmid(
 	return plasmid, nil
 }
 
-// ListPlasmids lists all existing plasmids
+// ListPlasmids lists all existing plasmids using IOEither composition
 func (s *StockService) ListPlasmids(
 	ctx context.Context,
 	param *stock.StockParameters,
 ) (*stock.PlasmidCollection, error) {
 	limit := limitVal(param.Limit)
-	plasmidCollection := &stock.PlasmidCollection{
-		Meta: &stock.Meta{Limit: limit},
-	}
-	stockDocs, err := stockModelList(&modelListParams{
-		ctx:         ctx,
-		stockParams: param,
-		limit:       limit,
-		fn:          s.repo.ListPlasmids,
-	})
-	if err != nil {
-		return plasmidCollection, err
-	}
-	pdata := plasmidModelToCollectionSlice(stockDocs)
-	if len(pdata) < int(limit)-2 { // fewer results than limit
-		plasmidCollection.Data = pdata
-		plasmidCollection.Meta.Total = int64(len(pdata))
-		return plasmidCollection, nil
-	}
-	plasmidCollection.Data = pdata[:len(pdata)-1]
-	plasmidCollection.Meta.NextCursor = genNextCursorVal(
-		pdata[len(pdata)-1].Attributes.CreatedAt,
+
+	result := F.Pipe6(
+		IOE.Of[error](listPlasmidsContext{
+			ctx:   ctx,
+			param: param,
+			limit: limit,
+			repo:  s.repo,
+		}),
+		IOE.Bind(setValidatedFilter, validatePlasmidFilter),
+		IOE.Bind(setStockDocList, retrievePlasmidsFromRepository),
+		IOE.Let[error](
+			setPlasmidCollectionData,
+			transformToPlasmidCollection,
+		),
+		IOE.Let[error](setNextCursor, computeNextCursor),
+		IOE.Map[error](extractPlasmidCollectionResponse),
+		toPlasmidCollectionResult(ctx, limit),
 	)
-	plasmidCollection.Meta.Total = int64(len(pdata))
-	return plasmidCollection, nil
+	return result.F1, result.F2
 }
