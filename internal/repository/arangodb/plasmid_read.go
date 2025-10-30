@@ -47,9 +47,9 @@ func (ar *arangorepository) GetPlasmid(
 	id string,
 ) IOE.IOEither[error, *model.StockDoc] {
 	return F.Pipe4(
-		id,
-		ar.buildPlasmidQueryParams,
-		ar.executePlasmidQuery,
+		IOE.Of[error](id),
+		IOE.Map[error](ar.buildPlasmidQueryParams),
+		IOE.Chain(ar.executePlasmidQuery),
 		IOE.Chain(ar.validatePlasmidQueryResult),
 		IOE.MapLeft[*model.StockDoc](
 			fperrors.OnError("failed to get plasmid"),
