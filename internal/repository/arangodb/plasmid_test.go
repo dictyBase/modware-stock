@@ -35,6 +35,25 @@ func unwrapPlasmidEither(
 	return doc, nil
 }
 
+// unwrapPlasmidListEither is a test helper to unwrap IOEither[error, []*model.StockDoc]
+func unwrapPlasmidListEither(
+	ioeither IOE.IOEither[error, []*model.StockDoc],
+) ([]*model.StockDoc, error) {
+	either := ioeither() // Execute IOEither to get Either
+	if E.IsLeft(either) {
+		err := E.Fold(
+			func(e error) error { return e },
+			func([]*model.StockDoc) error { return nil },
+		)(either)
+		return nil, err
+	}
+	docs := E.Fold(
+		func(error) []*model.StockDoc { return nil },
+		func(d []*model.StockDoc) []*model.StockDoc { return d },
+	)(either)
+	return docs, nil
+}
+
 const (
 	georgeFilter = `FILTER s.depositor == 'george@costanza.com'`
 	pfilterTwo   = `FILTER s.depositor == 'george@costanza.com' AND s.depositor == 'rg@gmail.com'`
@@ -151,9 +170,9 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 		assert.NoErrorf(err, "expect no error, received %s", err)
 		time.Sleep(100 * time.Millisecond)
 	}
-	sf, err := repo.ListPlasmids(
+	sf, err := unwrapPlasmidListEither(repo.ListPlasmids(
 		&stock.StockParameters{Limit: 10, Filter: georgeFilter},
-	)
+	))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(sf, 10, "should list ten plasmids")
 	for _, um := range sf {
@@ -164,47 +183,47 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 		)
 		assert.Equal(um.PlasmidProperties.Name, "p123456", "should match name")
 	}
-	n, err := repo.ListPlasmids(
+	n, err := unwrapPlasmidListEither(repo.ListPlasmids(
 		&stock.StockParameters{Limit: 100, Filter: pfilterTwo},
-	)
+	))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(n, 0, "should list no plasmids")
 	// do a check for array filter
-	as, err := repo.ListPlasmids(
+	as, err := unwrapPlasmidListEither(repo.ListPlasmids(
 		&stock.StockParameters{
 			Cursor: toTimestamp(sf[5].CreatedAt),
 			Limit:  10,
 			Filter: pfilterThree,
 		},
-	)
+	))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(as, 5, "should list five plasmids")
-	da, err := repo.ListPlasmids(
+	da, err := unwrapPlasmidListEither(repo.ListPlasmids(
 		&stock.StockParameters{
 			Cursor: toTimestamp(sf[5].CreatedAt),
 			Limit:  10,
 			Filter: pfilterFour,
 		},
-	)
+	))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(da, 0, "should list no plasmids")
-	ff, err := repo.ListPlasmids(
+	ff, err := unwrapPlasmidListEither(repo.ListPlasmids(
 		&stock.StockParameters{Limit: 10, Filter: pfilterFive},
-	)
+	))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(ff, 10, "should list ten plasmids")
-	fs, err := repo.ListPlasmids(
+	fs, err := unwrapPlasmidListEither(repo.ListPlasmids(
 		&stock.StockParameters{Limit: 10, Filter: pfilterSix},
-	)
+	))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(fs, 10, "should list ten plasmids")
-	fv, err := repo.ListPlasmids(
+	fv, err := unwrapPlasmidListEither(repo.ListPlasmids(
 		&stock.StockParameters{
 			Cursor: toTimestamp(sf[5].CreatedAt),
 			Limit:  10,
 			Filter: pfilterSeven,
 		},
-	)
+	))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(fv, 5, "should list five plasmids")
 }
@@ -220,7 +239,7 @@ func TestListPlasmids(t *testing.T) {
 		assert.NoErrorf(err, "expect no error adding plasmid, received %s", err)
 		time.Sleep(100 * time.Millisecond)
 	}
-	ls, err := repo.ListPlasmids(&stock.StockParameters{Limit: 4})
+	ls, err := unwrapPlasmidListEither(repo.ListPlasmids(&stock.StockParameters{Limit: 4}))
 	assert.NoErrorf(
 		err,
 		"expect no error getting first five plasmids, received %s",
@@ -258,7 +277,7 @@ func testMoreListPlasmids(
 	// so we can use this as cursor
 	// get next five results (5-9)
 	ti := toTimestamp(ls[len(ls)-1].CreatedAt)
-	ls2, err := repo.ListPlasmids(&stock.StockParameters{Cursor: ti, Limit: 4})
+	ls2, err := unwrapPlasmidListEither(repo.ListPlasmids(&stock.StockParameters{Cursor: ti, Limit: 4}))
 	assert.NoErrorf(
 		err,
 		"expect no error getting plasmids 5-9, received %s",
@@ -279,7 +298,7 @@ func testMoreListPlasmids(
 	// convert ninth result to numeric timestamp
 	ti2 := toTimestamp(ls2[len(ls2)-1].CreatedAt)
 	// get last results (9-10)
-	ls3, err := repo.ListPlasmids(&stock.StockParameters{Cursor: ti2, Limit: 4})
+	ls3, err := unwrapPlasmidListEither(repo.ListPlasmids(&stock.StockParameters{Cursor: ti2, Limit: 4}))
 	assert.NoErrorf(
 		err,
 		"expect no error getting plasmids 9-10, received %s",
@@ -296,9 +315,9 @@ func testMoreListPlasmids(
 	testModelListSort(ls2, t)
 	testModelListSort(ls3, t)
 
-	sf, err := repo.ListPlasmids(
+	sf, err := unwrapPlasmidListEither(repo.ListPlasmids(
 		&stock.StockParameters{Limit: 100, Filter: georgeFilter},
-	)
+	))
 	assert.NoErrorf(
 		err,
 		"expect no error getting list of plasmids, received %s",
@@ -306,9 +325,9 @@ func testMoreListPlasmids(
 	)
 	assert.Len(sf, 10, "should list ten plasmids")
 
-	cs, err := repo.ListPlasmids(
+	cs, err := unwrapPlasmidListEither(repo.ListPlasmids(
 		&stock.StockParameters{Cursor: toTimestamp(sf[4].CreatedAt), Limit: 10},
-	)
+	))
 	assert.NoErrorf(
 		err,
 		"expect no error getting list of plasmids with cursor, received %s",
