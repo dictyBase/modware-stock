@@ -8,6 +8,7 @@ import (
 	fperrors "github.com/IBM/fp-go/errors"
 	F "github.com/IBM/fp-go/function"
 	IOE "github.com/IBM/fp-go/ioeither"
+	T "github.com/IBM/fp-go/tuple"
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/collection"
@@ -176,19 +177,21 @@ func toServiceResult(
 	ctx context.Context,
 ) func(IOE.IOEither[error, *stock.Plasmid]) (*stock.Plasmid, error) {
 	return func(ioe IOE.IOEither[error, *stock.Plasmid]) (*stock.Plasmid, error) {
-		either := ioe()
-		if E.IsLeft(either) {
-			err := E.Fold(
-				func(e error) error { return e },
-				func(*stock.Plasmid) error { return nil },
-			)(either)
-			return &stock.Plasmid{}, aphgrpc.HandleGetError(ctx, err)
-		}
-		plasmid := E.Fold(
-			func(error) *stock.Plasmid { return &stock.Plasmid{} },
-			func(p *stock.Plasmid) *stock.Plasmid { return p },
-		)(either)
-		return plasmid, nil
+		result := F.Pipe1(
+			ioe(),
+			E.Fold(
+				func(e error) T.Tuple2[*stock.Plasmid, error] {
+					return T.MakeTuple2(
+						&stock.Plasmid{},
+						aphgrpc.HandleGetError(ctx, e),
+					)
+				},
+				func(p *stock.Plasmid) T.Tuple2[*stock.Plasmid, error] {
+					return T.MakeTuple2[*stock.Plasmid, error](p, nil)
+				},
+			),
+		)
+		return result.F1, result.F2
 	}
 }
 
@@ -242,21 +245,10 @@ func (s *StockService) UpdatePlasmid(
 			)
 	}
 	// Fetch the complete plasmid record to get all fields including ontology
-	fullPlasmidEither := F.Pipe1(
-		s.repo.GetPlasmid(r.Data.Id),
-		toEither[*model.StockDoc],
-	)
-	if E.IsLeft(fullPlasmidEither) {
-		err := E.Fold(
-			func(e error) error { return e },
-			func(*model.StockDoc) error { return nil },
-		)(fullPlasmidEither)
+	fullPlasmid, err := toTuple(s.repo.GetPlasmid(r.Data.Id))
+	if err != nil {
 		return plasmid, aphgrpc.HandleGetError(ctx, err)
 	}
-	fullPlasmid := E.Fold(
-		func(error) *model.StockDoc { return nil },
-		func(doc *model.StockDoc) *model.StockDoc { return doc },
-	)(fullPlasmidEither)
 	plasmid.Data = makePlasmidData(fullPlasmid)
 	err = s.publisher.PublishPlasmid(s.Topics["stockUpdate"], plasmid)
 	if err != nil {
@@ -344,7 +336,19 @@ func makePlasmidAttr(m *model.StockDoc) *stock.PlasmidAttributes {
 	return attr
 }
 
-// toEither executes an IOEither to get an Either result
-func toEither[A any](ioe IOE.IOEither[error, A]) E.Either[error, A] {
-	return ioe()
+// toTuple converts IOEither to Go tuple using functional Tuple2 approach
+func toTuple[A any](ioe IOE.IOEither[error, A]) (A, error) {
+	result := F.Pipe1(
+		ioe(), // Execute IOEither to get Either
+		E.Fold(
+			func(e error) T.Tuple2[A, error] {
+				var zero A
+				return T.MakeTuple2(zero, e)
+			},
+			func(data A) T.Tuple2[A, error] {
+				return T.MakeTuple2[A, error](data, nil)
+			},
+		),
+	)
+	return result.F1, result.F2
 }
