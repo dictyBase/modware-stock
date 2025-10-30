@@ -71,3 +71,52 @@ type withPlasmidData struct {
 	withStockDocument
 	plasmidData *stock.Plasmid_Data
 }
+
+// ListPlasmids workflow context types
+
+// listPlasmidsContext represents the initial context for listing plasmids
+type listPlasmidsContext struct {
+	ctx   context.Context
+	param *stock.StockParameters
+	limit int64
+	repo  StockRepository
+}
+
+// withValidatedFilter adds validated filter to context
+type withValidatedFilter struct {
+	listPlasmidsContext
+	validatedFilter string
+}
+
+// withStockDocList adds stock document list to context
+type withStockDocList struct {
+	withValidatedFilter
+	stockDocs []*model.StockDoc
+}
+
+// withPlasmidCollectionData adds plasmid collection data to context
+type withPlasmidCollectionData struct {
+	withStockDocList
+	collectionData []*stock.PlasmidCollection_Data
+}
+
+// withNextCursor adds next cursor to context
+type withNextCursor struct {
+	withPlasmidCollectionData
+	nextCursor int64
+}
+
+// Result types for ListPlasmids
+type (
+	// PlasmidCollectionResult represents a plasmid collection with potential error
+	PlasmidCollectionResult = T.Tuple2[*stock.PlasmidCollection, error]
+
+	// PlasmidCollectionEither represents computation that may succeed with collection or fail
+	PlasmidCollectionEither = E.Either[error, *stock.PlasmidCollection]
+
+	// PlasmidCollectionIO represents an IO computation for plasmid collection retrieval
+	PlasmidCollectionIO = IOE.IOEither[error, *stock.PlasmidCollection]
+
+	// PlasmidCollectionConverter converts IOEither to Go's tuple result
+	PlasmidCollectionConverter = func(PlasmidCollectionIO) PlasmidCollectionResult
+)

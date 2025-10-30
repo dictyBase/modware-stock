@@ -108,3 +108,145 @@ func toServiceResult(ctx context.Context) PlasmidConverter {
 		)
 	}
 }
+
+// ListPlasmids workflow functions
+
+// Curried setters for ListPlasmids context building
+var (
+	// setValidatedFilter sets validated filter in context
+	setValidatedFilter = F.Curry2(
+		func(filter string, lctx listPlasmidsContext) withValidatedFilter {
+			return withValidatedFilter{
+				listPlasmidsContext: lctx,
+				validatedFilter:     filter,
+			}
+		},
+	)
+
+	// setStockDocList sets stock document list in context
+	setStockDocList = F.Curry2(
+		func(docs []*model.StockDoc, lctx withValidatedFilter) withStockDocList {
+			return withStockDocList{
+				withValidatedFilter: lctx,
+				stockDocs:           docs,
+			}
+		},
+	)
+
+	// setPlasmidCollectionData sets plasmid collection data in context
+	setPlasmidCollectionData = F.Curry2(
+		func(data []*stock.PlasmidCollection_Data, lctx withStockDocList) withPlasmidCollectionData {
+			return withPlasmidCollectionData{
+				withStockDocList: lctx,
+				collectionData:   data,
+			}
+		},
+	)
+
+	// setNextCursor sets next cursor in context
+	setNextCursor = F.Curry2(
+		func(cursor int64, lctx withPlasmidCollectionData) withNextCursor {
+			return withNextCursor{
+				withPlasmidCollectionData: lctx,
+				nextCursor:                cursor,
+			}
+		},
+	)
+
+	// extractPlasmidCollectionResponse extracts collection response from enriched context
+	extractPlasmidCollectionResponse = func(lctx withNextCursor) *stock.PlasmidCollection {
+		pdata := lctx.collectionData
+
+		// If we have a next cursor, slice the data to exclude the last item
+		if lctx.nextCursor > 0 && len(pdata) > 0 {
+			pdata = pdata[:len(pdata)-1]
+		}
+
+		return &stock.PlasmidCollection{
+			Data: pdata,
+			Meta: &stock.Meta{
+				Limit:      lctx.limit,
+				Total:      int64(len(pdata)),
+				NextCursor: lctx.nextCursor,
+			},
+		}
+	}
+)
+
+// validatePlasmidFilter validates and processes the filter parameter
+func validatePlasmidFilter(
+	lctx listPlasmidsContext,
+) IOE.IOEither[error, string] {
+	return func() E.Either[error, string] {
+		astmt, err := stockAQLStatement(lctx.param.Filter)
+		if err != nil {
+			return E.Left[string](
+				fmt.Errorf("invalid filter parameter: %w", err),
+			)
+		}
+		return E.Right[error](astmt)
+	}
+}
+
+// retrievePlasmidsFromRepository retrieves plasmids from repository
+func retrievePlasmidsFromRepository(
+	lctx withValidatedFilter,
+) IOE.IOEither[error, []*model.StockDoc] {
+	return F.Pipe1(
+		lctx.repo.ListPlasmids(&stock.StockParameters{
+			Cursor: lctx.param.Cursor,
+			Limit:  lctx.limit,
+			Filter: lctx.validatedFilter,
+		}),
+		IOE.MapLeft[[]*model.StockDoc](
+			fperrors.OnError("failed to retrieve plasmids from repository"),
+		),
+	)
+}
+
+// transformToPlasmidCollection transforms stock documents to plasmid collection data
+var transformToPlasmidCollection = F.Flow2(
+	func(lctx withStockDocList) []*model.StockDoc { return lctx.stockDocs },
+	plasmidModelToCollectionSlice,
+)
+
+// computeNextCursor computes the next cursor value based on results
+var computeNextCursor = func(lctx withPlasmidCollectionData) int64 {
+	pdata := lctx.collectionData
+	if len(pdata) < int(lctx.limit)-2 {
+		return 0 // No next cursor for incomplete result sets
+	}
+	// Return cursor value from last item
+	if len(pdata) > 0 {
+		return genNextCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt)
+	}
+	return 0
+}
+
+// toPlasmidCollectionResult converts IOEither result to collection response tuple
+func toPlasmidCollectionResult(
+	ctx context.Context,
+	limit int64,
+) PlasmidCollectionConverter {
+	return func(ioe PlasmidCollectionIO) PlasmidCollectionResult {
+		return F.Pipe1(
+			ioe(),
+			E.Fold(
+				func(e error) PlasmidCollectionResult {
+					return T.MakeTuple2(
+						&stock.PlasmidCollection{
+							Meta: &stock.Meta{Limit: limit},
+						},
+						aphgrpc.HandleGetError(ctx, e),
+					)
+				},
+				func(collection *stock.PlasmidCollection) PlasmidCollectionResult {
+					return T.MakeTuple2[*stock.PlasmidCollection, error](
+						collection,
+						nil,
+					)
+				},
+			),
+		)
+	}
+}
