@@ -48,37 +48,19 @@ func (s *StockService) GetPlasmid(
 	ctx context.Context,
 	req *stock.StockId,
 ) (*stock.Plasmid, error) {
-	workflow := s.getPlasmidWorkflow(ctx, req)
-	return toServiceResult(ctx)(workflow)
-}
-
-// getPlasmidWorkflow orchestrates the plasmid retrieval using IOEither Do/Bind
-func (s *StockService) getPlasmidWorkflow(
-	ctx context.Context,
-	req *stock.StockId,
-) IOE.IOEither[error, *stock.Plasmid] {
-	return F.Pipe4(
+	result := F.Pipe5(
 		IOE.Of[error](getPlasmidContext{
 			ctx:     ctx,
 			request: req,
 			repo:    s.repo,
 		}),
-		IOE.Bind(
-			setValidatedRequest,
-			validatePlasmidRequest,
-		),
-		IOE.Bind(
-			setStockDocument,
-			retrievePlasmidFromRepository,
-		),
-		IOE.Let[error](
-			setPlasmidData,
-			transformToPlasmidData,
-		),
-		IOE.Map[error](func(pctx withPlasmidData) *stock.Plasmid {
-			return &stock.Plasmid{Data: pctx.plasmidData}
-		}),
+		IOE.Bind(setValidatedRequest, validatePlasmidRequest),
+		IOE.Bind(setStockDocument, retrievePlasmidFromRepository),
+		IOE.Let[error](setPlasmidData, transformToPlasmidData),
+		IOE.Map[error](extractPlasmidResponse),
+		toServiceResult(ctx),
 	)
+	return result.F1, result.F2
 }
 
 // getPlasmidContext represents the initial context for plasmid retrieval
@@ -137,6 +119,11 @@ var (
 			}
 		},
 	)
+
+	// extractPlasmidResponse extracts plasmid response from enriched context
+	extractPlasmidResponse = func(pctx withPlasmidData) *stock.Plasmid {
+		return &stock.Plasmid{Data: pctx.plasmidData}
+	}
 )
 
 // validatePlasmidRequest validates the stock ID request
@@ -167,17 +154,18 @@ func retrievePlasmidFromRepository(
 	)
 }
 
-// transformToPlasmidData transforms stock document to plasmid data
-func transformToPlasmidData(pctx withStockDocument) *stock.Plasmid_Data {
-	return makePlasmidData(pctx.stockDoc)
-}
+// transformToPlasmidData transforms stock document to plasmid data using point-free composition
+var transformToPlasmidData = F.Flow2(
+	func(pctx withStockDocument) *model.StockDoc { return pctx.stockDoc },
+	makePlasmidData,
+)
 
-// toServiceResult converts IOEither result to service response with error handling
+// toServiceResult converts IOEither result to service response tuple with error handling
 func toServiceResult(
 	ctx context.Context,
-) func(IOE.IOEither[error, *stock.Plasmid]) (*stock.Plasmid, error) {
-	return func(ioe IOE.IOEither[error, *stock.Plasmid]) (*stock.Plasmid, error) {
-		result := F.Pipe1(
+) func(IOE.IOEither[error, *stock.Plasmid]) T.Tuple2[*stock.Plasmid, error] {
+	return func(ioe IOE.IOEither[error, *stock.Plasmid]) T.Tuple2[*stock.Plasmid, error] {
+		return F.Pipe1(
 			ioe(),
 			E.Fold(
 				func(e error) T.Tuple2[*stock.Plasmid, error] {
@@ -191,7 +179,6 @@ func toServiceResult(
 				},
 			),
 		)
-		return result.F1, result.F2
 	}
 }
 
