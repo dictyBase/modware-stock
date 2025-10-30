@@ -16,6 +16,39 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository"
 )
 
+// Level 1: Basic Building Blocks - Core result types
+type (
+	// PlasmidResult represents a plasmid with potential error
+	PlasmidResult = T.Tuple2[*stock.Plasmid, error]
+
+	// PlasmidEither represents a computation that may succeed with plasmid or fail
+	PlasmidEither = E.Either[error, *stock.Plasmid]
+
+	// PlasmidIO represents an IO computation for plasmid retrieval
+	PlasmidIO = IOE.IOEither[error, *stock.Plasmid]
+)
+
+// Level 2: Transformers and Converters - Function type aliases for transformations
+type (
+	// PlasmidConverter converts IOEither to Go's tuple result
+	PlasmidConverter = func(PlasmidIO) PlasmidResult
+
+	// PlasmidIOExecutor executes an IOEither to get Either
+	PlasmidIOExecutor = func(PlasmidIO) PlasmidEither
+
+	// PlasmidResultFolder folds Either into tuple result
+	PlasmidResultFolder = func(PlasmidEither) PlasmidResult
+)
+
+// Level 3: Context-Aware Types - Context-parameterized transformations
+type (
+	// ContextualConverter is a converter factory that needs context
+	ContextualConverter = func(context.Context) PlasmidConverter
+
+	// ContextualErrorHandler wraps errors with context
+	ContextualErrorHandler = func(context.Context) func(error) error
+)
+
 // StockRepository is a type alias for the repository interface
 type StockRepository = repository.StockRepository
 
@@ -161,21 +194,22 @@ var transformToPlasmidData = F.Flow2(
 )
 
 // toServiceResult converts IOEither result to service response tuple with error handling
-func toServiceResult(
-	ctx context.Context,
-) func(IOE.IOEither[error, *stock.Plasmid]) T.Tuple2[*stock.Plasmid, error] {
-	return func(ioe IOE.IOEither[error, *stock.Plasmid]) T.Tuple2[*stock.Plasmid, error] {
+func toServiceResult(ctx context.Context) PlasmidConverter {
+	return func(ioe PlasmidIO) PlasmidResult {
 		return F.Pipe1(
 			ioe(),
 			E.Fold(
-				func(e error) T.Tuple2[*stock.Plasmid, error] {
+				func(e error) PlasmidResult {
 					return T.MakeTuple2(
 						&stock.Plasmid{},
 						aphgrpc.HandleGetError(ctx, e),
 					)
 				},
-				func(p *stock.Plasmid) T.Tuple2[*stock.Plasmid, error] {
-					return T.MakeTuple2[*stock.Plasmid, error](p, nil)
+				func(p *stock.Plasmid) PlasmidResult {
+					return T.MakeTuple2[*stock.Plasmid, error](
+						p,
+						nil,
+					)
 				},
 			),
 		)
