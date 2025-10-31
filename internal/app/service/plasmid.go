@@ -2,36 +2,34 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	F "github.com/IBM/fp-go/function"
 	IOE "github.com/IBM/fp-go/ioeither"
-	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 )
 
-// CreatePlasmid handles the creation of a new plasmid
+// CreatePlasmid handles the creation of a new plasmid using IOEither composition
 func (s *StockService) CreatePlasmid(
 	ctx context.Context,
-	r *stock.NewPlasmid,
+	req *stock.NewPlasmid,
 ) (*stock.Plasmid, error) {
-	plasmid := &stock.Plasmid{}
-	if err := r.Validate(); err != nil {
-		return plasmid, aphgrpc.HandleInvalidParamError(ctx, err)
-	}
-	if len(r.Data.Attributes.DictyPlasmidProperty) == 0 {
-		r.Data.Attributes.DictyPlasmidProperty = s.Params["plasmid_term"]
-	}
-	stockDoc, err := s.repo.AddPlasmid(r)
-	if err != nil {
-		return plasmid, aphgrpc.HandleInsertError(ctx, err)
-	}
-	plasmid.Data = makePlasmidData(stockDoc)
-	err = s.publisher.PublishPlasmid(s.Topics["stockCreate"], plasmid)
-	if err != nil {
-		return plasmid, aphgrpc.HandleMessagingPubError(ctx, err)
-	}
-	return plasmid, nil
+	result := F.Pipe6(
+		IOE.Of[error](createPlasmidContext{
+			ctx:       ctx,
+			request:   req,
+			repo:      s.repo,
+			params:    s.Params,
+			topics:    s.Topics,
+			publisher: s.publisher,
+		}),
+		IOE.Bind(setValidatedNewPlasmid, validateNewPlasmidRequest),
+		IOE.Bind(setCreatedPlasmidDoc, createPlasmidInRepository),
+		IOE.Let[error](setCreatedPlasmidData, transformToCreatedPlasmidData),
+		IOE.Chain(publishCreatedPlasmid),
+		IOE.Map[error](extractCreatePlasmidResponse),
+		toCreatePlasmidResult(ctx),
+	)
+	return result.F1, result.F2
 }
 
 // GetPlasmid handles getting a plasmid by its ID using IOEither composition
@@ -54,66 +52,52 @@ func (s *StockService) GetPlasmid(
 	return result.F1, result.F2
 }
 
-// LoadPlasmid loads plasmids with existing IDs into the database
+// LoadPlasmid loads plasmids with existing IDs into the database using IOEither composition
 func (s *StockService) LoadPlasmid(
 	ctx context.Context,
-	r *stock.ExistingPlasmid,
+	req *stock.ExistingPlasmid,
 ) (*stock.Plasmid, error) {
-	plasmid := &stock.Plasmid{}
-	if err := r.Validate(); err != nil {
-		return plasmid, aphgrpc.HandleInvalidParamError(ctx, err)
-	}
-	if len(r.Data.Attributes.DictyPlasmidProperty) == 0 {
-		r.Data.Attributes.DictyPlasmidProperty = s.Params["plasmid_term"]
-	}
-	id := r.Data.Id
-	stockDoc, err := s.repo.LoadPlasmid(id, r)
-	if err != nil {
-		return plasmid, aphgrpc.HandleInsertError(ctx, err)
-	}
-	plasmid.Data = makePlasmidData(stockDoc)
-	// include ontology property if available
-	if stockDoc.PlasmidProperties != nil {
-		plasmid.Data.Attributes.DictyPlasmidProperty = stockDoc.PlasmidProperties.DictyPlasmidProperty
-	}
-	err = s.publisher.PublishPlasmid(s.Topics["stockCreate"], plasmid)
-	if err != nil {
-		return plasmid, aphgrpc.HandleMessagingPubError(ctx, err)
-	}
-	return plasmid, nil
+	result := F.Pipe6(
+		IOE.Of[error](loadPlasmidContext{
+			ctx:       ctx,
+			request:   req,
+			repo:      s.repo,
+			params:    s.Params,
+			topics:    s.Topics,
+			publisher: s.publisher,
+		}),
+		IOE.Bind(setValidatedExistingPlasmid, validateExistingPlasmidRequest),
+		IOE.Bind(setLoadedPlasmidDoc, loadPlasmidInRepository),
+		IOE.Let[error](setLoadedPlasmidData, transformToLoadedPlasmidData),
+		IOE.Chain(publishLoadedPlasmid),
+		IOE.Map[error](extractLoadPlasmidResponse),
+		toLoadPlasmidResult(ctx),
+	)
+	return result.F1, result.F2
 }
 
-// UpdatePlasmid handles updating an existing plasmid
+// UpdatePlasmid handles updating an existing plasmid using IOEither composition
 func (s *StockService) UpdatePlasmid(
 	ctx context.Context,
-	r *stock.PlasmidUpdate,
+	req *stock.PlasmidUpdate,
 ) (*stock.Plasmid, error) {
-	plasmid := &stock.Plasmid{}
-	if err := r.Validate(); err != nil {
-		return plasmid, aphgrpc.HandleInvalidParamError(ctx, err)
-	}
-	stockDoc, err := s.repo.EditPlasmid(r)
-	if err != nil {
-		return plasmid, aphgrpc.HandleUpdateError(ctx, err)
-	}
-	if stockDoc.NotFound {
-		return plasmid,
-			aphgrpc.HandleNotFoundError(
-				ctx,
-				fmt.Errorf("could not find plasmid with ID %s", stockDoc.ID),
-			)
-	}
-	// Fetch the complete plasmid record to get all fields including ontology
-	fullPlasmid, err := toTuple(s.repo.GetPlasmid(r.Data.Id))
-	if err != nil {
-		return plasmid, aphgrpc.HandleGetError(ctx, err)
-	}
-	plasmid.Data = makePlasmidData(fullPlasmid)
-	err = s.publisher.PublishPlasmid(s.Topics["stockUpdate"], plasmid)
-	if err != nil {
-		return plasmid, aphgrpc.HandleMessagingPubError(ctx, err)
-	}
-	return plasmid, nil
+	result := F.Pipe7(
+		IOE.Of[error](updatePlasmidContext{
+			ctx:       ctx,
+			request:   req,
+			repo:      s.repo,
+			topics:    s.Topics,
+			publisher: s.publisher,
+		}),
+		IOE.Bind(setValidatedUpdateRequest, validateUpdatePlasmidRequest),
+		IOE.Bind(setUpdatedPlasmidDoc, updatePlasmidInRepository),
+		IOE.Bind(setFullPlasmidDoc, retrieveFullPlasmidDoc),
+		IOE.Let[error](setUpdatedPlasmidData, transformToUpdatedPlasmidData),
+		IOE.Chain(publishUpdatedPlasmid),
+		IOE.Map[error](extractUpdatePlasmidResponse),
+		toUpdatePlasmidResult(ctx),
+	)
+	return result.F1, result.F2
 }
 
 // ListPlasmids lists all existing plasmids using IOEither composition
