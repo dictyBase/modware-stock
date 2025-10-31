@@ -101,7 +101,7 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 		},
 	}
 
-	um, err := repo.LoadPlasmid("DBP0000098", ns)
+	um, err := unwrapPlasmidEither(repo.LoadPlasmid("DBP0000098", ns))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
 		"DBP0000098",
@@ -166,7 +166,7 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 		np := newTestPlasmid(
 			fmt.Sprintf("%s@cye.com", arangomanager.RandomString(15, 25)),
 		)
-		_, err := repo.AddPlasmid(np)
+		_, err := unwrapPlasmidEither(repo.AddPlasmid(np))
 		assert.NoErrorf(err, "expect no error, received %s", err)
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -235,7 +235,7 @@ func TestListPlasmids(t *testing.T) {
 		np := newTestPlasmid(
 			fmt.Sprintf("%s@cye.com", arangomanager.RandomString(15, 20)),
 		)
-		_, err := repo.AddPlasmid(np)
+		_, err := unwrapPlasmidEither(repo.AddPlasmid(np))
 		assert.NoErrorf(err, "expect no error adding plasmid, received %s", err)
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -340,7 +340,7 @@ func TestGetPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	ns := newTestPlasmid("george@costanza.com")
-	um, err := repo.AddPlasmid(ns)
+	um, err := unwrapPlasmidEither(repo.AddPlasmid(ns))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	g, err := unwrapPlasmidEither(repo.GetPlasmid(um.StockID))
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -403,7 +403,7 @@ func TestEditPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	ns := newUpdatableTestPlasmid("art@vandelay.org")
-	m, err := repo.AddPlasmid(ns)
+	m, err := unwrapPlasmidEither(repo.AddPlasmid(ns))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	us := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
@@ -419,7 +419,7 @@ func TestEditPlasmid(t *testing.T) {
 			},
 		},
 	}
-	um, err := repo.EditPlasmid(us)
+	um, err := unwrapPlasmidEither(repo.EditPlasmid(us))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um.StockID, um.StockID, "should match the stock id")
 	assert.Equal(
@@ -489,10 +489,10 @@ func TestEditPlasmidGene(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	ns := newUpdatableTestPlasmid("art@vandelay.org")
-	um, err := repo.AddPlasmid(ns)
+	um, err := unwrapPlasmidEither(repo.AddPlasmid(ns))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	us2 := PlasmidUpdateInstance(um, ns)
-	um2, err := repo.EditPlasmid(us2)
+	um2, err := unwrapPlasmidEither(repo.EditPlasmid(us2))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um2.StockID, um.StockID, "should match the previous stock id")
 	assert.Equal(
@@ -536,7 +536,7 @@ func TestEditPlasmidGene(t *testing.T) {
 			},
 		},
 	}
-	um3, err := repo.EditPlasmid(us3)
+	um3, err := unwrapPlasmidEither(repo.EditPlasmid(us3))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um3.StockID, um.StockID, "should match the original stock id")
 	assert.Equal(
@@ -565,7 +565,7 @@ func TestAddPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	ns := newTestPlasmid("george@costanza.com")
-	um, err := repo.AddPlasmid(ns)
+	um, err := unwrapPlasmidEither(repo.AddPlasmid(ns))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Regexp(
 		regexp.MustCompile(`^DBP0\d{6,}$`),
@@ -644,7 +644,7 @@ func TestAddPlasmidWithOntologyTerms(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			np := newTestPlasmid("pfey@dictybase.org")
 			np.Data.Attributes.DictyPlasmidProperty = tc.term
-			um, err := repo.AddPlasmid(np)
+			um, err := unwrapPlasmidEither(repo.AddPlasmid(np))
 			assert.NoErrorf(err, "expect no error adding plasmid with ontology term %s, received %s", tc.term, err)
 			gm, err := unwrapPlasmidEither(repo.GetPlasmid(um.StockID))
 			assert.NoErrorf(err, "expect no error retrieving plasmid %s, received %s", um.StockID, err)
@@ -659,7 +659,7 @@ func TestEditPlasmidOntologyUpdate(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	ns := newUpdatableTestPlasmid("art@vandelay.org")
-	m, err := repo.AddPlasmid(ns)
+	m, err := unwrapPlasmidEither(repo.AddPlasmid(ns))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	us := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
@@ -671,7 +671,7 @@ func TestEditPlasmidOntologyUpdate(t *testing.T) {
 			},
 		},
 	}
-	_, err = repo.EditPlasmid(us)
+	_, err = unwrapPlasmidEither(repo.EditPlasmid(us))
 	assert.NoErrorf(err, "expect no error updating plasmid ontology, received %s", err)
 	gm, err := unwrapPlasmidEither(repo.GetPlasmid(m.StockID))
 	assert.NoErrorf(err, "expect no error retrieving updated plasmid %s, received %s", m.StockID, err)
@@ -686,7 +686,7 @@ func TestAddPlasmidInvalidOntologyTerm(t *testing.T) {
 	np := newTestPlasmid("pfey@dictybase.org")
 	invalidTerm := "not a real ontology term"
 	np.Data.Attributes.DictyPlasmidProperty = invalidTerm
-	_, err := repo.AddPlasmid(np)
+	_, err := unwrapPlasmidEither(repo.AddPlasmid(np))
 	assert.Error(
 		err,
 		"AddPlasmid should return an error when attempting to add plasmid with invalid ontology term '%s'",
