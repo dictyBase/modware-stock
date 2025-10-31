@@ -59,27 +59,6 @@ func (ar *arangorepository) AddPlasmid(
 	)
 }
 
-// addablePlasmidBindParams converts NewPlasmidAttributes to ArangoDB bind parameters
-// for INSERT operations. Empty string and slice values are normalized to ensure
-// consistent AQL query behavior.
-func addablePlasmidBindParams(
-	attr *stock.NewPlasmidAttributes,
-) map[string]any {
-	return map[string]any{
-		"depositor":        attr.Depositor,
-		"created_by":       attr.CreatedBy,
-		"updated_by":       attr.UpdatedBy,
-		"summary":          normalizeStrBindParam(attr.Summary),
-		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
-		"genes":            normalizeSliceBindParam(attr.Genes),
-		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
-		"publications":     normalizeSliceBindParam(attr.Publications),
-		"image_map":        normalizeStrBindParam(attr.ImageMap),
-		"sequence":         normalizeStrBindParam(attr.Sequence),
-		"name":             attr.Name,
-	}
-}
-
 // existingPlasmidBindParams converts ExistingPlasmidAttributes to ArangoDB bind
 // parameters for loading pre-existing plasmids with specific IDs. Timestamps are
 // converted to milliseconds for ArangoDB storage.
@@ -188,17 +167,30 @@ func (ar *arangorepository) validateAddPlasmidOntologyTerm(
 func (ar *arangorepository) buildAddPlasmidParams(
 	params addPlasmidWithTermID,
 ) map[string]any {
-	return mergeBindParams(
-		map[string]any{
-			"@stock_collection":            ar.stockc.stock.Name(),
-			"@stock_key_generator":         ar.stockc.stockKey.Name(),
-			"@stock_type_collection":       ar.stockc.stockType.Name(),
-			"@stock_properties_collection": ar.stockc.stockProp.Name(),
-			"to":                           params.termID,
-			"@stock_term_collection":       ar.stockc.stockTerm.Name(),
-		},
-		addablePlasmidBindParams(params.plasmid.Data.Attributes),
-	)
+	attr := params.plasmid.Data.Attributes
+	return map[string]any{
+		"@stock_collection":            ar.stockc.stock.Name(),
+		"@stock_key_generator":         ar.stockc.stockKey.Name(),
+		"@stock_type_collection":       ar.stockc.stockType.Name(),
+		"@stock_properties_collection": ar.stockc.stockProp.Name(),
+		"to":                           params.termID,
+		"@stock_term_collection":       ar.stockc.stockTerm.Name(),
+		"depositor":                    attr.Depositor,
+		"created_by":                   attr.CreatedBy,
+		"updated_by":                   attr.UpdatedBy,
+		"summary":                      normalizeStrBindParam(attr.Summary),
+		"editable_summary": normalizeStrBindParam(
+			attr.EditableSummary,
+		),
+		"genes":   normalizeSliceBindParam(attr.Genes),
+		"dbxrefs": normalizeSliceBindParam(attr.Dbxrefs),
+		"publications": normalizeSliceBindParam(
+			attr.Publications,
+		),
+		"image_map": normalizeStrBindParam(attr.ImageMap),
+		"sequence":  normalizeStrBindParam(attr.Sequence),
+		"name":      attr.Name,
+	}
 }
 
 // executeAddPlasmidQuery executes the add plasmid query
@@ -210,12 +202,21 @@ func (ar *arangorepository) executeAddPlasmidQuery(
 			stockDoc := &model.StockDoc{
 				PlasmidProperties: &model.PlasmidProperties{},
 			}
-			row, err := ar.database.DoRun(statement.StockPlasmidIns, bindVars)
+			row, err := ar.database.DoRun(
+				statement.StockPlasmidIns,
+				bindVars,
+			)
 			if err != nil {
-				return nil, fmt.Errorf("database insert failed: %w", err)
+				return nil, fmt.Errorf(
+					"database insert failed: %w",
+					err,
+				)
 			}
 			if err := row.Read(stockDoc); err != nil {
-				return nil, fmt.Errorf("failed to read stock document: %w", err)
+				return nil, fmt.Errorf(
+					"failed to read stock document: %w",
+					err,
+				)
 			}
 			return stockDoc, nil
 		},
