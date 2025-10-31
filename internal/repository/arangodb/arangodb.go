@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"strings"
+	"slices"
 
+	A "github.com/IBM/fp-go/array"
+	F "github.com/IBM/fp-go/function"
+	S "github.com/IBM/fp-go/string"
 	"github.com/cockroachdb/errors"
 	manager "github.com/dictyBase/arangomanager"
 	ontostorage "github.com/dictyBase/go-obograph/storage"
@@ -100,12 +103,21 @@ func mergeBindParams(bm ...map[string]any) map[string]any {
 	return result
 }
 
+// genAQLDocExpression generates AQL document expression from bind variables
+// using functional composition with fp-go and standard library iterators
 func genAQLDocExpression(bindVars map[string]any) string {
-	var bindParams []string
-	for k := range bindVars {
-		bindParams = append(bindParams, fmt.Sprintf("%s: @%s", k, k))
-	}
-	return strings.Join(bindParams, ",")
+	return F.Pipe4(
+		bindVars,
+		maps.Keys,
+		slices.Collect,
+		A.Map(formatAQLBinding),
+		S.Join(","),
+	)
+}
+
+// formatAQLBinding formats a key to AQL bind parameter format
+func formatAQLBinding(key string) string {
+	return fmt.Sprintf("%s: @%s", key, key)
 }
 
 func (ar *arangorepository) Dbh() *manager.Database {
