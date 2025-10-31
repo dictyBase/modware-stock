@@ -116,7 +116,7 @@ func (ar *arangorepository) termID(term, onto string) (string, error) {
 	var id string
 	r, err := ar.database.GetRow(
 		statement.StrainExistTermQ,
-		map[string]interface{}{
+		map[string]any{
 			"@cv_collection":     ar.ontoc.Cv.Name(),
 			"@cvterm_collection": ar.ontoc.Term.Name(),
 			"ontology":           onto,
