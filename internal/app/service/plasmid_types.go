@@ -7,6 +7,7 @@ import (
 	IOE "github.com/IBM/fp-go/ioeither"
 	T "github.com/IBM/fp-go/tuple"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/message"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository"
 )
@@ -46,6 +47,9 @@ type (
 
 // StockRepository is a type alias for the repository interface
 type StockRepository = repository.StockRepository
+
+// PlasmidPublisher is a type alias for the message publisher interface
+type PlasmidPublisher = message.Publisher
 
 // getPlasmidContext represents the initial context for plasmid retrieval
 type getPlasmidContext struct {
@@ -120,3 +124,99 @@ type (
 	// PlasmidCollectionConverter converts IOEither to Go's tuple result
 	PlasmidCollectionConverter = func(PlasmidCollectionIO) PlasmidCollectionResult
 )
+
+// CreatePlasmid workflow context types
+
+// createPlasmidContext represents the initial context for plasmid creation
+type createPlasmidContext struct {
+	ctx       context.Context
+	request   *stock.NewPlasmid
+	repo      StockRepository
+	params    map[string]string
+	topics    map[string]string
+	publisher PlasmidPublisher
+}
+
+// withValidatedNewPlasmid adds validated request to context
+type withValidatedNewPlasmid struct {
+	createPlasmidContext
+	validatedRequest *stock.NewPlasmid
+}
+
+// withCreatedPlasmidDoc adds created stock document to context
+type withCreatedPlasmidDoc struct {
+	withValidatedNewPlasmid
+	stockDoc *model.StockDoc
+}
+
+// withCreatedPlasmidData adds created plasmid data to context
+type withCreatedPlasmidData struct {
+	withCreatedPlasmidDoc
+	plasmidData *stock.Plasmid_Data
+}
+
+// UpdatePlasmid workflow context types
+
+// updatePlasmidContext represents the initial context for plasmid update
+type updatePlasmidContext struct {
+	ctx       context.Context
+	request   *stock.PlasmidUpdate
+	repo      StockRepository
+	topics    map[string]string
+	publisher PlasmidPublisher
+}
+
+// withValidatedUpdate adds validated update request to context
+type withValidatedUpdate struct {
+	updatePlasmidContext
+	validatedRequest *stock.PlasmidUpdate
+}
+
+// withUpdatedPlasmidDoc adds updated stock document to context
+type withUpdatedPlasmidDoc struct {
+	withValidatedUpdate
+	stockDoc *model.StockDoc
+}
+
+// withFullPlasmidDoc adds full plasmid document to context
+type withFullPlasmidDoc struct {
+	withUpdatedPlasmidDoc
+	fullStockDoc *model.StockDoc
+}
+
+// withUpdatedPlasmidData adds updated plasmid data to context
+type withUpdatedPlasmidData struct {
+	withFullPlasmidDoc
+	plasmidData *stock.Plasmid_Data
+}
+
+// LoadPlasmid workflow context types
+
+// loadPlasmidContext represents the initial context for loading plasmid
+type loadPlasmidContext struct {
+	ctx       context.Context
+	request   *stock.ExistingPlasmid
+	repo      StockRepository
+	params    map[string]string
+	topics    map[string]string
+	publisher PlasmidPublisher
+}
+
+// withValidatedExistingPlasmid adds validated request to context
+type withValidatedExistingPlasmid struct {
+	loadPlasmidContext
+	validatedRequest *stock.ExistingPlasmid
+	plasmidID        string
+}
+
+// withLoadedPlasmidDoc adds loaded stock document to context
+type withLoadedPlasmidDoc struct {
+	withValidatedExistingPlasmid
+	stockDoc *model.StockDoc
+}
+
+// withLoadedPlasmidData adds loaded plasmid data to context
+type withLoadedPlasmidData struct {
+	withLoadedPlasmidDoc
+	plasmidData *stock.Plasmid_Data
+}
