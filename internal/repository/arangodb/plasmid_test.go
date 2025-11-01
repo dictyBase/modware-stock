@@ -7,7 +7,9 @@ import (
 	"time"
 
 	E "github.com/IBM/fp-go/either"
+	F "github.com/IBM/fp-go/function"
 	IOE "github.com/IBM/fp-go/ioeither"
+	T "github.com/IBM/fp-go/tuple"
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
@@ -16,42 +18,54 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// unwrapPlasmidEither is a test helper to unwrap IOEither[error, *model.StockDoc]
-func unwrapPlasmidEither(
-	ioeither IOE.IOEither[error, *model.StockDoc],
-) (*model.StockDoc, error) {
-	either := ioeither() // Execute IOEither to get Either
-	if E.IsLeft(either) {
-		err := E.Fold(
-			func(e error) error { return e },
-			func(*model.StockDoc) error { return nil },
-		)(either)
-		return nil, err
-	}
-	doc := E.Fold(
-		func(error) *model.StockDoc { return nil },
-		func(d *model.StockDoc) *model.StockDoc { return d },
-	)(either)
-	return doc, nil
+// Type aliases for test results using fp-go Tuple
+type (
+	// StockDocResult represents a stock document with potential error
+	StockDocResult = T.Tuple2[*model.StockDoc, error]
+
+	// StockDocListResult represents a list of stock documents with potential error
+	StockDocListResult = T.Tuple2[[]*model.StockDoc, error]
+
+	// StockDocEither represents a computation that may succeed with stock doc or fail
+	StockDocEither = E.Either[error, *model.StockDoc]
+
+	// StockDocListEither represents a computation that may succeed with stock doc list or fail
+	StockDocListEither = E.Either[error, []*model.StockDoc]
+)
+
+// ToEither executes IOEither to get Either result
+func ToEither[A any](ioe IOE.IOEither[error, A]) E.Either[error, A] {
+	return ioe()
 }
 
-// unwrapPlasmidListEither is a test helper to unwrap IOEither[error, []*model.StockDoc]
-func unwrapPlasmidListEither(
-	ioeither IOE.IOEither[error, []*model.StockDoc],
-) ([]*model.StockDoc, error) {
-	either := ioeither() // Execute IOEither to get Either
-	if E.IsLeft(either) {
-		err := E.Fold(
-			func(e error) error { return e },
-			func([]*model.StockDoc) error { return nil },
-		)(either)
-		return nil, err
-	}
-	docs := E.Fold(
-		func(error) []*model.StockDoc { return nil },
-		func(d []*model.StockDoc) []*model.StockDoc { return d },
-	)(either)
-	return docs, nil
+// toStockDocResult converts Either result to tuple using E.Fold pattern
+func toStockDocResult(either StockDocEither) StockDocResult {
+	return F.Pipe1(
+		either,
+		E.Fold(
+			func(err error) StockDocResult {
+				return T.MakeTuple2[*model.StockDoc, error](nil, err)
+			},
+			func(doc *model.StockDoc) StockDocResult {
+				return T.MakeTuple2[*model.StockDoc, error](doc, nil)
+			},
+		),
+	)
+}
+
+// toStockDocListResult converts Either result to tuple using E.Fold pattern
+func toStockDocListResult(either StockDocListEither) StockDocListResult {
+	return F.Pipe1(
+		either,
+		E.Fold(
+			func(err error) StockDocListResult {
+				return T.MakeTuple2[[]*model.StockDoc, error](nil, err)
+			},
+			func(docs []*model.StockDoc) StockDocListResult {
+				return T.MakeTuple2[[]*model.StockDoc, error](docs, nil)
+			},
+		),
+	)
 }
 
 const (
@@ -101,7 +115,12 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 		},
 	}
 
-	um, err := unwrapPlasmidEither(repo.LoadPlasmid("DBP0000098", ns))
+	result1 := F.Pipe2(
+		repo.LoadPlasmid("DBP0000098", ns),
+		ToEither,
+		toStockDocResult,
+	)
+	um, err := result1.F1, result1.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
 		"DBP0000098",
@@ -148,7 +167,9 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 		"should match sequence",
 	)
 	// verify ontology term label is retrievable through GetPlasmid
-	gm, err := unwrapPlasmidEither(repo.GetPlasmid(um.StockID))
+	result2 := F.Pipe2(repo.GetPlasmid(um.StockID), ToEither, toStockDocResult)
+
+	gm, err := result2.F1, result2.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
 		OntologyTermCloningVector,
@@ -166,13 +187,21 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 		np := newTestPlasmid(
 			fmt.Sprintf("%s@cye.com", arangomanager.RandomString(15, 25)),
 		)
-		_, err := unwrapPlasmidEither(repo.AddPlasmid(np))
+		result3 := F.Pipe2(
+			repo.AddPlasmid(np),
+			ToEither,
+			toStockDocResult,
+		)
+
+		_, err := result3.F1, result3.F2
 		assert.NoErrorf(err, "expect no error, received %s", err)
 		time.Sleep(100 * time.Millisecond)
 	}
-	sf, err := unwrapPlasmidListEither(repo.ListPlasmids(
+	result4 := F.Pipe2(repo.ListPlasmids(
 		&stock.StockParameters{Limit: 10, Filter: georgeFilter},
-	))
+	), ToEither, toStockDocListResult)
+
+	sf, err := result4.F1, result4.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(sf, 10, "should list ten plasmids")
 	for _, um := range sf {
@@ -181,49 +210,56 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 			"this is a test plasmid",
 			"should match summary",
 		)
-		assert.Equal(um.PlasmidProperties.Name, "p123456", "should match name")
+		assert.Equal(
+			um.PlasmidProperties.Name,
+			"p123456",
+			"should match name",
+		)
 	}
-	n, err := unwrapPlasmidListEither(repo.ListPlasmids(
+	result5 := F.Pipe2(repo.ListPlasmids(
 		&stock.StockParameters{Limit: 100, Filter: pfilterTwo},
-	))
+	), ToEither, toStockDocListResult)
+
+	n, err := result5.F1, result5.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(n, 0, "should list no plasmids")
 	// do a check for array filter
-	as, err := unwrapPlasmidListEither(repo.ListPlasmids(
-		&stock.StockParameters{
-			Cursor: toTimestamp(sf[5].CreatedAt),
-			Limit:  10,
-			Filter: pfilterThree,
-		},
-	))
+	result29 := F.Pipe2(repo.ListPlasmids(&stock.StockParameters{
+		Cursor: toTimestamp(sf[5].CreatedAt),
+		Limit:  10,
+		Filter: pfilterThree,
+	}), ToEither, toStockDocListResult)
+	as, err := result29.F1, result29.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(as, 5, "should list five plasmids")
-	da, err := unwrapPlasmidListEither(repo.ListPlasmids(
-		&stock.StockParameters{
-			Cursor: toTimestamp(sf[5].CreatedAt),
-			Limit:  10,
-			Filter: pfilterFour,
-		},
-	))
+	result30 := F.Pipe2(repo.ListPlasmids(&stock.StockParameters{
+		Cursor: toTimestamp(sf[5].CreatedAt),
+		Limit:  10,
+		Filter: pfilterFour,
+	}), ToEither, toStockDocListResult)
+	da, err := result30.F1, result30.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(da, 0, "should list no plasmids")
-	ff, err := unwrapPlasmidListEither(repo.ListPlasmids(
+	result6 := F.Pipe2(repo.ListPlasmids(
 		&stock.StockParameters{Limit: 10, Filter: pfilterFive},
-	))
+	), ToEither, toStockDocListResult)
+
+	ff, err := result6.F1, result6.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(ff, 10, "should list ten plasmids")
-	fs, err := unwrapPlasmidListEither(repo.ListPlasmids(
+	result7 := F.Pipe2(repo.ListPlasmids(
 		&stock.StockParameters{Limit: 10, Filter: pfilterSix},
-	))
+	), ToEither, toStockDocListResult)
+
+	fs, err := result7.F1, result7.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(fs, 10, "should list ten plasmids")
-	fv, err := unwrapPlasmidListEither(repo.ListPlasmids(
-		&stock.StockParameters{
-			Cursor: toTimestamp(sf[5].CreatedAt),
-			Limit:  10,
-			Filter: pfilterSeven,
-		},
-	))
+	result31 := F.Pipe2(repo.ListPlasmids(&stock.StockParameters{
+		Cursor: toTimestamp(sf[5].CreatedAt),
+		Limit:  10,
+		Filter: pfilterSeven,
+	}), ToEither, toStockDocListResult)
+	fv, err := result31.F1, result31.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(fv, 5, "should list five plasmids")
 }
@@ -235,11 +271,19 @@ func TestListPlasmids(t *testing.T) {
 		np := newTestPlasmid(
 			fmt.Sprintf("%s@cye.com", arangomanager.RandomString(15, 20)),
 		)
-		_, err := unwrapPlasmidEither(repo.AddPlasmid(np))
+		result8 := F.Pipe2(repo.AddPlasmid(np), ToEither, toStockDocResult)
+
+		_, err := result8.F1, result8.F2
 		assert.NoErrorf(err, "expect no error adding plasmid, received %s", err)
 		time.Sleep(100 * time.Millisecond)
 	}
-	ls, err := unwrapPlasmidListEither(repo.ListPlasmids(&stock.StockParameters{Limit: 4}))
+	result9 := F.Pipe2(
+		repo.ListPlasmids(&stock.StockParameters{Limit: 4}),
+		ToEither,
+		toStockDocListResult,
+	)
+
+	ls, err := result9.F1, result9.F2
 	assert.NoErrorf(
 		err,
 		"expect no error getting first five plasmids, received %s",
@@ -277,7 +321,13 @@ func testMoreListPlasmids(
 	// so we can use this as cursor
 	// get next five results (5-9)
 	ti := toTimestamp(ls[len(ls)-1].CreatedAt)
-	ls2, err := unwrapPlasmidListEither(repo.ListPlasmids(&stock.StockParameters{Cursor: ti, Limit: 4}))
+	result10 := F.Pipe2(
+		repo.ListPlasmids(&stock.StockParameters{Cursor: ti, Limit: 4}),
+		ToEither,
+		toStockDocListResult,
+	)
+
+	ls2, err := result10.F1, result10.F2
 	assert.NoErrorf(
 		err,
 		"expect no error getting plasmids 5-9, received %s",
@@ -298,7 +348,13 @@ func testMoreListPlasmids(
 	// convert ninth result to numeric timestamp
 	ti2 := toTimestamp(ls2[len(ls2)-1].CreatedAt)
 	// get last results (9-10)
-	ls3, err := unwrapPlasmidListEither(repo.ListPlasmids(&stock.StockParameters{Cursor: ti2, Limit: 4}))
+	result11 := F.Pipe2(
+		repo.ListPlasmids(&stock.StockParameters{Cursor: ti2, Limit: 4}),
+		ToEither,
+		toStockDocListResult,
+	)
+
+	ls3, err := result11.F1, result11.F2
 	assert.NoErrorf(
 		err,
 		"expect no error getting plasmids 9-10, received %s",
@@ -315,9 +371,11 @@ func testMoreListPlasmids(
 	testModelListSort(ls2, t)
 	testModelListSort(ls3, t)
 
-	sf, err := unwrapPlasmidListEither(repo.ListPlasmids(
+	result12 := F.Pipe2(repo.ListPlasmids(
 		&stock.StockParameters{Limit: 100, Filter: georgeFilter},
-	))
+	), ToEither, toStockDocListResult)
+
+	sf, err := result12.F1, result12.F2
 	assert.NoErrorf(
 		err,
 		"expect no error getting list of plasmids, received %s",
@@ -325,9 +383,17 @@ func testMoreListPlasmids(
 	)
 	assert.Len(sf, 10, "should list ten plasmids")
 
-	cs, err := unwrapPlasmidListEither(repo.ListPlasmids(
-		&stock.StockParameters{Cursor: toTimestamp(sf[4].CreatedAt), Limit: 10},
-	))
+	result32 := F.Pipe2(
+		repo.ListPlasmids(
+			&stock.StockParameters{
+				Cursor: toTimestamp(sf[4].CreatedAt),
+				Limit:  10,
+			},
+		),
+		ToEither,
+		toStockDocListResult,
+	)
+	cs, err := result32.F1, result32.F2
 	assert.NoErrorf(
 		err,
 		"expect no error getting list of plasmids with cursor, received %s",
@@ -340,9 +406,13 @@ func TestGetPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	ns := newTestPlasmid("george@costanza.com")
-	um, err := unwrapPlasmidEither(repo.AddPlasmid(ns))
+	result13 := F.Pipe2(repo.AddPlasmid(ns), ToEither, toStockDocResult)
+
+	um, err := result13.F1, result13.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
-	g, err := unwrapPlasmidEither(repo.GetPlasmid(um.StockID))
+	result14 := F.Pipe2(repo.GetPlasmid(um.StockID), ToEither, toStockDocResult)
+
+	g, err := result14.F1, result14.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Regexp(
 		regexp.MustCompile(`^DBP0\d{6,}$`),
@@ -394,16 +464,24 @@ func TestGetPlasmid(t *testing.T) {
 		"should match updated time of stock",
 	)
 
-	_, err = unwrapPlasmidEither(repo.GetPlasmid("DBP01"))
+	result15 := F.Pipe2(repo.GetPlasmid("DBP01"), ToEither, toStockDocResult)
+
+	_, err = result15.F1, result15.F2
 	assert.Error(err, "expect error for non-existent plasmid")
-	assert.Contains(err.Error(), "not found", "error should indicate plasmid was not found")
+	assert.Contains(
+		err.Error(),
+		"not found",
+		"error should indicate plasmid was not found",
+	)
 }
 
 func TestEditPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	ns := newUpdatableTestPlasmid("art@vandelay.org")
-	m, err := unwrapPlasmidEither(repo.AddPlasmid(ns))
+	result16 := F.Pipe2(repo.AddPlasmid(ns), ToEither, toStockDocResult)
+
+	m, err := result16.F1, result16.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	us := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
@@ -419,7 +497,9 @@ func TestEditPlasmid(t *testing.T) {
 			},
 		},
 	}
-	um, err := unwrapPlasmidEither(repo.EditPlasmid(us))
+	result17 := F.Pipe2(repo.EditPlasmid(us), ToEither, toStockDocResult)
+
+	um, err := result17.F1, result17.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um.StockID, um.StockID, "should match the stock id")
 	assert.Equal(
@@ -489,10 +569,14 @@ func TestEditPlasmidGene(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	ns := newUpdatableTestPlasmid("art@vandelay.org")
-	um, err := unwrapPlasmidEither(repo.AddPlasmid(ns))
+	result18 := F.Pipe2(repo.AddPlasmid(ns), ToEither, toStockDocResult)
+
+	um, err := result18.F1, result18.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	us2 := PlasmidUpdateInstance(um, ns)
-	um2, err := unwrapPlasmidEither(repo.EditPlasmid(us2))
+	result19 := F.Pipe2(repo.EditPlasmid(us2), ToEither, toStockDocResult)
+
+	um2, err := result19.F1, result19.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um2.StockID, um.StockID, "should match the previous stock id")
 	assert.Equal(
@@ -536,7 +620,9 @@ func TestEditPlasmidGene(t *testing.T) {
 			},
 		},
 	}
-	um3, err := unwrapPlasmidEither(repo.EditPlasmid(us3))
+	result20 := F.Pipe2(repo.EditPlasmid(us3), ToEither, toStockDocResult)
+
+	um3, err := result20.F1, result20.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(um3.StockID, um.StockID, "should match the original stock id")
 	assert.Equal(
@@ -565,7 +651,9 @@ func TestAddPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	ns := newTestPlasmid("george@costanza.com")
-	um, err := unwrapPlasmidEither(repo.AddPlasmid(ns))
+	result21 := F.Pipe2(repo.AddPlasmid(ns), ToEither, toStockDocResult)
+
+	um, err := result21.F1, result21.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Regexp(
 		regexp.MustCompile(`^DBP0\d{6,}$`),
@@ -616,7 +704,9 @@ func TestAddPlasmid(t *testing.T) {
 		ns.Data.Attributes.Name,
 		"should match name",
 	)
-	gm, err := unwrapPlasmidEither(repo.GetPlasmid(um.StockID))
+	result22 := F.Pipe2(repo.GetPlasmid(um.StockID), ToEither, toStockDocResult)
+
+	gm, err := result22.F1, result22.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
 		ns.Data.Attributes.DictyPlasmidProperty,
@@ -644,13 +734,35 @@ func TestAddPlasmidWithOntologyTerms(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			np := newTestPlasmid("pfey@dictybase.org")
 			np.Data.Attributes.DictyPlasmidProperty = tc.term
-			um, err := unwrapPlasmidEither(repo.AddPlasmid(np))
-			assert.NoErrorf(err, "expect no error adding plasmid with ontology term %s, received %s", tc.term, err)
-			gm, err := unwrapPlasmidEither(repo.GetPlasmid(um.StockID))
-			assert.NoErrorf(err, "expect no error retrieving plasmid %s, received %s", um.StockID, err)
-			assert.Equal(tc.term, gm.PlasmidProperties.DictyPlasmidProperty,
+			result23 := F.Pipe2(repo.AddPlasmid(np), ToEither, toStockDocResult)
+
+			um, err := result23.F1, result23.F2
+			assert.NoErrorf(
+				err,
+				"expect no error adding plasmid with ontology term %s, received %s",
+				tc.term,
+				err,
+			)
+			result24 := F.Pipe2(
+				repo.GetPlasmid(um.StockID),
+				ToEither,
+				toStockDocResult,
+			)
+
+			gm, err := result24.F1, result24.F2
+			assert.NoErrorf(
+				err,
+				"expect no error retrieving plasmid %s, received %s",
+				um.StockID,
+				err,
+			)
+			assert.Equal(
+				tc.term,
+				gm.PlasmidProperties.DictyPlasmidProperty,
 				"AddPlasmid should store and GetPlasmid should retrieve ontology term label '%s' for plasmid %s",
-				tc.term, um.StockID)
+				tc.term,
+				um.StockID,
+			)
 		})
 	}
 }
@@ -659,7 +771,9 @@ func TestEditPlasmidOntologyUpdate(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	ns := newUpdatableTestPlasmid("art@vandelay.org")
-	m, err := unwrapPlasmidEither(repo.AddPlasmid(ns))
+	result25 := F.Pipe2(repo.AddPlasmid(ns), ToEither, toStockDocResult)
+
+	m, err := result25.F1, result25.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	us := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
@@ -671,13 +785,31 @@ func TestEditPlasmidOntologyUpdate(t *testing.T) {
 			},
 		},
 	}
-	_, err = unwrapPlasmidEither(repo.EditPlasmid(us))
-	assert.NoErrorf(err, "expect no error updating plasmid ontology, received %s", err)
-	gm, err := unwrapPlasmidEither(repo.GetPlasmid(m.StockID))
-	assert.NoErrorf(err, "expect no error retrieving updated plasmid %s, received %s", m.StockID, err)
-	assert.Equal(OntologyTermDoxONVector, gm.PlasmidProperties.DictyPlasmidProperty,
+	result26 := F.Pipe2(repo.EditPlasmid(us), ToEither, toStockDocResult)
+
+	_, err = result26.F1, result26.F2
+	assert.NoErrorf(
+		err,
+		"expect no error updating plasmid ontology, received %s",
+		err,
+	)
+	result27 := F.Pipe2(repo.GetPlasmid(m.StockID), ToEither, toStockDocResult)
+
+	gm, err := result27.F1, result27.F2
+	assert.NoErrorf(
+		err,
+		"expect no error retrieving updated plasmid %s, received %s",
+		m.StockID,
+		err,
+	)
+	assert.Equal(
+		OntologyTermDoxONVector,
+		gm.PlasmidProperties.DictyPlasmidProperty,
 		"EditPlasmid should update ontology term from '%s' to '%s' for plasmid %s",
-		ns.Data.Attributes.DictyPlasmidProperty, OntologyTermDoxONVector, m.StockID)
+		ns.Data.Attributes.DictyPlasmidProperty,
+		OntologyTermDoxONVector,
+		m.StockID,
+	)
 }
 
 func TestAddPlasmidInvalidOntologyTerm(t *testing.T) {
@@ -686,7 +818,9 @@ func TestAddPlasmidInvalidOntologyTerm(t *testing.T) {
 	np := newTestPlasmid("pfey@dictybase.org")
 	invalidTerm := "not a real ontology term"
 	np.Data.Attributes.DictyPlasmidProperty = invalidTerm
-	_, err := unwrapPlasmidEither(repo.AddPlasmid(np))
+	result28 := F.Pipe2(repo.AddPlasmid(np), ToEither, toStockDocResult)
+
+	_, err := result28.F1, result28.F2
 	assert.Error(
 		err,
 		"AddPlasmid should return an error when attempting to add plasmid with invalid ontology term '%s'",
