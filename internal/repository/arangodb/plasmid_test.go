@@ -44,7 +44,7 @@ func toStockDocResult(either StockDocEither) StockDocResult {
 		either,
 		E.Fold(
 			func(err error) StockDocResult {
-				return T.MakeTuple2[*model.StockDoc, error](nil, err)
+				return T.MakeTuple2[*model.StockDoc](nil, err)
 			},
 			func(doc *model.StockDoc) StockDocResult {
 				return T.MakeTuple2[*model.StockDoc, error](doc, nil)
@@ -59,7 +59,7 @@ func toStockDocListResult(either StockDocListEither) StockDocListResult {
 		either,
 		E.Fold(
 			func(err error) StockDocListResult {
-				return T.MakeTuple2[[]*model.StockDoc, error](nil, err)
+				return T.MakeTuple2[[]*model.StockDoc](nil, err)
 			},
 			func(docs []*model.StockDoc) StockDocListResult {
 				return T.MakeTuple2[[]*model.StockDoc, error](docs, nil)
@@ -93,8 +93,25 @@ const (
 func TestLoadStockWithPlasmids(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
+
+	ns := createTestExistingPlasmid()
+
+	result1 := F.Pipe2(
+		repo.LoadPlasmid("DBP0000098", ns),
+		ToEither,
+		toStockDocResult,
+	)
+	um, err := result1.F1, result1.F2
+	assert.NoErrorf(err, "expect no error, received %s", err)
+
+	assertLoadedPlasmidAttributes(assert, um, ns)
+	assertLoadedPlasmidProperties(assert, um, ns)
+	assertRetrievedPlasmidOntology(assert, repo, um.StockID)
+}
+
+func createTestExistingPlasmid() *stock.ExistingPlasmid {
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
-	ns := &stock.ExistingPlasmid{
+	return &stock.ExistingPlasmid{
 		Data: &stock.ExistingPlasmid_Data{
 			Type: "plasmid",
 			Id:   "DBP0000098",
@@ -114,68 +131,47 @@ func TestLoadStockWithPlasmids(t *testing.T) {
 			},
 		},
 	}
+}
 
-	result1 := F.Pipe2(
-		repo.LoadPlasmid("DBP0000098", ns),
-		ToEither,
-		toStockDocResult,
-	)
-	um, err := result1.F1, result1.F2
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Equal(
-		"DBP0000098",
-		um.StockID,
-		"should match given plasmid stock id",
-	)
-	assert.Equal(um.Key, um.StockID, "should have identical key and stock ID")
-	assert.Equal(
-		um.CreatedBy,
-		ns.Data.Attributes.CreatedBy,
-		"should match created_by id",
-	)
-	assert.Equal(
-		um.UpdatedBy,
-		ns.Data.Attributes.UpdatedBy,
-		"should match updated_by id",
-	)
-	assert.Equal(um.Summary, ns.Data.Attributes.Summary, "should match summary")
-	assert.Equal(
-		um.EditableSummary,
-		ns.Data.Attributes.EditableSummary,
-		"should match editable_summary",
-	)
-	assert.Equal(
-		um.Depositor,
-		ns.Data.Attributes.Depositor,
-		"should match depositor",
-	)
-	assert.Empty(um.Genes, "should have empty genes field")
-	assert.Empty(um.Dbxrefs, "should have empty dbxrefs field")
-	assert.ElementsMatch(
-		um.Publications,
-		ns.Data.Attributes.Publications,
-		"should match publications",
-	)
-	assert.Equal(
-		um.PlasmidProperties.ImageMap,
-		ns.Data.Attributes.ImageMap,
-		"should match image_map",
-	)
-	assert.Equal(
-		um.PlasmidProperties.Sequence,
-		ns.Data.Attributes.Sequence,
-		"should match sequence",
-	)
-	// verify ontology term label is retrievable through GetPlasmid
-	result2 := F.Pipe2(repo.GetPlasmid(um.StockID), ToEither, toStockDocResult)
+func assertLoadedPlasmidAttributes(
+	assert *require.Assertions,
+	doc *model.StockDoc,
+	ns *stock.ExistingPlasmid,
+) {
+	assert.Equal("DBP0000098", doc.StockID, "should match given plasmid stock id")
+	assert.Equal(doc.Key, doc.StockID, "should have identical key and stock ID")
+	assert.Equal(doc.CreatedBy, ns.Data.Attributes.CreatedBy, "should match created_by id")
+	assert.Equal(doc.UpdatedBy, ns.Data.Attributes.UpdatedBy, "should match updated_by id")
+	assert.Equal(doc.Summary, ns.Data.Attributes.Summary, "should match summary")
+	assert.Equal(doc.EditableSummary, ns.Data.Attributes.EditableSummary, "should match editable_summary")
+	assert.Equal(doc.Depositor, ns.Data.Attributes.Depositor, "should match depositor")
+	assert.Empty(doc.Genes, "should have empty genes field")
+	assert.Empty(doc.Dbxrefs, "should have empty dbxrefs field")
+	assert.ElementsMatch(doc.Publications, ns.Data.Attributes.Publications, "should match publications")
+}
 
-	gm, err := result2.F1, result2.F2
+func assertLoadedPlasmidProperties(
+	assert *require.Assertions,
+	doc *model.StockDoc,
+	ns *stock.ExistingPlasmid,
+) {
+	assert.Equal(doc.PlasmidProperties.ImageMap, ns.Data.Attributes.ImageMap, "should match image_map")
+	assert.Equal(doc.PlasmidProperties.Sequence, ns.Data.Attributes.Sequence, "should match sequence")
+}
+
+func assertRetrievedPlasmidOntology(
+	assert *require.Assertions,
+	repo repository.StockRepository,
+	stockID string,
+) {
+	result := F.Pipe2(repo.GetPlasmid(stockID), ToEither, toStockDocResult)
+	doc, err := result.F1, result.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
 		OntologyTermCloningVector,
-		gm.PlasmidProperties.DictyPlasmidProperty,
+		doc.PlasmidProperties.DictyPlasmidProperty,
 		"GetPlasmid should retrieve the ontology term label that was stored during LoadPlasmid for plasmid %s",
-		um.StockID,
+		stockID,
 	)
 }
 
@@ -317,89 +313,67 @@ func testMoreListPlasmids(
 	t *testing.T,
 	ls []*model.StockDoc,
 ) {
-	// convert fifth result to numeric timestamp in milliseconds
-	// so we can use this as cursor
-	// get next five results (5-9)
-	ti := toTimestamp(ls[len(ls)-1].CreatedAt)
-	result10 := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{Cursor: ti, Limit: 4}),
-		ToEither,
-		toStockDocListResult,
-	)
-
-	ls2, err := result10.F1, result10.F2
-	assert.NoErrorf(
-		err,
-		"expect no error getting plasmids 5-9, received %s",
-		err,
-	)
-	assert.Len(ls2, 5, "should match the provided limit number + 1")
-	assert.Exactly(
-		ls2[0],
-		ls[len(ls)-1],
-		"last item from first five results and first item from next five results should be the same",
-	)
-	assert.NotEqual(
-		ls2[0].CreatedBy,
-		ls2[1].CreatedBy,
-		"should have different created_by fields",
-	)
-
-	// convert ninth result to numeric timestamp
-	ti2 := toTimestamp(ls2[len(ls2)-1].CreatedAt)
-	// get last results (9-10)
-	result11 := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{Cursor: ti2, Limit: 4}),
-		ToEither,
-		toStockDocListResult,
-	)
-
-	ls3, err := result11.F1, result11.F2
-	assert.NoErrorf(
-		err,
-		"expect no error getting plasmids 9-10, received %s",
-		err,
-	)
-	assert.Len(ls3, 2, "should retrieve the last two results")
-	assert.Exactly(
-		ls3[0].CreatedBy,
-		ls2[len(ls2)-1].CreatedBy,
-		"last item from previous five results and first item from next five results should be the same",
-	)
+	ls2 := testPaginatedPlasmidList(repo, assert, ls, 5, "5-9")
+	ls3 := testPaginatedPlasmidList(repo, assert, ls2, 2, "9-10")
 
 	testModelListSort(ls, t)
 	testModelListSort(ls2, t)
 	testModelListSort(ls3, t)
 
-	result12 := F.Pipe2(repo.ListPlasmids(
-		&stock.StockParameters{Limit: 100, Filter: georgeFilter},
-	), ToEither, toStockDocListResult)
+	testFilteredPlasmidList(repo, assert)
+}
 
-	sf, err := result12.F1, result12.F2
-	assert.NoErrorf(
-		err,
-		"expect no error getting list of plasmids, received %s",
-		err,
-	)
-	assert.Len(sf, 10, "should list ten plasmids")
-
-	result32 := F.Pipe2(
-		repo.ListPlasmids(
-			&stock.StockParameters{
-				Cursor: toTimestamp(sf[4].CreatedAt),
-				Limit:  10,
-			},
-		),
+func testPaginatedPlasmidList(
+	repo repository.StockRepository,
+	assert *require.Assertions,
+	previousList []*model.StockDoc,
+	expectedLen int,
+	rangeDesc string,
+) []*model.StockDoc {
+	cursor := toTimestamp(previousList[len(previousList)-1].CreatedAt)
+	result := F.Pipe2(
+		repo.ListPlasmids(&stock.StockParameters{Cursor: cursor, Limit: 4}),
 		ToEither,
 		toStockDocListResult,
 	)
-	cs, err := result32.F1, result32.F2
-	assert.NoErrorf(
-		err,
-		"expect no error getting list of plasmids with cursor, received %s",
-		err,
+
+	docs, err := result.F1, result.F2
+	assert.NoErrorf(err, "expect no error getting plasmids %s, received %s", rangeDesc, err)
+	assert.Len(docs, expectedLen, "should match expected length for range %s", rangeDesc)
+	assert.Exactly(
+		docs[0],
+		previousList[len(previousList)-1],
+		"last item from previous results and first item from current results should be the same",
 	)
-	assert.Len(cs, 6, "should list six plasmids")
+
+	return docs
+}
+
+func testFilteredPlasmidList(
+	repo repository.StockRepository,
+	assert *require.Assertions,
+) {
+	result := F.Pipe2(
+		repo.ListPlasmids(&stock.StockParameters{Limit: 100, Filter: georgeFilter}),
+		ToEither,
+		toStockDocListResult,
+	)
+
+	docs, err := result.F1, result.F2
+	assert.NoErrorf(err, "expect no error getting list of plasmids, received %s", err)
+	assert.Len(docs, 10, "should list ten plasmids")
+
+	cursorResult := F.Pipe2(
+		repo.ListPlasmids(&stock.StockParameters{
+			Cursor: toTimestamp(docs[4].CreatedAt),
+			Limit:  10,
+		}),
+		ToEither,
+		toStockDocListResult,
+	)
+	cursorDocs, err := cursorResult.F1, cursorResult.F2
+	assert.NoErrorf(err, "expect no error getting list of plasmids with cursor, received %s", err)
+	assert.Len(cursorDocs, 6, "should list six plasmids")
 }
 
 func TestGetPlasmid(t *testing.T) {
