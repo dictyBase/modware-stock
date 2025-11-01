@@ -382,6 +382,145 @@
             O.GetOrElse(F.Constant(T.MakeTuple2("", -1))),
         ).F1, result.F2
         ```
+
+      - **IOEither for Asynchronous Error Handling**
+        ```go
+        import (
+            fperrors "github.com/IBM/fp-go/errors"
+            IOE "github.com/IBM/fp-go/ioeither"
+        )
+
+        // PATTERN 1: Repository 4-Stage Pipeline (validate → transform → execute → error context)
+        // Use this pattern for ALL repository operations
+        func (r *Repository) GetEntity(id string) IOE.IOEither[error, *Entity] {
+            return F.Pipe4(
+                IOE.Of[error](id),
+                IOE.Chain(r.validate),           // Input → IOE[error, Validated]
+                IOE.Map[error](r.buildParams),   // Validated → Params
+                IOE.Chain(r.execute),            // Params → IOE[error, Entity]
+                IOE.MapLeft[*Entity](
+                    fperrors.OnError("failed to get entity"),
+                ),
+            )
+        }
+
+        // PATTERN 2: Service Multi-Stage Workflow with Progressive Context Enrichment
+        // Use this pattern for complex service operations with multiple steps
+
+        // Step 1: Define progressive context types
+        type baseContext struct {
+            ctx     context.Context
+            request *Request
+            repo    Repository
+        }
+
+        type withValidated struct {
+            baseContext
+            validated ValidatedData
+        }
+
+        type withProcessed struct {
+            withValidated
+            processed ProcessedData
+        }
+
+        // Step 2: Define curried setters for type-safe context building
+        var (
+            setValidated = F.Curry2(
+                func(data ValidatedData, ctx baseContext) withValidated {
+                    return withValidated{baseContext: ctx, validated: data}
+                },
+            )
+
+            setProcessed = F.Curry2(
+                func(data ProcessedData, ctx withValidated) withProcessed {
+                    return withProcessed{withValidated: ctx, processed: data}
+                },
+            )
+        )
+
+        // Step 3: Define workflow stages
+        func validateRequest(ctx baseContext) IOE.IOEither[error, ValidatedData] {
+            return IOE.TryCatchError(func() (ValidatedData, error) {
+                // validation logic
+                return validated, nil
+            })
+        }
+
+        // Step 4: Compose workflow with IOE.Bind for context enrichment
+        func (s *Service) ProcessEntity(
+            ctx context.Context,
+            req *Request,
+        ) (*Response, error) {
+            result := F.Pipe5(
+                IOE.Of[error](baseContext{ctx, req, s.repo}),
+                IOE.Bind(setValidated, validateRequest),
+                IOE.Bind(setProcessed, processData),
+                IOE.Map[error](extractResponse),
+                toServiceResult(ctx),
+            )
+            return result.F1, result.F2
+        }
+
+        // PATTERN 3: Either.Fold for Result Conversion (IOEither → Tuple2)
+        // Use this to convert functional results to traditional Go error handling
+        func toServiceResult(ctx context.Context) func(IOE.IOEither[error, *Response]) T.Tuple2[*Response, error] {
+            return func(ioe IOE.IOEither[error, *Response]) T.Tuple2[*Response, error] {
+                return F.Pipe1(
+                    ioe(),
+                    E.Fold(
+                        func(err error) T.Tuple2[*Response, error] {
+                            return T.MakeTuple2(&Response{}, handleError(ctx, err))
+                        },
+                        func(resp *Response) T.Tuple2[*Response, error] {
+                            return T.MakeTuple2(resp, nil)
+                        },
+                    ),
+                )
+            }
+        }
+
+        // PATTERN 4: Type Aliases for IOEither Workflows
+        // Use these for cleaner type signatures and better documentation
+        type (
+            EntityResult = T.Tuple2[*Entity, error]
+            EntityEither = E.Either[error, *Entity]
+            EntityIO     = IOE.IOEither[error, *Entity]
+
+            // Converter types for result transformation
+            EntityConverter = func(EntityIO) EntityResult
+            EntityExecutor  = func(EntityIO) EntityEither
+        )
+
+        // PATTERN 5: TryCatchError for Database and External Operations
+        // Wrap potentially panicking operations safely
+        func (r *Repository) executeQuery(params Params) IOE.IOEither[error, *Result] {
+            return IOE.TryCatchError(
+                func() (*Result, error) {
+                    row, err := r.db.Execute(query, params)
+                    if err != nil {
+                        return nil, fmt.Errorf("query execution failed: %w", err)
+                    }
+                    return processRow(row)
+                },
+            )
+        }
+
+        // PATTERN 6: Point-Free Transformation with Flow
+        // Use for extracting and transforming data from context
+        var extractResponse = F.Flow2(
+            func(ctx withProcessed) ProcessedData { return ctx.processed },
+            transformToResponse,
+        )
+
+        // WHEN TO USE IOEither vs Either:
+        // - Use IOEither for operations with side effects (DB, external APIs, file I/O)
+        // - Use Either for pure transformations without side effects
+        // - Use IOE.Chain for operations that return IOEither
+        // - Use IOE.Map for pure transformations within IOEither pipeline
+        // - Use IOE.Bind for context enrichment with IOEither operations
+        // - Use IOE.Let for context enrichment with pure transformations
+        ```
     - Use options pattern for configurable components
       ```go
       // Option type for functional options
