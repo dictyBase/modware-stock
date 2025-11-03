@@ -201,7 +201,7 @@ func setup(t *testing.T) (stock.StockServiceClient, *require.Assertions) {
 	// Set up default params required by the service
 	svc.Params = map[string]string{
 		"strain_term":  "general strain",
-		"plasmid_term": "plasmid_keywords",
+		"plasmid_term": "vector",
 	}
 	svc.Topics = map[string]string{
 		"stockCreate": "StockService.Create",
