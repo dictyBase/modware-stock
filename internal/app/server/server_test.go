@@ -134,7 +134,9 @@ func TestAllParams(t *testing.T) {
 // TestRunServer documents the integration testing requirements for the RunServer function
 // This function is intentionally skipped as it requires external infrastructure
 func TestRunServer(t *testing.T) {
-	t.Skip("RunServer requires integration testing with ArangoDB, NATS, and gRPC - see documentation below")
+	t.Skip(
+		"RunServer requires integration testing with ArangoDB, NATS, and gRPC - see documentation below",
+	)
 
 	// INTEGRATION TESTING REQUIREMENTS FOR RunServer()
 	//
@@ -477,7 +479,7 @@ func testGetLoggerJSONFormatterTimestamp(t *testing.T) {
 
 func testAllParamsConnectParams(t *testing.T) {
 	t.Helper()
-	ctx := createTestContextWithFlags(map[string]interface{}{
+	ctx := createTestContextWithFlags(map[string]any{
 		"arangodb-user":     "testuser",
 		"arangodb-pass":     "testpass",
 		"arangodb-database": "testdb",
@@ -499,7 +501,7 @@ func testAllParamsConnectParams(t *testing.T) {
 
 func testAllParamsCollectionParams(t *testing.T) {
 	t.Helper()
-	ctx := createTestContextWithFlags(map[string]interface{}{
+	ctx := createTestContextWithFlags(map[string]any{
 		"stock-collection":               "stock",
 		"stockprop-collection":           "stockprop",
 		"stock-key-generator-collection": "stock_key_gen",
@@ -533,7 +535,7 @@ func testAllParamsCollectionParams(t *testing.T) {
 
 func testAllParamsOboGraphCollectionParams(t *testing.T) {
 	t.Helper()
-	ctx := createTestContextWithFlags(map[string]interface{}{
+	ctx := createTestContextWithFlags(map[string]any{
 		"cv-collection":   "cvterm",
 		"obograph":        "obograph",
 		"rel-collection":  "cvterm_relationship",
@@ -551,7 +553,7 @@ func testAllParamsOboGraphCollectionParams(t *testing.T) {
 
 func testAllParamsIntegerConversion(t *testing.T) {
 	t.Helper()
-	ctx := createTestContextWithFlags(map[string]interface{}{
+	ctx := createTestContextWithFlags(map[string]any{
 		"arangodb-port": "9999",
 		"keyoffset":     500000,
 	})
