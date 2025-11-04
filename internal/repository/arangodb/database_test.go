@@ -1,6 +1,7 @@
 package arangodb
 
 import (
+	"context"
 	"testing"
 
 	driver "github.com/arangodb/go-driver"
@@ -22,7 +23,7 @@ func TestCreateDbStruct(t *testing.T) {
 	t.Run("successful database structure creation", func(t *testing.T) {
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -62,7 +63,7 @@ func TestCreateDbStruct(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -98,6 +99,8 @@ func TestCreateDbStruct(t *testing.T) {
 }
 
 // TestDocCollections tests document collection creation with various scenarios
+//
+//nolint:funlen // Test function with comprehensive test cases
 func TestDocCollections(t *testing.T) {
 	t.Run("successful document collections creation", func(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
@@ -109,7 +112,7 @@ func TestDocCollections(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -141,7 +144,7 @@ func TestDocCollections(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -175,7 +178,7 @@ func TestDocCollections(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -209,7 +212,7 @@ func TestDocCollections(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -246,7 +249,7 @@ func TestGraphAndEdgeCollections(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -287,7 +290,7 @@ func TestGraphAndEdgeCollections(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -323,6 +326,8 @@ func TestGraphAndEdgeCollections(t *testing.T) {
 }
 
 // TestCreateEdgeCollections tests edge collection creation with various scenarios
+//
+//nolint:funlen // Test function with comprehensive test cases
 func TestCreateEdgeCollections(t *testing.T) {
 	t.Run("successful edge collections creation", func(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
@@ -334,7 +339,7 @@ func TestCreateEdgeCollections(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -370,7 +375,7 @@ func TestCreateEdgeCollections(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -393,7 +398,12 @@ func TestCreateEdgeCollections(t *testing.T) {
 
 		err = createEdgeCollections(repo, invalidCollParams)
 		require.Error(t, err, "Should fail with invalid stock type edge collection name")
-		require.Contains(t, err.Error(), "error in creating edge collection", "Error message should mention edge collection creation")
+		require.Contains(
+			t,
+			err.Error(),
+			"error in creating edge collection",
+			"Error message should mention edge collection creation",
+		)
 	})
 
 	t.Run("error creating parent strain edge collection", func(t *testing.T) {
@@ -406,7 +416,7 @@ func TestCreateEdgeCollections(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -429,7 +439,12 @@ func TestCreateEdgeCollections(t *testing.T) {
 
 		err = createEdgeCollections(repo, invalidCollParams)
 		require.Error(t, err, "Should fail with invalid parent strain edge collection name")
-		require.Contains(t, err.Error(), "error in creating edge collection", "Error message should mention edge collection creation")
+		require.Contains(
+			t,
+			err.Error(),
+			"error in creating edge collection",
+			"Error message should mention edge collection creation",
+		)
 	})
 
 	t.Run("error creating stock term edge collection", func(t *testing.T) {
@@ -442,7 +457,7 @@ func TestCreateEdgeCollections(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -465,11 +480,18 @@ func TestCreateEdgeCollections(t *testing.T) {
 
 		err = createEdgeCollections(repo, invalidCollParams)
 		require.Error(t, err, "Should fail with invalid stock term edge collection name")
-		require.Contains(t, err.Error(), "error in creating edge collection", "Error message should mention edge collection creation")
+		require.Contains(
+			t,
+			err.Error(),
+			"error in creating edge collection",
+			"Error message should mention edge collection creation",
+		)
 	})
 }
 
 // TestCreateNamedGraph tests named graph creation with various scenarios
+//
+//nolint:funlen // Test function with comprehensive test cases
 func TestCreateNamedGraph(t *testing.T) {
 	t.Run("successful named graph creation", func(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
@@ -481,7 +503,7 @@ func TestCreateNamedGraph(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -520,7 +542,7 @@ func TestCreateNamedGraph(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -565,7 +587,7 @@ func TestCreateNamedGraph(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -609,7 +631,7 @@ func TestCreateNamedGraph(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -656,7 +678,7 @@ func TestCreateIndex(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
@@ -677,7 +699,7 @@ func TestCreateIndex(t *testing.T) {
 		require.NoError(t, err, "Failed to create index")
 
 		// Verify index was created
-		indices, err := repo.stockc.stock.Indexes(nil)
+		indices, err := repo.stockc.stock.Indexes(context.TODO())
 		require.NoError(t, err, "Failed to get collection indices")
 		require.NotEmpty(t, indices, "Collection should have indices")
 
@@ -705,7 +727,7 @@ func TestCreateIndex(t *testing.T) {
 
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
+		defer func() { _ = db.Drop() }()
 		_ = sess
 
 		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
