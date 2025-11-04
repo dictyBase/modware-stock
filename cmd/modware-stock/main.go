@@ -12,11 +12,17 @@ import (
 	"github.com/urfave/cli"
 )
 
+const (
+	appName    = "modware-stock"
+	appUsage   = "cli for modware-stock microservice"
+	appVersion = "1.0.0"
+)
+
 func main() {
 	app := cli.NewApp()
-	app.Name = "modware-stock"
-	app.Usage = "cli for modware-stock microservice"
-	app.Version = "1.0.0"
+	app.Name = appName
+	app.Usage = appUsage
+	app.Version = appVersion
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "log-format",
