@@ -568,7 +568,7 @@ func testAllParamsIntegerConversion(t *testing.T) {
 
 func testAllParamsBooleanValues(t *testing.T) {
 	t.Helper()
-	ctx := createTestContextWithFlags(map[string]interface{}{
+	ctx := createTestContextWithFlags(map[string]any{
 		"is-secure": false,
 	})
 
@@ -580,7 +580,7 @@ func testAllParamsBooleanValues(t *testing.T) {
 
 func testAllParamsReturnsAllStructs(t *testing.T) {
 	t.Helper()
-	ctx := createTestContextWithFlags(map[string]interface{}{
+	ctx := createTestContextWithFlags(map[string]any{
 		"arangodb-user":     "user",
 		"arangodb-pass":     "pass",
 		"arangodb-database": "db",
@@ -600,7 +600,7 @@ func testAllParamsReturnsAllStructs(t *testing.T) {
 func testAllParamsWithDefaults(t *testing.T) {
 	t.Helper()
 	// Create context with minimal flags - most values will be empty/default
-	ctx := createTestContextWithFlags(map[string]interface{}{})
+	ctx := createTestContextWithFlags(map[string]any{})
 
 	connP, collP, ontoP := allParams(ctx)
 
@@ -634,7 +634,7 @@ func createTestContext(globalFlags map[string]string) *cli.Context {
 	return parentCtx
 }
 
-func createTestContextWithFlags(flags map[string]interface{}) *cli.Context {
+func createTestContextWithFlags(flags map[string]any) *cli.Context {
 	app := cli.NewApp()
 	set := flag.NewFlagSet("test", flag.ContinueOnError)
 

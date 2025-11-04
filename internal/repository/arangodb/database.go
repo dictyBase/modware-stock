@@ -46,7 +46,7 @@ type stockc struct {
 type persistStrainParams struct {
 	parent, dictyStrainProp    string
 	statement, parentStatement string
-	bindVars                   map[string]interface{}
+	bindVars                   map[string]any
 }
 
 func createDbStruct(ar *arangorepository, collP *CollectionParams) error {
