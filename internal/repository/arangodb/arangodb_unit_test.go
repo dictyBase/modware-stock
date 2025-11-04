@@ -22,7 +22,7 @@ func TestCheckStock(t *testing.T) {
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
-		defer repo.Dbh().Drop()
+		defer func() { _ = repo.Dbh().Drop() }()
 
 		// Try to check a non-existent stock
 		_, err = repo.(*arangorepository).checkStock("DBS0000000")
@@ -40,7 +40,7 @@ func TestCheckStock(t *testing.T) {
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
-		defer repo.Dbh().Drop()
+		defer func() { _ = repo.Dbh().Drop() }()
 
 		// Try to check with invalid ID
 		_, err = repo.(*arangorepository).checkStock("")
@@ -60,7 +60,7 @@ func TestCheckStock(t *testing.T) {
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
-		defer repo.Dbh().Drop()
+		defer func() { _ = repo.Dbh().Drop() }()
 
 		// Create a test strain first
 		testStrain := newTestStrain("test@example.com", General)
@@ -76,6 +76,8 @@ func TestCheckStock(t *testing.T) {
 }
 
 // TestMergeBindParams tests the mergeBindParams function
+//
+//nolint:funlen // Test function with comprehensive test cases
 func TestMergeBindParams(t *testing.T) {
 	t.Run("merge empty maps", func(t *testing.T) {
 		result := mergeBindParams()
@@ -270,6 +272,8 @@ func TestNormalizeStrBindParam(t *testing.T) {
 }
 
 // TestTermID tests the termID function with various scenarios
+//
+//nolint:funlen // Test function with comprehensive test cases
 func TestTermID(t *testing.T) {
 	t.Run("find existing term ID", func(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
@@ -284,7 +288,7 @@ func TestTermID(t *testing.T) {
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
-		defer repo.Dbh().Drop()
+		defer func() { _ = repo.Dbh().Drop() }()
 
 		ar := repo.(*arangorepository)
 
@@ -307,7 +311,7 @@ func TestTermID(t *testing.T) {
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
-		defer repo.Dbh().Drop()
+		defer func() { _ = repo.Dbh().Drop() }()
 
 		ar := repo.(*arangorepository)
 
@@ -330,7 +334,7 @@ func TestTermID(t *testing.T) {
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
-		defer repo.Dbh().Drop()
+		defer func() { _ = repo.Dbh().Drop() }()
 
 		ar := repo.(*arangorepository)
 
@@ -353,7 +357,7 @@ func TestTermID(t *testing.T) {
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
-		defer repo.Dbh().Drop()
+		defer func() { _ = repo.Dbh().Drop() }()
 
 		ar := repo.(*arangorepository)
 
@@ -375,7 +379,7 @@ func TestTermID(t *testing.T) {
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
-		defer repo.Dbh().Drop()
+		defer func() { _ = repo.Dbh().Drop() }()
 
 		ar := repo.(*arangorepository)
 
@@ -397,7 +401,7 @@ func TestLoadOboJSON_ErrorCases(t *testing.T) {
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
-		defer repo.Dbh().Drop()
+		defer func() { _ = repo.Dbh().Drop() }()
 
 		// Create a reader with invalid JSON
 		invalidJSON := strings.NewReader(`{"invalid": "json", "missing": "closing brace"`)
@@ -415,7 +419,7 @@ func TestLoadOboJSON_ErrorCases(t *testing.T) {
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
-		defer repo.Dbh().Drop()
+		defer func() { _ = repo.Dbh().Drop() }()
 
 		// Create a reader with valid JSON but invalid OBO structure
 		malformedOBO := strings.NewReader(`{"graphs": [{"nodes": "invalid"}]}`)
@@ -436,7 +440,7 @@ func TestDbh(t *testing.T) {
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
-		defer repo.Dbh().Drop()
+		defer func() { _ = repo.Dbh().Drop() }()
 
 		dbHandle := repo.Dbh()
 		require.NotNil(t, dbHandle, "Database handle should not be nil")
@@ -505,7 +509,12 @@ func TestNewStockRepo_ValidationErrors(t *testing.T) {
 
 		_, err := NewStockRepo(invalidConnParams, collParams, ontoParams)
 		require.Error(t, err, "Should fail with invalid connection params")
-		require.Contains(t, err.Error(), "error in creating database session", "Error should mention database session creation")
+		require.Contains(
+			t,
+			err.Error(),
+			"error in creating database session",
+			"Error should mention database session creation",
+		)
 	})
 }
 
