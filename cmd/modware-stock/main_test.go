@@ -501,13 +501,13 @@ func testAllFlagsValidConfig(t *testing.T) {
 func testAppMetadata(t *testing.T) {
 	t.Helper()
 	app := cli.NewApp()
-	app.Name = "modware-stock"
-	app.Usage = "cli for modware-stock microservice"
-	app.Version = "1.0.0"
+	app.Name = appName
+	app.Usage = appUsage
+	app.Version = appVersion
 
-	require.Equal(t, "modware-stock", app.Name)
-	require.Equal(t, "cli for modware-stock microservice", app.Usage)
-	require.Equal(t, "1.0.0", app.Version)
+	require.Equal(t, appName, app.Name)
+	require.Equal(t, appUsage, app.Usage)
+	require.Equal(t, appVersion, app.Version)
 }
 
 func testAppGlobalFlags(t *testing.T) {
@@ -591,12 +591,12 @@ func testAppRunsWithNoArgs(t *testing.T) {
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
-	os.Args = []string{"modware-stock"}
+	os.Args = []string{appName}
 
 	app := cli.NewApp()
-	app.Name = "modware-stock"
-	app.Usage = "cli for modware-stock microservice"
-	app.Version = "1.0.0"
+	app.Name = appName
+	app.Usage = appUsage
+	app.Version = appVersion
 
 	err := app.Run(os.Args)
 	require.NoError(t, err, "app should run without error when no command is given")
@@ -607,12 +607,12 @@ func testAppRunsWithHelpFlag(t *testing.T) {
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
-	os.Args = []string{"modware-stock", "--help"}
+	os.Args = []string{appName, "--help"}
 
 	app := cli.NewApp()
-	app.Name = "modware-stock"
-	app.Usage = "cli for modware-stock microservice"
-	app.Version = "1.0.0"
+	app.Name = appName
+	app.Usage = appUsage
+	app.Version = appVersion
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "log-format",
