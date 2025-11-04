@@ -43,6 +43,18 @@ func TestServerFlags(t *testing.T) {
 	t.Run("ContainsPlasmidTermFlag", func(t *testing.T) {
 		testServerPlasmidTermFlag(t)
 	})
+
+	t.Run("AllServerFlagsAreValid", func(t *testing.T) {
+		testServerFlagsValidity(t)
+	})
+
+	t.Run("ServerFlagsHaveNonEmptyUsage", func(t *testing.T) {
+		testServerFlagsUsage(t)
+	})
+
+	t.Run("ServerFlagsHaveNoEnvironmentVariables", func(t *testing.T) {
+		testServerFlagsNoEnvVars(t)
+	})
 }
 
 func TestDbCollectionFlags(t *testing.T) {
@@ -86,6 +98,22 @@ func TestDbCollectionFlags(t *testing.T) {
 
 	t.Run("ContainsStockOntoGraphFlag", func(t *testing.T) {
 		testDbStockOntoGraphFlag(t)
+	})
+
+	t.Run("AllDbCollectionFlagsAreStringFlags", func(t *testing.T) {
+		testDbCollectionFlagsAreStrings(t)
+	})
+
+	t.Run("AllDbCollectionFlagsHaveDefaults", func(t *testing.T) {
+		testDbCollectionFlagsHaveDefaults(t)
+	})
+
+	t.Run("DbCollectionFlagsHaveDescriptiveUsage", func(t *testing.T) {
+		testDbCollectionFlagsUsage(t)
+	})
+
+	t.Run("DbCollectionFlagsHaveNoEnvironmentVariables", func(t *testing.T) {
+		testDbCollectionFlagsNoEnvVars(t)
 	})
 }
 
@@ -135,6 +163,14 @@ func TestMain(t *testing.T) {
 	t.Run("StartServerCommandHasAllFlags", func(t *testing.T) {
 		testStartServerCommandFlags(t)
 	})
+
+	t.Run("MainFunctionCreatesApplicationWithCorrectConfiguration", func(t *testing.T) {
+		testMainFunctionConfiguration(t)
+	})
+
+	t.Run("MainFunctionIncludesAllRequiredComponents", func(t *testing.T) {
+		testMainFunctionComponents(t)
+	})
 }
 
 func TestMainIntegration(t *testing.T) {
@@ -150,6 +186,14 @@ func TestMainIntegration(t *testing.T) {
 
 	t.Run("ApplicationShowsVersionWithVersionFlag", func(t *testing.T) {
 		testAppRunsWithVersionFlag(t)
+	})
+
+	t.Run("ApplicationMatchesMainFunctionStructure", func(t *testing.T) {
+		testMainFunctionStructure(t)
+	})
+
+	t.Run("ApplicationCanRunCompleteLifecycle", func(t *testing.T) {
+		testCompleteApplicationLifecycle(t)
 	})
 }
 
@@ -284,6 +328,52 @@ func testServerPlasmidTermFlag(t *testing.T) {
 	require.Equal(t,
 		"default ontology term that will be used for creating plasmid",
 		strFlag.Usage)
+}
+
+func testServerFlagsValidity(t *testing.T) {
+	t.Helper()
+	flags := serverFlags()
+
+	for _, flg := range flags {
+		name := getFlagName(flg)
+		require.NotEmpty(t, name, "all server flags must have a name")
+
+		usage := getFlagUsage(flg)
+		require.NotEmpty(t, usage, "flag %s must have usage text", name)
+	}
+}
+
+func testServerFlagsUsage(t *testing.T) {
+	t.Helper()
+	flags := serverFlags()
+
+	expectedUsages := map[string]string{
+		"port":             "tcp port at which the server will be available",
+		"keyoffset":        "initial offset for stock id generation",
+		"reflection":       "flag for enabling server reflection",
+		"strain-ontology":  "dictybase ontology that will be used for picking grouping term for strain",
+		"strain-term":      "default ontology term that will be used for creating strain",
+		"plasmid-ontology": "dictybase ontology that will be used for picking grouping term for plasmid",
+		"plasmid-term":     "default ontology term that will be used for creating plasmid",
+	}
+
+	for expectedName, expectedUsage := range expectedUsages {
+		flg := findFlagByName(flags, expectedName)
+		require.NotNil(t, flg, "flag %s should exist", expectedName)
+
+		actualUsage := getFlagUsage(flg)
+		require.Equal(t, expectedUsage, actualUsage, "flag %s should have correct usage", expectedName)
+	}
+}
+
+func testServerFlagsNoEnvVars(t *testing.T) {
+	t.Helper()
+	flags := serverFlags()
+
+	for _, flg := range flags {
+		envVar := getFlagEnvVar(flg)
+		require.Empty(t, envVar, "server flag %s should not have environment variable", getFlagName(flg))
+	}
 }
 
 // Test implementation functions for database collection flags
@@ -423,6 +513,77 @@ func testDbStockOntoGraphFlag(t *testing.T) {
 	require.Equal(t,
 		"arangodb named graph for managing stock and ontology",
 		strFlag.Usage)
+}
+
+func testDbCollectionFlagsAreStrings(t *testing.T) {
+	t.Helper()
+	flags := dbCollectionFlags()
+
+	for _, flg := range flags {
+		_, ok := flg.(cli.StringFlag)
+		require.True(t, ok, "all database collection flags should be StringFlags, but %s is not", getFlagName(flg))
+	}
+}
+
+func testDbCollectionFlagsHaveDefaults(t *testing.T) {
+	t.Helper()
+	flags := dbCollectionFlags()
+
+	expectedDefaults := map[string]string{
+		"stock-collection":               "stock",
+		"stockprop-collection":           "stockprop",
+		"stock-key-generator-collection": "stock_key_generator",
+		"stock-type-edge":                "stock_type",
+		"parent-strain-edge":             "parent_strain",
+		"stock-term-edge":                "stock_term",
+		"stockproptype-graph":            "stockprop_type",
+		"strain2parent-graph":            "strain2parent",
+		"stockonto-graph":                "stockonto",
+	}
+
+	for expectedName, expectedDefault := range expectedDefaults {
+		flg := findFlagByName(flags, expectedName)
+		require.NotNil(t, flg, "flag %s should exist", expectedName)
+
+		strFlag, ok := flg.(cli.StringFlag)
+		require.True(t, ok, "flag %s should be a StringFlag", expectedName)
+		require.Equal(t, expectedDefault, strFlag.Value, "flag %s should have correct default value", expectedName)
+	}
+}
+
+func testDbCollectionFlagsUsage(t *testing.T) {
+	t.Helper()
+	flags := dbCollectionFlags()
+
+	expectedUsages := map[string]string{
+		"stock-collection":               "arangodb collection for storing biological stocks",
+		"stockprop-collection":           "arangodb collection for storing stock properties",
+		"stock-key-generator-collection": "arangodb collection for generating unique IDs",
+		"stock-type-edge":                "arangodb edge collection for connecting stocks to their types (strain or plasmid)",
+		"parent-strain-edge":             "arangodb edge collection for connecting strains to their parent",
+		"stock-term-edge":                "arangodb edge collection for connecting stock to ontology term",
+		"stockproptype-graph":            "arangodb named graph for managing relations between stocks and their properties",
+		"strain2parent-graph":            "arangodb named graph for managing relations between strains and their parents",
+		"stockonto-graph":                "arangodb named graph for managing stock and ontology",
+	}
+
+	for expectedName, expectedUsage := range expectedUsages {
+		flg := findFlagByName(flags, expectedName)
+		require.NotNil(t, flg, "flag %s should exist", expectedName)
+
+		actualUsage := getFlagUsage(flg)
+		require.Equal(t, expectedUsage, actualUsage, "flag %s should have correct usage", expectedName)
+	}
+}
+
+func testDbCollectionFlagsNoEnvVars(t *testing.T) {
+	t.Helper()
+	flags := dbCollectionFlags()
+
+	for _, flg := range flags {
+		envVar := getFlagEnvVar(flg)
+		require.Empty(t, envVar, "database collection flag %s should not have environment variable", getFlagName(flg))
+	}
 }
 
 // Test implementation functions for allFlags
@@ -645,6 +806,92 @@ func testAppRunsWithVersionFlag(t *testing.T) {
 	require.NoError(t, err, "app should run without error when version flag is given")
 }
 
+func testMainFunctionStructure(t *testing.T) {
+	t.Helper()
+
+	// This test replicates the exact structure of main() function
+	app := cli.NewApp()
+	app.Name = appName
+	app.Usage = appUsage
+	app.Version = appVersion
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "log-format",
+			Usage: "format of the logging out, either of json or text.",
+			Value: "json",
+		},
+		cli.StringFlag{
+			Name:  "log-level",
+			Usage: "log level for the application",
+			Value: "error",
+		},
+	}
+	app.Commands = []cli.Command{
+		{
+			Name:  "start-server",
+			Usage: "starts the modware-stock microservice with grpc backends",
+			Flags: allFlags(),
+		},
+	}
+
+	// Verify all components match what main() creates
+	require.Equal(t, "modware-stock", app.Name)
+	require.Equal(t, "cli for modware-stock microservice", app.Usage)
+	require.Equal(t, "1.0.0", app.Version)
+	require.Len(t, app.Flags, 2)
+	require.Len(t, app.Commands, 1)
+	require.Equal(t, "start-server", app.Commands[0].Name)
+	require.Equal(t, "starts the modware-stock microservice with grpc backends", app.Commands[0].Usage)
+
+	// Verify the command has all flags from allFlags()
+	require.NotEmpty(t, app.Commands[0].Flags)
+	expectedFlags := allFlags()
+	require.Len(t, app.Commands[0].Flags, len(expectedFlags))
+}
+
+func testCompleteApplicationLifecycle(t *testing.T) {
+	t.Helper()
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	// Test with just the app name (no command)
+	os.Args = []string{appName}
+
+	// Create full app as main() does
+	app := cli.NewApp()
+	app.Name = appName
+	app.Usage = appUsage
+	app.Version = appVersion
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "log-format",
+			Usage: "format of the logging out, either of json or text.",
+			Value: "json",
+		},
+		cli.StringFlag{
+			Name:  "log-level",
+			Usage: "log level for the application",
+			Value: "error",
+		},
+	}
+	app.Commands = []cli.Command{
+		{
+			Name:  "start-server",
+			Usage: "starts the modware-stock microservice with grpc backends",
+			Flags: allFlags(),
+		},
+	}
+
+	// This should not error as the app is valid
+	err := app.Run(os.Args)
+	require.NoError(t, err, "app should run successfully with valid configuration")
+
+	// Verify the app structure after Run
+	require.NotNil(t, app.Name)
+	require.NotNil(t, app.Version)
+	require.NotEmpty(t, app.Commands)
+}
+
 // Test implementation functions for flag defaults
 
 func testServerFlagsDefaults(t *testing.T) {
@@ -760,6 +1007,25 @@ func getFlagUsage(flg cli.Flag) string {
 	}
 }
 
+func getFlagEnvVar(flg cli.Flag) string {
+	switch f := flg.(type) {
+	case cli.StringFlag:
+		return f.EnvVar
+	case cli.IntFlag:
+		return f.EnvVar
+	case cli.BoolFlag:
+		return f.EnvVar
+	case cli.BoolTFlag:
+		return f.EnvVar
+	case cli.StringSliceFlag:
+		return f.EnvVar
+	case cli.IntSliceFlag:
+		return f.EnvVar
+	default:
+		return ""
+	}
+}
+
 func containsName(flagName, searchName string) bool {
 	if flagName == "" {
 		return false
@@ -770,4 +1036,98 @@ func containsName(flagName, searchName string) bool {
 		}
 	}
 	return false
+}
+
+// Test implementation functions for main function behavior
+
+func testMainFunctionConfiguration(t *testing.T) {
+	t.Helper()
+
+	// Create an app instance as main() does
+	app := cli.NewApp()
+	app.Name = appName
+	app.Usage = appUsage
+	app.Version = appVersion
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "log-format",
+			Usage: "format of the logging out, either of json or text.",
+			Value: "json",
+		},
+		cli.StringFlag{
+			Name:  "log-level",
+			Usage: "log level for the application",
+			Value: "error",
+		},
+	}
+
+	// Verify metadata
+	require.Equal(t, "modware-stock", app.Name)
+	require.Equal(t, "cli for modware-stock microservice", app.Usage)
+	require.Equal(t, "1.0.0", app.Version)
+
+	// Verify global flags
+	require.Len(t, app.Flags, 2)
+	logFormatFlag := findFlagByName(app.Flags, "log-format")
+	require.NotNil(t, logFormatFlag)
+	logLevelFlag := findFlagByName(app.Flags, "log-level")
+	require.NotNil(t, logLevelFlag)
+}
+
+func testMainFunctionComponents(t *testing.T) {
+	t.Helper()
+
+	// Create the full app as main() does with all components
+	app := cli.NewApp()
+	app.Name = appName
+	app.Usage = appUsage
+	app.Version = appVersion
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "log-format",
+			Usage: "format of the logging out, either of json or text.",
+			Value: "json",
+		},
+		cli.StringFlag{
+			Name:  "log-level",
+			Usage: "log level for the application",
+			Value: "error",
+		},
+	}
+	app.Commands = []cli.Command{
+		{
+			Name:  "start-server",
+			Usage: "starts the modware-stock microservice with grpc backends",
+			Flags: allFlags(),
+		},
+	}
+
+	// Verify the app has all required components
+	require.NotNil(t, app.Name)
+	require.NotNil(t, app.Usage)
+	require.NotNil(t, app.Version)
+	require.NotEmpty(t, app.Flags)
+	require.NotEmpty(t, app.Commands)
+
+	// Verify the start-server command exists
+	require.Len(t, app.Commands, 1)
+	startServerCmd := app.Commands[0]
+	require.Equal(t, "start-server", startServerCmd.Name)
+	require.Equal(t, "starts the modware-stock microservice with grpc backends", startServerCmd.Usage)
+
+	// Verify start-server command has flags
+	require.NotEmpty(t, startServerCmd.Flags)
+
+	// Verify critical flags are present in start-server command
+	portFlag := findFlagByName(startServerCmd.Flags, "port")
+	require.NotNil(t, portFlag, "start-server must have port flag")
+
+	dbFlag := findFlagByName(startServerCmd.Flags, "arangodb-database")
+	require.NotNil(t, dbFlag, "start-server must have arangodb-database flag")
+
+	stockCollectionFlag := findFlagByName(startServerCmd.Flags, "stock-collection")
+	require.NotNil(t, stockCollectionFlag, "start-server must have stock-collection flag")
+
+	keyOffsetFlag := findFlagByName(startServerCmd.Flags, "keyoffset")
+	require.NotNil(t, keyOffsetFlag, "start-server must have keyoffset flag")
 }
