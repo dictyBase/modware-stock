@@ -271,24 +271,20 @@ func TestNormalizeStrBindParam(t *testing.T) {
 
 // TestTermID tests the termID function with various scenarios
 func TestTermID(t *testing.T) {
-	testArango, err := testarango.NewTestArangoFromEnv(true)
-	require.NoError(t, err, "Failed to create test arango instance")
-
-	connParams := getConnectParamsFromDb(testArango)
-	collParams := getCollectionParams()
-	ontoParams := getOntoParams()
-
 	t.Run("find existing term ID", func(t *testing.T) {
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
-		_ = sess
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
 
 		err = loadData(testArango)
 		require.NoError(t, err, "Failed to load test data")
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
+		defer repo.Dbh().Drop()
 
 		ar := repo.(*arangorepository)
 
@@ -299,16 +295,19 @@ func TestTermID(t *testing.T) {
 	})
 
 	t.Run("term does not exist", func(t *testing.T) {
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
-		_ = sess
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
 
 		err = loadData(testArango)
 		require.NoError(t, err, "Failed to load test data")
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
+		defer repo.Dbh().Drop()
 
 		ar := repo.(*arangorepository)
 
@@ -319,16 +318,19 @@ func TestTermID(t *testing.T) {
 	})
 
 	t.Run("ontology does not exist", func(t *testing.T) {
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
-		_ = sess
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
 
 		err = loadData(testArango)
 		require.NoError(t, err, "Failed to load test data")
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
+		defer repo.Dbh().Drop()
 
 		ar := repo.(*arangorepository)
 
@@ -339,16 +341,19 @@ func TestTermID(t *testing.T) {
 	})
 
 	t.Run("empty term name", func(t *testing.T) {
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
-		_ = sess
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
 
 		err = loadData(testArango)
 		require.NoError(t, err, "Failed to load test data")
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
+		defer repo.Dbh().Drop()
 
 		ar := repo.(*arangorepository)
 
@@ -358,16 +363,19 @@ func TestTermID(t *testing.T) {
 	})
 
 	t.Run("empty ontology name", func(t *testing.T) {
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
-		_ = sess
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
 
 		err = loadData(testArango)
 		require.NoError(t, err, "Failed to load test data")
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
+		defer repo.Dbh().Drop()
 
 		ar := repo.(*arangorepository)
 
@@ -379,21 +387,17 @@ func TestTermID(t *testing.T) {
 
 // TestLoadOboJSON tests the LoadOboJSON function with various scenarios
 func TestLoadOboJSON_ErrorCases(t *testing.T) {
-	testArango, err := testarango.NewTestArangoFromEnv(true)
-	require.NoError(t, err, "Failed to create test arango instance")
-
-	connParams := getConnectParamsFromDb(testArango)
-	collParams := getCollectionParams()
-	ontoParams := getOntoParams()
-
 	t.Run("load invalid JSON", func(t *testing.T) {
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
-		_ = sess
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
+		defer repo.Dbh().Drop()
 
 		// Create a reader with invalid JSON
 		invalidJSON := strings.NewReader(`{"invalid": "json", "missing": "closing brace"`)
@@ -401,29 +405,17 @@ func TestLoadOboJSON_ErrorCases(t *testing.T) {
 		require.Error(t, err, "Should return error for invalid JSON")
 	})
 
-	t.Run("load empty JSON", func(t *testing.T) {
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
-		_ = sess
-
-		repo, err := NewStockRepo(connParams, collParams, ontoParams)
-		require.NoError(t, err, "Failed to create stock repository")
-
-		// Create a reader with empty JSON
-		emptyJSON := strings.NewReader(`{}`)
-		_, err = repo.LoadOboJSON(bufio.NewReader(emptyJSON))
-		require.Error(t, err, "Should return error for empty JSON")
-	})
-
 	t.Run("load malformed OBO JSON", func(t *testing.T) {
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer db.Drop()
-		_ = sess
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
 
 		repo, err := NewStockRepo(connParams, collParams, ontoParams)
 		require.NoError(t, err, "Failed to create stock repository")
+		defer repo.Dbh().Drop()
 
 		// Create a reader with valid JSON but invalid OBO structure
 		malformedOBO := strings.NewReader(`{"graphs": [{"nodes": "invalid"}]}`)

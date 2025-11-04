@@ -236,14 +236,14 @@ func TestDocCollections(t *testing.T) {
 
 // TestGraphAndEdgeCollections tests graph and edge collection creation
 func TestGraphAndEdgeCollections(t *testing.T) {
-	testArango, err := testarango.NewTestArangoFromEnv(true)
-	require.NoError(t, err, "Failed to create test arango instance")
-
-	connParams := getConnectParamsFromDb(testArango)
-	collParams := getCollectionParams()
-	ontoParams := getOntoParams()
-
 	t.Run("successful graph and edge collections creation", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
 		defer db.Drop()
@@ -278,6 +278,13 @@ func TestGraphAndEdgeCollections(t *testing.T) {
 	})
 
 	t.Run("error in edge collections creation", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
 		defer db.Drop()
@@ -317,14 +324,14 @@ func TestGraphAndEdgeCollections(t *testing.T) {
 
 // TestCreateEdgeCollections tests edge collection creation with various scenarios
 func TestCreateEdgeCollections(t *testing.T) {
-	testArango, err := testarango.NewTestArangoFromEnv(true)
-	require.NoError(t, err, "Failed to create test arango instance")
-
-	connParams := getConnectParamsFromDb(testArango)
-	collParams := getCollectionParams()
-	ontoParams := getOntoParams()
-
 	t.Run("successful edge collections creation", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
 		defer db.Drop()
@@ -354,6 +361,13 @@ func TestCreateEdgeCollections(t *testing.T) {
 	})
 
 	t.Run("error creating stock type edge collection", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
 		defer db.Drop()
@@ -383,6 +397,13 @@ func TestCreateEdgeCollections(t *testing.T) {
 	})
 
 	t.Run("error creating parent strain edge collection", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
 		defer db.Drop()
@@ -412,6 +433,13 @@ func TestCreateEdgeCollections(t *testing.T) {
 	})
 
 	t.Run("error creating stock term edge collection", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
 		defer db.Drop()
@@ -443,14 +471,14 @@ func TestCreateEdgeCollections(t *testing.T) {
 
 // TestCreateNamedGraph tests named graph creation with various scenarios
 func TestCreateNamedGraph(t *testing.T) {
-	testArango, err := testarango.NewTestArangoFromEnv(true)
-	require.NoError(t, err, "Failed to create test arango instance")
-
-	connParams := getConnectParamsFromDb(testArango)
-	collParams := getCollectionParams()
-	ontoParams := getOntoParams()
-
 	t.Run("successful named graph creation", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
 		defer db.Drop()
@@ -483,6 +511,13 @@ func TestCreateNamedGraph(t *testing.T) {
 	})
 
 	t.Run("error creating stock property type graph", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
 		defer db.Drop()
@@ -521,6 +556,13 @@ func TestCreateNamedGraph(t *testing.T) {
 	})
 
 	t.Run("error creating strain to parent graph", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
 		defer db.Drop()
@@ -558,6 +600,13 @@ func TestCreateNamedGraph(t *testing.T) {
 	})
 
 	t.Run("error creating stock ontology graph", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
 		defer db.Drop()
@@ -597,14 +646,14 @@ func TestCreateNamedGraph(t *testing.T) {
 
 // TestCreateIndex tests index creation with various scenarios
 func TestCreateIndex(t *testing.T) {
-	testArango, err := testarango.NewTestArangoFromEnv(true)
-	require.NoError(t, err, "Failed to create test arango instance")
-
-	connParams := getConnectParamsFromDb(testArango)
-	collParams := getCollectionParams()
-	ontoParams := getOntoParams()
-
 	t.Run("successful index creation", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
 		defer db.Drop()
@@ -647,6 +696,13 @@ func TestCreateIndex(t *testing.T) {
 	})
 
 	t.Run("index creation is idempotent", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		sess, db, err := manager.NewSessionDb(connParams)
 		require.NoError(t, err, "Failed to create session and database")
 		defer db.Drop()
