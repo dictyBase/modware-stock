@@ -7,8 +7,8 @@ github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 h1:L/gRVlceqvL25
 github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161/go.mod h1:xomTg63KZ2rFqZQzSB4Vz2SUXa1BpHTVz9L5PTmPC4E=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.5.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/IBM/fp-go v1.0.155 h1:0Y5YmLdGLr6K32hDia6lW2R4HWjVchB7K6b8M0qQaoU=
-github.com/IBM/fp-go v1.0.155/go.mod h1:xQx8D6UU4EDtyYmR99rVYVyLpC4rNYXLl/l5ye8KfrE=
+github.com/IBM/fp-go v1.1.13 h1:tyPCDWqD8FTFqNW3Dm1EV/lJ8U/4t3pn6hEFae0Ia+E=
+github.com/IBM/fp-go v1.1.13/go.mod h1:xQx8D6UU4EDtyYmR99rVYVyLpC4rNYXLl/l5ye8KfrE=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/arangodb/go-driver v1.6.7 h1:9FBUsH60cKu7DjFGozTsaqWMy+3UeEplplqUn4yEcg4=

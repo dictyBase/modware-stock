@@ -21,7 +21,7 @@ require (
 )
 
 require (
-	github.com/IBM/fp-go v1.0.155
+	github.com/IBM/fp-go v1.1.13
 	github.com/testcontainers/testcontainers-go/modules/nats v0.40.0
 )
 
