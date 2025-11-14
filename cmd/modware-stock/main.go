@@ -101,7 +101,7 @@ func serverFlags() []cli.Flag {
 		cli.StringFlag{
 			Name:  "plasmid-term",
 			Usage: "default ontology term that will be used for creating plasmid",
-			Value: "cloning vector",
+			Value: "vector",
 		},
 	}
 }
