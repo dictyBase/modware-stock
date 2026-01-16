@@ -324,7 +324,7 @@ func testServerPlasmidTermFlag(t *testing.T) {
 	strFlag, ok := plasmidTermFlag.(cli.StringFlag)
 	require.True(t, ok, "plasmid-term flag should be a StringFlag")
 	require.Equal(t, "plasmid-term", strFlag.Name)
-	require.Equal(t, "cloning vector", strFlag.Value)
+	require.Equal(t, "vector", strFlag.Value)
 	require.Equal(t,
 		"default ontology term that will be used for creating plasmid",
 		strFlag.Usage)
