@@ -1,0 +1,60 @@
+package service
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/stretchr/testify/require"
+)
+
+func TestPlasmidWorkflowPredicates(t *testing.T) {
+	t.Parallel()
+	assert := require.New(t)
+
+	t.Run("isNotFoundError", func(t *testing.T) {
+		assert.True(isNotFoundError(errors.New("could not find plasmid with ID 123")))
+		assert.False(isNotFoundError(errors.New("some other error")))
+		assert.False(isNotFoundError(nil))
+	})
+
+	t.Run("hasEnoughResults", func(t *testing.T) {
+		limit := int64(10)
+		lctx := withPlasmidCollectionData{
+			withStockDocList: withStockDocList{
+				withValidatedFilter: withValidatedFilter{
+					listPlasmidsContext: listPlasmidsContext{limit: limit},
+				},
+			},
+		}
+
+		// Not enough
+		lctx.collectionData = make([]*stock.PlasmidCollection_Data, 7)
+		assert.False(hasEnoughResults(lctx))
+
+		// Just enough (limit - 2)
+		lctx.collectionData = make([]*stock.PlasmidCollection_Data, 8)
+		assert.True(hasEnoughResults(lctx))
+
+		// Empty
+		lctx.collectionData = []*stock.PlasmidCollection_Data{}
+		assert.False(hasEnoughResults(lctx))
+	})
+
+	t.Run("shouldTrimLastItem", func(t *testing.T) {
+		ctx := withNextCursor{
+			nextCursor: 12345,
+			withPlasmidCollectionData: withPlasmidCollectionData{
+				collectionData: []*stock.PlasmidCollection_Data{{}},
+			},
+		}
+		assert.True(shouldTrimLastItem(ctx))
+
+		ctx.nextCursor = 0
+		assert.False(shouldTrimLastItem(ctx))
+
+		ctx.nextCursor = 12345
+		ctx.collectionData = []*stock.PlasmidCollection_Data{}
+		assert.False(shouldTrimLastItem(ctx))
+	})
+}
