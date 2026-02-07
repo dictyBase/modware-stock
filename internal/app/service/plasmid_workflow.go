@@ -3,19 +3,47 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	E "github.com/IBM/fp-go/either"
 	fperrors "github.com/IBM/fp-go/errors"
 	F "github.com/IBM/fp-go/function"
 	IOE "github.com/IBM/fp-go/ioeither"
+	O "github.com/IBM/fp-go/option"
+	P "github.com/IBM/fp-go/predicate"
+	S "github.com/IBM/fp-go/string"
 	T "github.com/IBM/fp-go/tuple"
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 )
 
-// Curried setters for building context
 var (
+	// -- Shared Predicates & Helpers --
+
+	// Use fp-go string API directly
+	isNonEmptyString = S.IsNonEmpty
+
+	isNotFoundError = F.Pipe1(isNotNilError, P.And(hasNotFoundPrefix))
+
+	hasEnoughResults = F.Pipe1(
+		hasMinimumResults,
+		P.And(hasAnyCollectionResults),
+	)
+
+	shouldTrimLastItem = F.Pipe1(
+		hasPositiveNextCursor,
+		P.And(hasCollectionItems),
+	)
+
+	selectCollectionData = F.Ternary(
+		shouldTrimLastItem,
+		F.Flow2(extractCollectionData, trimLastCollectionItem),
+		extractCollectionData,
+	)
+
+	// -- GetPlasmid Workflow --
+
 	// setValidatedRequest sets validated request ID in context
 	setValidatedRequest = F.Curry2(
 		func(validID string, pctx getPlasmidContext) withValidatedRequest {
@@ -50,69 +78,15 @@ var (
 	extractPlasmidResponse = func(pctx withPlasmidData) *stock.Plasmid {
 		return &stock.Plasmid{Data: pctx.plasmidData}
 	}
-)
 
-// validatePlasmidRequest validates the stock ID request
-func validatePlasmidRequest(
-	pctx getPlasmidContext,
-) IOE.IOEither[error, string] {
-	return func() E.Either[error, string] {
-		if err := pctx.request.Validate(); err != nil {
-			return E.Left[string](
-				fmt.Errorf("invalid request parameters: %w", err),
-			)
-		}
-		return E.Right[error](pctx.request.Id)
-	}
-}
-
-// retrievePlasmidFromRepository retrieves plasmid from repository
-func retrievePlasmidFromRepository(
-	pctx withValidatedRequest,
-) IOE.IOEither[error, *model.StockDoc] {
-	return F.Pipe1(
-		pctx.repo.GetPlasmid(pctx.validatedID),
-		IOE.MapLeft[*model.StockDoc](
-			fperrors.OnError(
-				fmt.Sprintf("failed to retrieve plasmid %s", pctx.validatedID),
-			),
-		),
+	// transformToPlasmidData transforms stock document to plasmid data using point-free composition
+	transformToPlasmidData = F.Flow2(
+		func(pctx withStockDocument) *model.StockDoc { return pctx.stockDoc },
+		makePlasmidData,
 	)
-}
 
-// transformToPlasmidData transforms stock document to plasmid data using point-free composition
-var transformToPlasmidData = F.Flow2(
-	func(pctx withStockDocument) *model.StockDoc { return pctx.stockDoc },
-	makePlasmidData,
-)
+	// -- ListPlasmids Workflow --
 
-// toServiceResult converts IOEither result to service response tuple with error handling
-func toServiceResult(ctx context.Context) PlasmidConverter {
-	return func(ioe PlasmidIO) PlasmidResult {
-		return F.Pipe1(
-			ioe(),
-			E.Fold(
-				func(e error) PlasmidResult {
-					return T.MakeTuple2(
-						&stock.Plasmid{},
-						aphgrpc.HandleGetError(ctx, e),
-					)
-				},
-				func(p *stock.Plasmid) PlasmidResult {
-					return T.MakeTuple2[*stock.Plasmid, error](
-						p,
-						nil,
-					)
-				},
-			),
-		)
-	}
-}
-
-// ListPlasmids workflow functions
-
-// Curried setters for ListPlasmids context building
-var (
 	// setValidatedFilter sets validated filter in context
 	setValidatedFilter = F.Curry2(
 		func(filter string, lctx listPlasmidsContext) withValidatedFilter {
@@ -153,111 +127,22 @@ var (
 		},
 	)
 
-	// extractPlasmidCollectionResponse extracts collection response from enriched context
-	extractPlasmidCollectionResponse = func(lctx withNextCursor) *stock.PlasmidCollection {
-		pdata := lctx.collectionData
-
-		// If we have a next cursor, slice the data to exclude the last item
-		if lctx.nextCursor > 0 && len(pdata) > 0 {
-			pdata = pdata[:len(pdata)-1]
-		}
-
-		return &stock.PlasmidCollection{
-			Data: pdata,
-			Meta: &stock.Meta{
-				Limit:      lctx.limit,
-				Total:      int64(len(pdata)),
-				NextCursor: lctx.nextCursor,
-			},
-		}
-	}
-)
-
-// validatePlasmidFilter validates and processes the filter parameter
-func validatePlasmidFilter(
-	lctx listPlasmidsContext,
-) IOE.IOEither[error, string] {
-	return func() E.Either[error, string] {
-		astmt, err := stockAQLStatement(lctx.param.Filter)
-		if err != nil {
-			return E.Left[string](
-				fmt.Errorf("invalid filter parameter: %w", err),
-			)
-		}
-		return E.Right[error](astmt)
-	}
-}
-
-// retrievePlasmidsFromRepository retrieves plasmids from repository
-func retrievePlasmidsFromRepository(
-	lctx withValidatedFilter,
-) IOE.IOEither[error, []*model.StockDoc] {
-	return F.Pipe1(
-		lctx.repo.ListPlasmids(&stock.StockParameters{
-			Cursor: lctx.param.Cursor,
-			Limit:  lctx.limit,
-			Filter: lctx.validatedFilter,
-		}),
-		IOE.MapLeft[[]*model.StockDoc](
-			fperrors.OnError("failed to retrieve plasmids from repository"),
-		),
+	// transformToPlasmidCollection transforms stock documents to plasmid collection data
+	transformToPlasmidCollection = F.Flow2(
+		func(lctx withStockDocList) []*model.StockDoc {
+			return lctx.stockDocs
+		},
+		plasmidModelToCollectionSlice,
 	)
-}
 
-// transformToPlasmidCollection transforms stock documents to plasmid collection data
-var transformToPlasmidCollection = F.Flow2(
-	func(lctx withStockDocList) []*model.StockDoc { return lctx.stockDocs },
-	plasmidModelToCollectionSlice,
-)
+	// -- CreatePlasmid Workflow --
 
-// computeNextCursor computes the next cursor value based on results
-var computeNextCursor = func(lctx withPlasmidCollectionData) int64 {
-	pdata := lctx.collectionData
-	if len(pdata) < int(lctx.limit)-2 {
-		return 0 // No next cursor for incomplete result sets
-	}
-	// Return cursor value from last item
-	if len(pdata) > 0 {
-		return genNextCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt)
-	}
-	return 0
-}
-
-// toPlasmidCollectionResult converts IOEither result to collection response tuple
-func toPlasmidCollectionResult(
-	ctx context.Context,
-	limit int64,
-) PlasmidCollectionConverter {
-	return func(ioe PlasmidCollectionIO) PlasmidCollectionResult {
-		return F.Pipe1(
-			ioe(),
-			E.Fold(
-				func(e error) PlasmidCollectionResult {
-					return T.MakeTuple2(
-						&stock.PlasmidCollection{
-							Meta: &stock.Meta{Limit: limit},
-						},
-						aphgrpc.HandleGetError(ctx, e),
-					)
-				},
-				func(collection *stock.PlasmidCollection) PlasmidCollectionResult {
-					return T.MakeTuple2[*stock.PlasmidCollection, error](
-						collection,
-						nil,
-					)
-				},
-			),
-		)
-	}
-}
-
-// CreatePlasmid workflow functions
-
-// Curried setters for CreatePlasmid context building
-var (
 	// setValidatedNewPlasmid sets validated new plasmid request in context
 	setValidatedNewPlasmid = F.Curry2(
-		func(req *stock.NewPlasmid, cctx createPlasmidContext) withValidatedNewPlasmid {
+		func(
+			req *stock.NewPlasmid,
+			cctx createPlasmidContext,
+		) withValidatedNewPlasmid {
 			return withValidatedNewPlasmid{
 				createPlasmidContext: cctx,
 				validatedRequest:     req,
@@ -289,92 +174,27 @@ var (
 	extractCreatePlasmidResponse = func(cctx withCreatedPlasmidData) *stock.Plasmid {
 		return &stock.Plasmid{Data: cctx.plasmidData}
 	}
-)
 
-// validateNewPlasmidRequest validates the new plasmid request
-func validateNewPlasmidRequest(
-	cctx createPlasmidContext,
-) IOE.IOEither[error, *stock.NewPlasmid] {
-	return func() E.Either[error, *stock.NewPlasmid] {
-		if err := cctx.request.Validate(); err != nil {
-			return E.Left[*stock.NewPlasmid](
-				fmt.Errorf("invalid request parameters: %w", err),
+	applyDefaultPlasmidProperty = F.Curry2(
+		func(defaultTerm string, req *stock.NewPlasmid) *stock.NewPlasmid {
+			prop := F.Pipe2(
+				req.Data.Attributes.DictyPlasmidProperty,
+				O.FromPredicate(isNonEmptyString),
+				O.GetOrElse(F.Constant(defaultTerm)),
 			)
-		}
-
-		// Apply default plasmid term if not provided
-		if len(cctx.request.Data.Attributes.DictyPlasmidProperty) == 0 {
-			cctx.request.Data.Attributes.DictyPlasmidProperty = cctx.params["plasmid_term"]
-		}
-
-		return E.Right[error](cctx.request)
-	}
-}
-
-// createPlasmidInRepository creates plasmid in repository
-func createPlasmidInRepository(
-	cctx withValidatedNewPlasmid,
-) IOE.IOEither[error, *model.StockDoc] {
-	return F.Pipe1(
-		cctx.repo.AddPlasmid(cctx.validatedRequest),
-		IOE.MapLeft[*model.StockDoc](
-			fperrors.OnError("failed to create plasmid in repository"),
-		),
-	)
-}
-
-// transformToCreatedPlasmidData transforms stock document to plasmid data
-var transformToCreatedPlasmidData = F.Flow2(
-	func(cctx withCreatedPlasmidDoc) *model.StockDoc { return cctx.stockDoc },
-	makePlasmidData,
-)
-
-// publishCreatedPlasmid publishes the created plasmid event
-func publishCreatedPlasmid(
-	cctx withCreatedPlasmidData,
-) IOE.IOEither[error, withCreatedPlasmidData] {
-	return IOE.TryCatchError(
-		func() (withCreatedPlasmidData, error) {
-			plasmid := &stock.Plasmid{Data: cctx.plasmidData}
-			err := cctx.publisher.PublishPlasmid(
-				cctx.topics["stockCreate"],
-				plasmid,
-			)
-			if err != nil {
-				return cctx, fmt.Errorf("failed to publish plasmid creation event: %w", err)
-			}
-			return cctx, nil
+			req.Data.Attributes.DictyPlasmidProperty = prop
+			return req
 		},
 	)
-}
 
-// toCreatePlasmidResult converts IOEither result to service response tuple
-func toCreatePlasmidResult(ctx context.Context) PlasmidConverter {
-	return func(ioe PlasmidIO) PlasmidResult {
-		return F.Pipe1(
-			ioe(),
-			E.Fold(
-				func(e error) PlasmidResult {
-					return T.MakeTuple2(
-						&stock.Plasmid{},
-						aphgrpc.HandleInsertError(ctx, e),
-					)
-				},
-				func(plasmid *stock.Plasmid) PlasmidResult {
-					return T.MakeTuple2[*stock.Plasmid, error](
-						plasmid,
-						nil,
-					)
-				},
-			),
-		)
-	}
-}
+	// transformToCreatedPlasmidData transforms stock document to plasmid data
+	transformToCreatedPlasmidData = F.Flow2(
+		func(cctx withCreatedPlasmidDoc) *model.StockDoc { return cctx.stockDoc },
+		makePlasmidData,
+	)
 
-// UpdatePlasmid workflow functions
+	// -- UpdatePlasmid Workflow --
 
-// Curried setters for UpdatePlasmid context building
-var (
 	// setValidatedUpdateRequest sets validated update request in context
 	setValidatedUpdateRequest = F.Curry2(
 		func(req *stock.PlasmidUpdate, uctx updatePlasmidContext) withValidatedUpdate {
@@ -419,110 +239,15 @@ var (
 	extractUpdatePlasmidResponse = func(uctx withUpdatedPlasmidData) *stock.Plasmid {
 		return &stock.Plasmid{Data: uctx.plasmidData}
 	}
-)
 
-// validateUpdatePlasmidRequest validates the update plasmid request
-func validateUpdatePlasmidRequest(
-	uctx updatePlasmidContext,
-) IOE.IOEither[error, *stock.PlasmidUpdate] {
-	return func() E.Either[error, *stock.PlasmidUpdate] {
-		if err := uctx.request.Validate(); err != nil {
-			return E.Left[*stock.PlasmidUpdate](
-				fmt.Errorf("invalid request parameters: %w", err),
-			)
-		}
-		return E.Right[error](uctx.request)
-	}
-}
-
-// updatePlasmidInRepository updates plasmid in repository
-func updatePlasmidInRepository(
-	uctx withValidatedUpdate,
-) IOE.IOEither[error, *model.StockDoc] {
-	return F.Pipe1(
-		uctx.repo.EditPlasmid(uctx.validatedRequest),
-		IOE.MapLeft[*model.StockDoc](
-			fperrors.OnError("failed to update plasmid in repository"),
-		),
+	// transformToUpdatedPlasmidData transforms full stock document to plasmid data
+	transformToUpdatedPlasmidData = F.Flow2(
+		func(uctx withFullPlasmidDoc) *model.StockDoc { return uctx.fullStockDoc },
+		makePlasmidData,
 	)
-}
 
-// retrieveFullPlasmidDoc retrieves the full plasmid document after update
-func retrieveFullPlasmidDoc(
-	uctx withUpdatedPlasmidDoc,
-) IOE.IOEither[error, *model.StockDoc] {
-	return func() E.Either[error, *model.StockDoc] {
-		// Check if plasmid was found during update
-		if uctx.stockDoc.NotFound {
-			return E.Left[*model.StockDoc](
-				fmt.Errorf("could not find plasmid with ID %s", uctx.stockDoc.ID),
-			)
-		}
+	// -- LoadPlasmid Workflow --
 
-		// Retrieve full plasmid to get all fields including ontology
-		return uctx.repo.GetPlasmid(uctx.validatedRequest.Data.Id)()
-	}
-}
-
-// transformToUpdatedPlasmidData transforms full stock document to plasmid data
-var transformToUpdatedPlasmidData = F.Flow2(
-	func(uctx withFullPlasmidDoc) *model.StockDoc { return uctx.fullStockDoc },
-	makePlasmidData,
-)
-
-// publishUpdatedPlasmid publishes the updated plasmid event
-func publishUpdatedPlasmid(
-	uctx withUpdatedPlasmidData,
-) IOE.IOEither[error, withUpdatedPlasmidData] {
-	return IOE.TryCatchError(
-		func() (withUpdatedPlasmidData, error) {
-			plasmid := &stock.Plasmid{Data: uctx.plasmidData}
-			err := uctx.publisher.PublishPlasmid(
-				uctx.topics["stockUpdate"],
-				plasmid,
-			)
-			if err != nil {
-				return uctx, fmt.Errorf("failed to publish plasmid update event: %w", err)
-			}
-			return uctx, nil
-		},
-	)
-}
-
-// toUpdatePlasmidResult converts IOEither result to service response tuple
-func toUpdatePlasmidResult(ctx context.Context) PlasmidConverter {
-	return func(ioe PlasmidIO) PlasmidResult {
-		return F.Pipe1(
-			ioe(),
-			E.Fold(
-				func(e error) PlasmidResult {
-					// Check if it's a not found error
-					if isNotFoundError(e) {
-						return T.MakeTuple2(
-							&stock.Plasmid{},
-							aphgrpc.HandleNotFoundError(ctx, e),
-						)
-					}
-					return T.MakeTuple2(
-						&stock.Plasmid{},
-						aphgrpc.HandleUpdateError(ctx, e),
-					)
-				},
-				func(plasmid *stock.Plasmid) PlasmidResult {
-					return T.MakeTuple2[*stock.Plasmid, error](
-						plasmid,
-						nil,
-					)
-				},
-			),
-		)
-	}
-}
-
-// LoadPlasmid workflow functions
-
-// Curried setters for LoadPlasmid context building
-var (
 	// setValidatedExistingPlasmid sets validated existing plasmid request in context
 	setValidatedExistingPlasmid = F.Curry2(
 		func(params T.Tuple2[*stock.ExistingPlasmid, string], lctx loadPlasmidContext) withValidatedExistingPlasmid {
@@ -558,28 +283,377 @@ var (
 	extractLoadPlasmidResponse = func(lctx withLoadedPlasmidData) *stock.Plasmid {
 		return &stock.Plasmid{Data: lctx.plasmidData}
 	}
+
+	applyDefaultExistingPlasmidProperty = F.Curry2(
+		func(defaultTerm string, req *stock.ExistingPlasmid) *stock.ExistingPlasmid {
+			prop := F.Pipe2(
+				req.Data.Attributes.DictyPlasmidProperty,
+				O.FromPredicate(isNonEmptyString),
+				O.GetOrElse(F.Constant(defaultTerm)),
+			)
+			req.Data.Attributes.DictyPlasmidProperty = prop
+			return req
+		},
+	)
 )
+
+// validatePlasmidRequest validates the stock ID request
+func validatePlasmidRequest(
+	pctx getPlasmidContext,
+) IOE.IOEither[error, string] {
+	return F.Pipe2(
+		IOE.TryCatchError(func() (*stock.StockId, error) {
+			return pctx.request, pctx.request.Validate()
+		}),
+		IOE.MapLeft[*stock.StockId](
+			fperrors.OnError("invalid request parameters"),
+		),
+		IOE.Map[error](func(req *stock.StockId) string { return req.Id }),
+	)
+}
+
+// retrievePlasmidFromRepository retrieves plasmid from repository
+func retrievePlasmidFromRepository(
+	pctx withValidatedRequest,
+) IOE.IOEither[error, *model.StockDoc] {
+	return F.Pipe1(
+		pctx.repo.GetPlasmid(pctx.validatedID),
+		IOE.MapLeft[*model.StockDoc](
+			fperrors.OnError(
+				fmt.Sprintf(
+					"failed to retrieve plasmid %s",
+					pctx.validatedID,
+				),
+			),
+		),
+	)
+}
+
+func runPlasmidIO(ioe PlasmidIO) PlasmidEither { return ioe() }
+
+// toServiceResult converts IOEither result to service response tuple with error handling
+func toServiceResult(ctx context.Context) PlasmidConverter {
+	return F.Flow2(
+		runPlasmidIO,
+		E.Fold(
+			func(err error) PlasmidResult {
+				return T.MakeTuple2(
+					&stock.Plasmid{},
+					aphgrpc.HandleGetError(ctx, err),
+				)
+			},
+			func(plasmid *stock.Plasmid) PlasmidResult {
+				return T.MakeTuple2[*stock.Plasmid, error](plasmid, nil)
+			},
+		),
+	)
+}
+
+// ListPlasmids workflow functions
+
+func hasPositiveNextCursor(
+	ctx withNextCursor,
+) bool {
+	return ctx.nextCursor > 0
+}
+
+func hasCollectionItems(
+	ctx withNextCursor,
+) bool {
+	return len(ctx.collectionData) > 0
+}
+
+func extractCollectionData(ctx withNextCursor) []*stock.PlasmidCollection_Data {
+	return ctx.collectionData
+}
+
+func trimLastCollectionItem(
+	data []*stock.PlasmidCollection_Data,
+) []*stock.PlasmidCollection_Data {
+	return data[:len(data)-1]
+}
+
+func extractPlasmidCollectionResponse(
+	lctx withNextCursor,
+) *stock.PlasmidCollection {
+	pdata := F.Pipe1(lctx, selectCollectionData)
+	return &stock.PlasmidCollection{
+		Data: pdata,
+		Meta: &stock.Meta{
+			Limit:      lctx.limit,
+			Total:      int64(len(pdata)),
+			NextCursor: lctx.nextCursor,
+		},
+	}
+}
+
+// validatePlasmidFilter validates and processes the filter parameter
+func validatePlasmidFilter(
+	lctx listPlasmidsContext,
+) IOE.IOEither[error, string] {
+	return F.Pipe3(
+		lctx.param.Filter,
+		stockAQLStatementEither,
+		E.MapLeft[string](fperrors.OnError("invalid filter parameter")),
+		IOE.FromEither[error, string],
+	)
+}
+
+// retrievePlasmidsFromRepository retrieves plasmids from repository
+func retrievePlasmidsFromRepository(
+	lctx withValidatedFilter,
+) IOE.IOEither[error, []*model.StockDoc] {
+	return F.Pipe1(
+		lctx.repo.ListPlasmids(&stock.StockParameters{
+			Cursor: lctx.param.Cursor,
+			Limit:  lctx.limit,
+			Filter: lctx.validatedFilter,
+		}),
+		IOE.MapLeft[[]*model.StockDoc](
+			fperrors.OnError("failed to retrieve plasmids from repository"),
+		),
+	)
+}
+
+// computeNextCursor computes the next cursor value based on results
+func hasMinimumResults(lctx withPlasmidCollectionData) bool {
+	return len(lctx.collectionData) >= int(lctx.limit)-2
+}
+
+func hasAnyCollectionResults(lctx withPlasmidCollectionData) bool {
+	return len(lctx.collectionData) > 0
+}
+
+func lastItemCursorVal(lctx withPlasmidCollectionData) int64 {
+	pdata := lctx.collectionData
+	return genNextCursorVal(pdata[len(pdata)-1].Attributes.CreatedAt)
+}
+
+func computeNextCursor(lctx withPlasmidCollectionData) int64 {
+	return F.Pipe1(
+		lctx,
+		F.Ternary(
+			hasEnoughResults,
+			lastItemCursorVal,
+			F.Constant1[withPlasmidCollectionData](int64(0)),
+		),
+	)
+}
+
+func runPlasmidCollectionIO(
+	ioe PlasmidCollectionIO,
+) PlasmidCollectionEither {
+	return ioe()
+}
+
+// toPlasmidCollectionResult converts IOEither result to collection response tuple
+func toPlasmidCollectionResult(
+	ctx context.Context,
+	limit int64,
+) PlasmidCollectionConverter {
+	return F.Flow2(
+		runPlasmidCollectionIO,
+		E.Fold(
+			func(err error) PlasmidCollectionResult {
+				return T.MakeTuple2(
+					&stock.PlasmidCollection{Meta: &stock.Meta{Limit: limit}},
+					aphgrpc.HandleGetError(ctx, err),
+				)
+			},
+			func(collection *stock.PlasmidCollection) PlasmidCollectionResult {
+				return T.MakeTuple2[*stock.PlasmidCollection, error](
+					collection,
+					nil,
+				)
+			},
+		),
+	)
+}
+
+// CreatePlasmid workflow functions
+
+// validateNewPlasmidRequest validates the new plasmid request
+func validateNewPlasmidRequest(
+	cctx createPlasmidContext,
+) IOE.IOEither[error, *stock.NewPlasmid] {
+	return F.Pipe2(
+		IOE.TryCatchError(func() (*stock.NewPlasmid, error) {
+			return cctx.request, cctx.request.Validate()
+		}),
+		IOE.MapLeft[*stock.NewPlasmid](
+			fperrors.OnError("invalid request parameters"),
+		),
+		IOE.Map[error](
+			applyDefaultPlasmidProperty(cctx.params["plasmid_term"]),
+		),
+	)
+}
+
+// createPlasmidInRepository creates plasmid in repository
+func createPlasmidInRepository(
+	cctx withValidatedNewPlasmid,
+) IOE.IOEither[error, *model.StockDoc] {
+	return F.Pipe1(
+		cctx.repo.AddPlasmid(cctx.validatedRequest),
+		IOE.MapLeft[*model.StockDoc](
+			fperrors.OnError("failed to create plasmid in repository"),
+		),
+	)
+}
+
+// publishCreatedPlasmid publishes the created plasmid event
+func publishCreatedPlasmid(
+	cctx withCreatedPlasmidData,
+) IOE.IOEither[error, withCreatedPlasmidData] {
+	return F.Pipe1(
+		IOE.TryCatchError(func() (withCreatedPlasmidData, error) {
+			return cctx, cctx.publisher.PublishPlasmid(
+				cctx.topics["stockCreate"],
+				&stock.Plasmid{Data: cctx.plasmidData},
+			)
+		}),
+		IOE.MapLeft[withCreatedPlasmidData](
+			fperrors.OnError("failed to publish plasmid creation event"),
+		),
+	)
+}
+
+// toCreatePlasmidResult converts IOEither result to service response tuple
+func toCreatePlasmidResult(ctx context.Context) PlasmidConverter {
+	return F.Flow2(
+		runPlasmidIO,
+		E.Fold(
+			func(err error) PlasmidResult {
+				return T.MakeTuple2(
+					&stock.Plasmid{},
+					aphgrpc.HandleInsertError(ctx, err),
+				)
+			},
+			func(plasmid *stock.Plasmid) PlasmidResult {
+				return T.MakeTuple2[*stock.Plasmid, error](plasmid, nil)
+			},
+		),
+	)
+}
+
+// UpdatePlasmid workflow functions
+
+// validateUpdatePlasmidRequest validates the update plasmid request
+func validateUpdatePlasmidRequest(
+	uctx updatePlasmidContext,
+) IOE.IOEither[error, *stock.PlasmidUpdate] {
+	return F.Pipe1(
+		IOE.TryCatchError(func() (*stock.PlasmidUpdate, error) {
+			return uctx.request, uctx.request.Validate()
+		}),
+		IOE.MapLeft[*stock.PlasmidUpdate](
+			fperrors.OnError("invalid request parameters"),
+		),
+	)
+}
+
+// updatePlasmidInRepository updates plasmid in repository
+func updatePlasmidInRepository(
+	uctx withValidatedUpdate,
+) IOE.IOEither[error, *model.StockDoc] {
+	return F.Pipe1(
+		uctx.repo.EditPlasmid(uctx.validatedRequest),
+		IOE.MapLeft[*model.StockDoc](
+			fperrors.OnError("failed to update plasmid in repository"),
+		),
+	)
+}
+
+func isStockDocNotFound(doc *model.StockDoc) bool { return doc.NotFound }
+
+func stockDocNotFoundError(doc *model.StockDoc) error {
+	return fmt.Errorf("could not find plasmid with ID %s", doc.ID)
+}
+
+// retrieveFullPlasmidDoc retrieves the full plasmid document after update
+func retrieveFullPlasmidDoc(
+	uctx withUpdatedPlasmidDoc,
+) IOE.IOEither[error, *model.StockDoc] {
+	return F.Pipe3(
+		uctx.stockDoc,
+		E.FromPredicate(P.Not(isStockDocNotFound), stockDocNotFoundError),
+		IOE.FromEither[error, *model.StockDoc],
+		IOE.Chain(func(_ *model.StockDoc) IOE.IOEither[error, *model.StockDoc] {
+			return uctx.repo.GetPlasmid(uctx.validatedRequest.Data.Id)
+		}),
+	)
+}
+
+// publishUpdatedPlasmid publishes the updated plasmid event
+func publishUpdatedPlasmid(
+	uctx withUpdatedPlasmidData,
+) IOE.IOEither[error, withUpdatedPlasmidData] {
+	return F.Pipe1(
+		IOE.TryCatchError(func() (withUpdatedPlasmidData, error) {
+			return uctx, uctx.publisher.PublishPlasmid(
+				uctx.topics["stockUpdate"],
+				&stock.Plasmid{Data: uctx.plasmidData},
+			)
+		}),
+		IOE.MapLeft[withUpdatedPlasmidData](
+			fperrors.OnError("failed to publish plasmid update event"),
+		),
+	)
+}
+
+func isNotNilError(err error) bool { return err != nil }
+
+func hasNotFoundPrefix(err error) bool {
+	return strings.HasPrefix(err.Error(), "could not find plasmid")
+}
+
+// toUpdatePlasmidResult converts IOEither result to service response tuple
+func toUpdatePlasmidResult(ctx context.Context) PlasmidConverter {
+	return F.Flow2(
+		runPlasmidIO,
+		E.Fold(
+			F.Ternary(
+				isNotFoundError,
+				func(err error) PlasmidResult {
+					return T.MakeTuple2(
+						&stock.Plasmid{},
+						aphgrpc.HandleNotFoundError(ctx, err),
+					)
+				},
+				func(err error) PlasmidResult {
+					return T.MakeTuple2(
+						&stock.Plasmid{},
+						aphgrpc.HandleUpdateError(ctx, err),
+					)
+				},
+			),
+			func(plasmid *stock.Plasmid) PlasmidResult {
+				return T.MakeTuple2[*stock.Plasmid, error](plasmid, nil)
+			},
+		),
+	)
+}
+
+// LoadPlasmid workflow functions
 
 // validateExistingPlasmidRequest validates the existing plasmid request
 func validateExistingPlasmidRequest(
 	lctx loadPlasmidContext,
 ) IOE.IOEither[error, T.Tuple2[*stock.ExistingPlasmid, string]] {
-	return func() E.Either[error, T.Tuple2[*stock.ExistingPlasmid, string]] {
-		if err := lctx.request.Validate(); err != nil {
-			return E.Left[T.Tuple2[*stock.ExistingPlasmid, string]](
-				fmt.Errorf("invalid request parameters: %w", err),
-			)
-		}
-
-		// Apply default plasmid term if not provided
-		if len(lctx.request.Data.Attributes.DictyPlasmidProperty) == 0 {
-			lctx.request.Data.Attributes.DictyPlasmidProperty = lctx.params["plasmid_term"]
-		}
-
-		plasmidID := lctx.request.Data.Id
-
-		return E.Right[error](T.MakeTuple2(lctx.request, plasmidID))
-	}
+	return F.Pipe2(
+		IOE.TryCatchError(func() (*stock.ExistingPlasmid, error) {
+			return lctx.request, lctx.request.Validate()
+		}),
+		IOE.MapLeft[*stock.ExistingPlasmid](
+			fperrors.OnError("invalid request parameters"),
+		),
+		IOE.Map[error](F.Flow2(
+			applyDefaultExistingPlasmidProperty(lctx.params["plasmid_term"]),
+			func(req *stock.ExistingPlasmid) T.Tuple2[*stock.ExistingPlasmid, string] {
+				return T.MakeTuple2(req, req.Data.Id)
+			},
+		)),
+	)
 }
 
 // loadPlasmidInRepository loads plasmid in repository
@@ -595,14 +669,18 @@ func loadPlasmidInRepository(
 }
 
 // transformToLoadedPlasmidData transforms stock document to plasmid data with ontology
-var transformToLoadedPlasmidData = func(lctx withLoadedPlasmidDoc) *stock.Plasmid_Data {
+func transformToLoadedPlasmidData(
+	lctx withLoadedPlasmidDoc,
+) *stock.Plasmid_Data {
 	data := makePlasmidData(lctx.stockDoc)
-
-	// Include ontology property if available
-	if lctx.stockDoc.PlasmidProperties != nil {
-		data.Attributes.DictyPlasmidProperty = lctx.stockDoc.PlasmidProperties.DictyPlasmidProperty
-	}
-
+	prop := F.Pipe1(
+		O.FromNillable(lctx.stockDoc.PlasmidProperties),
+		O.Fold(
+			F.Constant(data.Attributes.DictyPlasmidProperty),
+			func(props *model.PlasmidProperties) string { return props.DictyPlasmidProperty },
+		),
+	)
+	data.Attributes.DictyPlasmidProperty = prop
 	return data
 }
 
@@ -610,49 +688,33 @@ var transformToLoadedPlasmidData = func(lctx withLoadedPlasmidDoc) *stock.Plasmi
 func publishLoadedPlasmid(
 	lctx withLoadedPlasmidData,
 ) IOE.IOEither[error, withLoadedPlasmidData] {
-	return IOE.TryCatchError(
-		func() (withLoadedPlasmidData, error) {
-			plasmid := &stock.Plasmid{Data: lctx.plasmidData}
-			err := lctx.publisher.PublishPlasmid(
+	return F.Pipe1(
+		IOE.TryCatchError(func() (withLoadedPlasmidData, error) {
+			return lctx, lctx.publisher.PublishPlasmid(
 				lctx.topics["stockCreate"],
-				plasmid,
+				&stock.Plasmid{Data: lctx.plasmidData},
 			)
-			if err != nil {
-				return lctx, fmt.Errorf("failed to publish plasmid load event: %w", err)
-			}
-			return lctx, nil
-		},
+		}),
+		IOE.MapLeft[withLoadedPlasmidData](
+			fperrors.OnError("failed to publish plasmid load event"),
+		),
 	)
 }
 
 // toLoadPlasmidResult converts IOEither result to service response tuple
 func toLoadPlasmidResult(ctx context.Context) PlasmidConverter {
-	return func(ioe PlasmidIO) PlasmidResult {
-		return F.Pipe1(
-			ioe(),
-			E.Fold(
-				func(e error) PlasmidResult {
-					return T.MakeTuple2(
-						&stock.Plasmid{},
-						aphgrpc.HandleInsertError(ctx, e),
-					)
-				},
-				func(plasmid *stock.Plasmid) PlasmidResult {
-					return T.MakeTuple2[*stock.Plasmid, error](
-						plasmid,
-						nil,
-					)
-				},
-			),
-		)
-	}
-}
-
-// isNotFoundError checks if an error is a "not found" error
-func isNotFoundError(err error) bool {
-	if err == nil {
-		return false
-	}
-	errMsg := err.Error()
-	return len(errMsg) >= 23 && errMsg[:23] == "could not find plasmid"
+	return F.Flow2(
+		runPlasmidIO,
+		E.Fold(
+			func(err error) PlasmidResult {
+				return T.MakeTuple2(
+					&stock.Plasmid{},
+					aphgrpc.HandleInsertError(ctx, err),
+				)
+			},
+			func(plasmid *stock.Plasmid) PlasmidResult {
+				return T.MakeTuple2[*stock.Plasmid, error](plasmid, nil)
+			},
+		),
+	)
 }
