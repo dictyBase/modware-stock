@@ -37,7 +37,7 @@ func (s *StockService) GetPlasmid(
 	ctx context.Context,
 	req *stock.StockId,
 ) (*stock.Plasmid, error) {
-	result := F.Pipe5(
+	result := F.Pipe6(
 		IOE.Of[error](getPlasmidContext{
 			ctx:     ctx,
 			request: req,
@@ -45,7 +45,8 @@ func (s *StockService) GetPlasmid(
 		}),
 		IOE.Bind(setValidatedRequest, validatePlasmidRequest),
 		IOE.Bind(setStockDocument, retrievePlasmidFromRepository),
-		IOE.Let[error](setPlasmidData, transformToPlasmidData),
+		IOE.Map[error](getStockDoc),
+		IOE.Map[error](makePlasmidData),
 		IOE.Map[error](extractPlasmidResponse),
 		toServiceResult(ctx),
 	)

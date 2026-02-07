@@ -64,27 +64,6 @@ var (
 		},
 	)
 
-	// setPlasmidData sets plasmid data in context
-	setPlasmidData = F.Curry2(
-		func(data *stock.Plasmid_Data, pctx withStockDocument) withPlasmidData {
-			return withPlasmidData{
-				withStockDocument: pctx,
-				plasmidData:       data,
-			}
-		},
-	)
-
-	// extractPlasmidResponse extracts plasmid response from enriched context
-	extractPlasmidResponse = func(pctx withPlasmidData) *stock.Plasmid {
-		return &stock.Plasmid{Data: pctx.plasmidData}
-	}
-
-	// transformToPlasmidData transforms stock document to plasmid data using point-free composition
-	transformToPlasmidData = F.Flow2(
-		func(pctx withStockDocument) *model.StockDoc { return pctx.stockDoc },
-		makePlasmidData,
-	)
-
 	// -- ListPlasmids Workflow --
 
 	// setValidatedFilter sets validated filter in context
@@ -125,14 +104,6 @@ var (
 				nextCursor:                cursor,
 			}
 		},
-	)
-
-	// transformToPlasmidCollection transforms stock documents to plasmid collection data
-	transformToPlasmidCollection = F.Flow2(
-		func(lctx withStockDocList) []*model.StockDoc {
-			return lctx.stockDocs
-		},
-		plasmidModelToCollectionSlice,
 	)
 
 	// -- CreatePlasmid Workflow --
@@ -187,12 +158,6 @@ var (
 		},
 	)
 
-	// transformToCreatedPlasmidData transforms stock document to plasmid data
-	transformToCreatedPlasmidData = F.Flow2(
-		func(cctx withCreatedPlasmidDoc) *model.StockDoc { return cctx.stockDoc },
-		makePlasmidData,
-	)
-
 	// -- UpdatePlasmid Workflow --
 
 	// setValidatedUpdateRequest sets validated update request in context
@@ -239,12 +204,6 @@ var (
 	extractUpdatePlasmidResponse = func(uctx withUpdatedPlasmidData) *stock.Plasmid {
 		return &stock.Plasmid{Data: uctx.plasmidData}
 	}
-
-	// transformToUpdatedPlasmidData transforms full stock document to plasmid data
-	transformToUpdatedPlasmidData = F.Flow2(
-		func(uctx withFullPlasmidDoc) *model.StockDoc { return uctx.fullStockDoc },
-		makePlasmidData,
-	)
 
 	// -- LoadPlasmid Workflow --
 
@@ -327,6 +286,14 @@ func retrievePlasmidFromRepository(
 			),
 		),
 	)
+}
+
+func getStockDoc(pctx withStockDocument) *model.StockDoc {
+	return pctx.stockDoc
+}
+
+func extractPlasmidResponse(data *stock.Plasmid_Data) *stock.Plasmid {
+	return &stock.Plasmid{Data: data}
 }
 
 func runPlasmidIO(ioe PlasmidIO) PlasmidEither { return ioe() }
@@ -415,6 +382,11 @@ func retrievePlasmidsFromRepository(
 	)
 }
 
+// transformToPlasmidCollection transforms stock documents to plasmid collection data
+func transformToPlasmidCollection(lctx withStockDocList) []*stock.PlasmidCollection_Data {
+	return F.Pipe1(lctx.stockDocs, plasmidModelToCollectionSlice)
+}
+
 // computeNextCursor computes the next cursor value based on results
 func hasMinimumResults(lctx withPlasmidCollectionData) bool {
 	return len(lctx.collectionData) >= int(lctx.limit)-2
@@ -501,6 +473,11 @@ func createPlasmidInRepository(
 	)
 }
 
+// transformToCreatedPlasmidData transforms stock document to plasmid data
+func transformToCreatedPlasmidData(cctx withCreatedPlasmidDoc) *stock.Plasmid_Data {
+	return F.Pipe1(cctx.stockDoc, makePlasmidData)
+}
+
 // publishCreatedPlasmid publishes the created plasmid event
 func publishCreatedPlasmid(
 	cctx withCreatedPlasmidData,
@@ -582,6 +559,11 @@ func retrieveFullPlasmidDoc(
 			return uctx.repo.GetPlasmid(uctx.validatedRequest.Data.Id)
 		}),
 	)
+}
+
+// transformToUpdatedPlasmidData transforms full stock document to plasmid data
+func transformToUpdatedPlasmidData(uctx withFullPlasmidDoc) *stock.Plasmid_Data {
+	return F.Pipe1(uctx.fullStockDoc, makePlasmidData)
 }
 
 // publishUpdatedPlasmid publishes the updated plasmid event

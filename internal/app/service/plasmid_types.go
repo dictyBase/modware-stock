@@ -70,12 +70,6 @@ type withStockDocument struct {
 	stockDoc *model.StockDoc
 }
 
-// withPlasmidData adds plasmid data to context
-type withPlasmidData struct {
-	withStockDocument
-	plasmidData *stock.Plasmid_Data
-}
-
 // ListPlasmids workflow context types
 
 // listPlasmidsContext represents the initial context for listing plasmids
