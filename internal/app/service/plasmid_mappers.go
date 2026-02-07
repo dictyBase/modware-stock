@@ -1,6 +1,8 @@
 package service
 
 import (
+	F "github.com/IBM/fp-go/function"
+	O "github.com/IBM/fp-go/option"
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/collection"
@@ -46,13 +48,17 @@ func makePlasmidAttr(m *model.StockDoc) *stock.PlasmidAttributes {
 		Dbxrefs:         m.Dbxrefs,
 		Publications:    m.Publications,
 	}
-
-	if m.PlasmidProperties != nil {
-		attr.ImageMap = m.PlasmidProperties.ImageMap
-		attr.Sequence = m.PlasmidProperties.Sequence
-		attr.Name = m.PlasmidProperties.Name
-		attr.DictyPlasmidProperty = m.PlasmidProperties.DictyPlasmidProperty
-	}
-
-	return attr
+	return F.Pipe1(
+		O.FromNillable(m.PlasmidProperties),
+		O.Fold(
+			F.Constant(attr),
+			func(props *model.PlasmidProperties) *stock.PlasmidAttributes {
+				attr.ImageMap = props.ImageMap
+				attr.Sequence = props.Sequence
+				attr.Name = props.Name
+				attr.DictyPlasmidProperty = props.DictyPlasmidProperty
+				return attr
+			},
+		),
+	)
 }

@@ -718,6 +718,35 @@ func testListPlasmidsWithLimit(params *testParams) {
 	)
 }
 
+// testListPlasmidsWithLimitNoFilter tests listing plasmids with a limit but no filter.
+func testListPlasmidsWithLimitNoFilter(params *testParams) {
+	params.t.Helper()
+	// Create several plasmids
+	for range 10 {
+		createReq := newTestPlasmid()
+		_, err := params.client.CreatePlasmid(params.ctx, createReq)
+		params.assert.NoError(err, "should create plasmid without error")
+	}
+
+	// List with limit but NO filter
+	req := &stock.StockParameters{Limit: 5}
+	resp, err := params.client.ListPlasmids(params.ctx, req)
+
+	params.assert.NoError(err, "should list plasmids without error")
+	params.assert.NotNil(resp, "response should not be nil")
+	params.assert.LessOrEqual(
+		len(resp.Data),
+		5,
+		"should respect limit",
+	)
+	params.assert.Equal(
+		int64(5),
+		resp.Meta.Limit,
+		"meta limit should match request",
+	)
+	params.assert.NotEmpty(resp.Data, "should return some plasmids")
+}
+
 // testListPlasmidsWithCursor tests pagination with cursor.
 func testListPlasmidsWithCursor(params *testParams) {
 	params.t.Helper()

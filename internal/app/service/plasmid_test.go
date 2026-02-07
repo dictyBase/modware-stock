@@ -172,6 +172,10 @@ func TestListPlasmids(t *testing.T) {
 		testListPlasmidsWithLimit(params)
 	})
 
+	t.Run("WithLimitNoFilter", func(t *testing.T) {
+		testListPlasmidsWithLimitNoFilter(params)
+	})
+
 	t.Run("WithCursor", func(t *testing.T) {
 		testListPlasmidsWithCursor(params)
 	})
