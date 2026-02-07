@@ -6,6 +6,12 @@ import (
 	"fmt"
 	"io"
 
+	E "github.com/IBM/fp-go/either"
+	fperrors "github.com/IBM/fp-go/errors"
+	F "github.com/IBM/fp-go/function"
+	ORD "github.com/IBM/fp-go/ord"
+	S "github.com/IBM/fp-go/string"
+	T "github.com/IBM/fp-go/tuple"
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager/query"
 	"github.com/dictyBase/go-genproto/dictybaseapis/api/upload"
@@ -111,23 +117,70 @@ func genNextCursorVal(pts *timestamppb.Timestamp) int64 {
 	return tstmp.UnixMilli()
 }
 
-func stockAQLStatement(fstr string) (string, error) {
-	filterSlice, err := query.ParseFilterString(fstr)
-	if err != nil {
-		return "", fmt.Errorf("error in parsing filter string %s", err)
-	}
-	stmt, err := query.GenQualifiedAQLFilterStatement(
-		arangodb.FMap,
-		filterSlice,
+// Use fp-go string API
+var isEmptyString = S.IsEmpty
+
+func isEmptyFilterStmt(stmt string) bool { return stmt == "FILTER " }
+
+// Use fp-go ord API for numeric comparison
+var (
+	int64Ord   = ORD.FromStrictCompare[int64]()
+	isPositive = ORD.Gt(int64Ord)(int64(0))
+)
+
+var (
+	parseFilterString     = E.Eitherize1(query.ParseFilterString)
+	genQualifiedAQLFilter = E.Eitherize2(query.GenQualifiedAQLFilterStatement)
+)
+
+func normalizeFilterStmt(stmt string) string {
+	return F.Pipe1(
+		stmt,
+		F.Ternary(isEmptyFilterStmt, F.Constant1[string](""), F.Identity[string]),
 	)
-	if err != nil {
-		return stmt, fmt.Errorf("error in generating AQL statement %s", err)
-	}
-	// if the parsed statement is empty FILTER, just return empty string
-	if stmt == "FILTER " {
-		stmt = ""
-	}
-	return stmt, nil
+}
+
+func generateAQL(filters []*query.Filter) E.Either[error, string] {
+	return F.Pipe1(
+		genQualifiedAQLFilter(arangodb.FMap, filters),
+		E.MapLeft[string](fperrors.OnError("error in generating AQL statement")),
+	)
+}
+
+func emptyFilterRight(_ string) E.Either[error, string] {
+	return E.Right[error]("")
+}
+
+func parseAndGenerateAQL(fstr string) E.Either[error, string] {
+	return F.Pipe4(
+		fstr,
+		parseFilterString,
+		E.MapLeft[[]*query.Filter](
+			fperrors.OnError("error in parsing filter string"),
+		),
+		E.Chain(generateAQL),
+		E.Map[error](normalizeFilterStmt),
+	)
+}
+
+func stockAQLStatementEither(fstr string) E.Either[error, string] {
+	return F.Pipe1(
+		fstr,
+		F.Ternary(isEmptyString, emptyFilterRight, parseAndGenerateAQL),
+	)
+}
+
+func stockAQLStatement(fstr string) (string, error) {
+	result := F.Pipe1(
+		stockAQLStatementEither(fstr),
+		E.Fold(
+			func(err error) T.Tuple2[string, error] { return T.MakeTuple2("", err) },
+			func(stmt string) T.Tuple2[string, error] {
+				return T.MakeTuple2[string, error](stmt, nil)
+			},
+		),
+	)
+	return result.F1, result.F2
 }
 
 func stockModelList(args *modelListParams) ([]*model.StockDoc, error) {
@@ -156,10 +209,14 @@ func stockModelList(args *modelListParams) ([]*model.StockDoc, error) {
 }
 
 func limitVal(limit int64) int64 {
-	if limit > 0 {
-		return limit
-	}
-	return int64(10)
+	return F.Pipe1(
+		limit,
+		F.Ternary(
+			isPositive,
+			F.Identity[int64],
+			F.Constant1[int64](int64(10)),
+		),
+	)
 }
 
 type oboStreamHandler struct {

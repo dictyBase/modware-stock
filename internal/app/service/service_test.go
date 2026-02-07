@@ -282,11 +282,9 @@ func testStockAQLStatementSimpleFilter(t *testing.T) {
 
 func testStockAQLStatementEmptyFilter(t *testing.T) {
 	t.Helper()
-
-	// Empty filter string returns an error due to validation
-	_, err := stockAQLStatement("")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "error in generating AQL statement")
+	stmt, err := stockAQLStatement("")
+	require.NoError(t, err)
+	require.Empty(t, stmt)
 }
 
 func testStockAQLStatementInvalidSyntax(t *testing.T) {
