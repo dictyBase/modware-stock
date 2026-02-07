@@ -296,12 +296,10 @@ func extractPlasmidResponse(data *stock.Plasmid_Data) *stock.Plasmid {
 	return &stock.Plasmid{Data: data}
 }
 
-func runPlasmidIO(ioe PlasmidIO) PlasmidEither { return ioe() }
-
 // toServiceResult converts IOEither result to service response tuple with error handling
 func toServiceResult(ctx context.Context) PlasmidConverter {
 	return F.Flow2(
-		runPlasmidIO,
+		toEither[error, *stock.Plasmid],
 		E.Fold(
 			func(err error) PlasmidResult {
 				return T.MakeTuple2(
@@ -412,19 +410,13 @@ func computeNextCursor(lctx withPlasmidCollectionData) int64 {
 	)
 }
 
-func runPlasmidCollectionIO(
-	ioe PlasmidCollectionIO,
-) PlasmidCollectionEither {
-	return ioe()
-}
-
 // toPlasmidCollectionResult converts IOEither result to collection response tuple
 func toPlasmidCollectionResult(
 	ctx context.Context,
 	limit int64,
 ) PlasmidCollectionConverter {
 	return F.Flow2(
-		runPlasmidCollectionIO,
+		toEither[error, *stock.PlasmidCollection],
 		E.Fold(
 			func(err error) PlasmidCollectionResult {
 				return T.MakeTuple2(
@@ -498,7 +490,7 @@ func publishCreatedPlasmid(
 // toCreatePlasmidResult converts IOEither result to service response tuple
 func toCreatePlasmidResult(ctx context.Context) PlasmidConverter {
 	return F.Flow2(
-		runPlasmidIO,
+		toEither[error, *stock.Plasmid],
 		E.Fold(
 			func(err error) PlasmidResult {
 				return T.MakeTuple2(
@@ -592,7 +584,7 @@ func hasNotFoundPrefix(err error) bool {
 // toUpdatePlasmidResult converts IOEither result to service response tuple
 func toUpdatePlasmidResult(ctx context.Context) PlasmidConverter {
 	return F.Flow2(
-		runPlasmidIO,
+		toEither[error, *stock.Plasmid],
 		E.Fold(
 			F.Ternary(
 				isNotFoundError,
@@ -686,7 +678,7 @@ func publishLoadedPlasmid(
 // toLoadPlasmidResult converts IOEither result to service response tuple
 func toLoadPlasmidResult(ctx context.Context) PlasmidConverter {
 	return F.Flow2(
-		runPlasmidIO,
+		toEither[error, *stock.Plasmid],
 		E.Fold(
 			func(err error) PlasmidResult {
 				return T.MakeTuple2(
