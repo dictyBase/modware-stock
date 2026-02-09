@@ -3,7 +3,10 @@ package arangodb
 import (
 	"fmt"
 
+	F "github.com/IBM/fp-go/function"
 	IOE "github.com/IBM/fp-go/ioeither"
+	M "github.com/IBM/fp-go/magma"
+	R "github.com/IBM/fp-go/record"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/model"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
@@ -32,6 +35,173 @@ type dbRows interface {
 type plasmidListQueryParams struct {
 	statement  string
 	bindParams map[string]any
+}
+
+// Predicates for query selection
+var (
+	// hasFilter checks if filter string is non-empty
+	hasFilter = func(s string) bool { return len(s) > 0 }
+
+	// hasCursor checks if cursor is positive
+	hasCursor = func(cursor int64) bool { return cursor > 0 }
+)
+
+// Magma for map merging (last key wins)
+var lastWins = M.MakeMagma(func(a, b any) any { return b })
+
+// selectStatementByCursor selects statement based on cursor presence
+var selectStatementByCursor = F.Curry2(
+	func(withCursor, withoutCursor string) func(bool) string {
+		return F.Ternary(
+			F.Identity[bool],
+			F.Constant1[bool](withCursor),
+			F.Constant1[bool](withoutCursor),
+		)
+	},
+)
+
+// selectStockFirstStatement selects stock-first query statements
+var selectStockFirstStatement = selectStatementByCursor(
+	statement.PlasmidListWithCursor,
+)(statement.PlasmidList)
+
+// selectOntologyFirstStatement selects ontology-first filtered query statements
+var selectOntologyFirstStatement = selectStatementByCursor(
+	statement.PlasmidListFilterByOntologyWithCursor,
+)(statement.PlasmidListFilterByOntology)
+
+// selectPlasmidStatement selects appropriate query using functional composition
+func (ar *arangorepository) selectPlasmidStatement(
+	params *stock.StockParameters,
+) string {
+	cursorPresent := hasCursor(params.Cursor)
+
+	return F.Pipe2(
+		params.Filter,
+		hasFilter,
+		F.Ternary(
+			F.Identity[bool],
+			F.Constant1[bool](selectOntologyFirstStatement(cursorPresent)),
+			F.Constant1[bool](selectStockFirstStatement(cursorPresent)),
+		),
+	)
+}
+
+// Base bind parameters (common to all queries)
+func (ar *arangorepository) baseBindParams() map[string]any {
+	return map[string]any{
+		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
+		"ontology":           ar.plasmidOnto,
+		"@cv_collection":     ar.ontoc.Cv.Name(),
+	}
+}
+
+// Stock-first bind parameters (no filter queries)
+func (ar *arangorepository) stockFirstBindParams() map[string]any {
+	return map[string]any{
+		"@stock_collection": ar.stockc.stock.Name(),
+		"stock_prop_graph":  ar.stockc.stockPropType.Name(),
+	}
+}
+
+// Ontology-first bind parameters (filtered queries)
+func (ar *arangorepository) ontologyFirstBindParams() map[string]any {
+	return map[string]any{
+		"@cvterm_collection": ar.ontoc.Term.Name(),
+		"@cv_collection":     ar.ontoc.Cv.Name(),
+		"stock_prop_graph":   ar.stockc.stockPropType.Name(),
+	}
+}
+
+// addCursorParam adds cursor to bind parameters
+var addCursorParam = F.Curry2(
+	func(cursor int64, params map[string]any) map[string]any {
+		return F.Pipe1(
+			params,
+			R.Union[string, any](lastWins)(
+				map[string]any{"cursor": cursor},
+			),
+		)
+	},
+)
+
+// addLimitParam adds limit to bind parameters
+var addLimitParam = F.Curry2(
+	func(limit int64, params map[string]any) map[string]any {
+		return F.Pipe1(
+			params,
+			R.Union[string, any](lastWins)(
+				map[string]any{"limit": limit},
+			),
+		)
+	},
+)
+
+// mergeParams merges two parameter maps
+var mergeParams = F.Curry2(
+	func(additional, base map[string]any) map[string]any {
+		return F.Pipe1(
+			base,
+			R.Union[string, any](lastWins)(additional),
+		)
+	},
+)
+
+// buildNoFilterBindParams builds bind params for no-filter queries
+func (ar *arangorepository) buildNoFilterBindParams(
+	params *stock.StockParameters,
+) map[string]any {
+	baseWithStock := F.Pipe2(
+		ar.baseBindParams(),
+		mergeParams(ar.stockFirstBindParams()),
+		addLimitParam(params.Limit+1),
+	)
+
+	return F.Pipe2(
+		params.Cursor,
+		hasCursor,
+		F.Ternary(
+			F.Identity[bool],
+			F.Constant1[bool](F.Pipe1(baseWithStock, addCursorParam(params.Cursor))),
+			F.Constant1[bool](baseWithStock),
+		),
+	)
+}
+
+// buildFilterBindParams builds bind params for filtered queries
+func (ar *arangorepository) buildFilterBindParams(
+	params *stock.StockParameters,
+) map[string]any {
+	baseWithOntology := F.Pipe2(
+		ar.baseBindParams(),
+		mergeParams(ar.ontologyFirstBindParams()),
+		addLimitParam(params.Limit+1),
+	)
+
+	return F.Pipe2(
+		params.Cursor,
+		hasCursor,
+		F.Ternary(
+			F.Identity[bool],
+			F.Constant1[bool](F.Pipe1(baseWithOntology, addCursorParam(params.Cursor))),
+			F.Constant1[bool](baseWithOntology),
+		),
+	)
+}
+
+// buildBindParams selects and builds bind parameters
+func (ar *arangorepository) buildBindParams(
+	params *stock.StockParameters,
+) map[string]any {
+	return F.Pipe2(
+		params.Filter,
+		hasFilter,
+		F.Ternary(
+			F.Identity[bool],
+			F.Constant1[bool](ar.buildFilterBindParams(params)),
+			F.Constant1[bool](ar.buildNoFilterBindParams(params)),
+		),
+	)
 }
 
 // buildPlasmidQueryParams creates the bind parameters for plasmid query
@@ -92,31 +262,29 @@ func (ar *arangorepository) validatePlasmidQueryResult(
 	return IOE.TryCatchError(fn)
 }
 
+// injectFilter injects filter string into statement if present
+var injectFilter = F.Curry2(
+	func(filter string, stmt string) string {
+		return F.Pipe2(
+			filter,
+			hasFilter,
+			F.Ternary(
+				F.Identity[bool],
+				F.Constant1[bool](fmt.Sprintf(stmt, filter)),
+				F.Constant1[bool](stmt),
+			),
+		)
+	},
+)
+
 // buildPlasmidListQueryParams creates query parameters for listing plasmids
 func (ar *arangorepository) buildPlasmidListQueryParams(
 	params *stock.StockParameters,
 ) plasmidListQueryParams {
-	stmt := ar.selectPlasmidStatement(params)
-	bindParams := map[string]any{
-		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
-		"ontology":           ar.plasmidOnto,
-		"@cv_collection":     ar.ontoc.Cv.Name(),
-	}
-
 	return plasmidListQueryParams{
-		statement:  stmt,
-		bindParams: bindParams,
+		statement:  injectFilter(params.Filter)(ar.selectPlasmidStatement(params)),
+		bindParams: ar.buildBindParams(params),
 	}
-}
-
-// selectPlasmidStatement selects appropriate statement based on filter presence
-func (ar *arangorepository) selectPlasmidStatement(
-	params *stock.StockParameters,
-) string {
-	if len(params.Filter) > 0 {
-		return ar.plasmidStmtWithFilter(params)
-	}
-	return ar.plasmidStmtNoFilter(params)
 }
 
 // executePlasmidListQuery executes the query and returns rows
@@ -161,46 +329,5 @@ func (ar *arangorepository) scanPlasmidRows(
 
 			return plasmids, nil
 		},
-	)
-}
-
-func (ar *arangorepository) plasmidStmtWithFilter(
-	p *stock.StockParameters,
-) string {
-	if p.Cursor == 0 { // no cursor so return first set of result
-		return fmt.Sprintf(
-			statement.PlasmidListFilter,
-			ar.stockc.stock.Name(),
-			ar.stockc.stockPropType.Name(),
-			p.Filter, p.Limit+1,
-		)
-	}
-	// else include both filter and cursor
-	return fmt.Sprintf(
-		statement.PlasmidListFilterWithCursor,
-		ar.stockc.stock.Name(),
-		ar.stockc.stockPropType.Name(),
-		p.Filter, p.Cursor, p.Limit+1,
-	)
-}
-
-func (ar *arangorepository) plasmidStmtNoFilter(
-	p *stock.StockParameters,
-) string {
-	// otherwise use query statement without filter
-	if p.Cursor == 0 { // no cursor so return first set of result
-		return fmt.Sprintf(
-			statement.PlasmidList,
-			ar.stockc.stock.Name(),
-			ar.stockc.stockPropType.Name(),
-			p.Limit+1,
-		)
-	}
-	// add cursor if it exists
-	return fmt.Sprintf(
-		statement.PlasmidListWithCursor,
-		ar.stockc.stock.Name(),
-		ar.stockc.stockPropType.Name(),
-		p.Cursor, p.Limit+1,
 	)
 }
