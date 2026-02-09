@@ -191,85 +191,121 @@ const (
 				)`
 
 	PlasmidList = `
-		FOR s IN %s
-			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH '%s'
+		FOR s IN @@stock_collection
+			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
 				FILTER e.type == 'plasmid'
 				SORT s.created_at DESC
-				LIMIT %d` +
+				LIMIT @limit` +
 		ontologyTermSubquery + `
-				RETURN MERGE(
-					s,
-					{
-						plasmid_properties: {
-							image_map: stock_prop.image_map,
-							sequence: stock_prop.sequence,
-							name: stock_prop.name,
-							dicty_plasmid_property: term[0]
-						}
+				RETURN MERGE(s, {
+					plasmid_properties: {
+						image_map: stock_prop.image_map,
+						sequence: stock_prop.sequence,
+						name: stock_prop.name,
+						dicty_plasmid_property: term[0]
 					}
-				)
+				})
+	`
+
+	PlasmidListWithCursor = `
+		FOR s IN @@stock_collection
+			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
+				FILTER e.type == 'plasmid'
+				FILTER s.created_at <= DATE_ISO8601(@cursor)
+				SORT s.created_at DESC
+				LIMIT @limit` +
+		ontologyTermSubquery + `
+				RETURN MERGE(s, {
+					plasmid_properties: {
+						image_map: stock_prop.image_map,
+						sequence: stock_prop.sequence,
+						name: stock_prop.name,
+						dicty_plasmid_property: term[0]
+					}
+				})
 	`
 
 	PlasmidListFilter = `
-		FOR s IN %s
-			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH '%s'
+		FOR s IN @@stock_collection
+			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
 				FILTER e.type == 'plasmid'
 				%s
 				SORT s.created_at DESC
-				LIMIT %d` +
+				LIMIT @limit` +
 		ontologyTermSubquery + `
-				RETURN MERGE(
-					s,
-					{
-						plasmid_properties: {
-							image_map: stock_prop.image_map,
-							sequence: stock_prop.sequence,
-							name: stock_prop.name,
-							dicty_plasmid_property: term[0]
-						}
+				RETURN MERGE(s, {
+					plasmid_properties: {
+						image_map: stock_prop.image_map,
+						sequence: stock_prop.sequence,
+						name: stock_prop.name,
+						dicty_plasmid_property: term[0]
 					}
-				)
-	`
-	PlasmidListWithCursor = `
-		FOR s IN %s
-			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH '%s'
-				FILTER e.type == 'plasmid'
-				FILTER s.created_at <= DATE_ISO8601(%d)
-				SORT s.created_at DESC
-				LIMIT %d` +
-		ontologyTermSubquery + `
-				RETURN MERGE(
-					s,
-					{
-						plasmid_properties: {
-							image_map: stock_prop.image_map,
-							sequence: stock_prop.sequence,
-							name: stock_prop.name,
-							dicty_plasmid_property: term[0]
-						}
-					}
-				)
+				})
 	`
 
 	PlasmidListFilterWithCursor = `
-		FOR s IN %s
-			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH '%s'
+		FOR s IN @@stock_collection
+			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
 				FILTER e.type == 'plasmid'
 				%s
-				FILTER s.created_at <= DATE_ISO8601(%d)
+				FILTER s.created_at <= DATE_ISO8601(@cursor)
 				SORT s.created_at DESC
-				LIMIT %d` +
+				LIMIT @limit` +
 		ontologyTermSubquery + `
-				RETURN MERGE(
-					s,
-					{
-						plasmid_properties: {
-							image_map: stock_prop.image_map,
-							sequence: stock_prop.sequence,
-							name: stock_prop.name,
-							dicty_plasmid_property: term[0]
-						}
+				RETURN MERGE(s, {
+					plasmid_properties: {
+						image_map: stock_prop.image_map,
+						sequence: stock_prop.sequence,
+						name: stock_prop.name,
+						dicty_plasmid_property: term[0]
 					}
-				)
+				})
+	`
+
+	// PlasmidListFilterByOntology is an ontology-first query template for filtered plasmid listing.
+	PlasmidListFilterByOntology = `
+		FOR cvterm in @@cvterm_collection
+			FOR cv IN @@cv_collection
+				FOR s IN 1..1 INBOUND cvterm GRAPH @stock_cvterm_graph
+					FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
+						FILTER cvterm.graph_id == cv._id
+						FILTER cvterm.deprecated == false
+						FILTER cv.metadata.namespace == @ontology
+						FILTER e.type == 'plasmid'
+						%s
+						SORT s.created_at DESC
+						LIMIT @limit
+						RETURN MERGE(s, {
+							plasmid_properties: {
+								image_map: stock_prop.image_map,
+								sequence: stock_prop.sequence,
+								name: stock_prop.name,
+								dicty_plasmid_property: cvterm.label
+							}
+						})
+	`
+
+	// PlasmidListFilterByOntologyWithCursor is an ontology-first query template for filtered plasmid listing with cursor.
+	PlasmidListFilterByOntologyWithCursor = `
+		FOR cvterm in @@cvterm_collection
+			FOR cv IN @@cv_collection
+				FOR s IN 1..1 INBOUND cvterm GRAPH @stock_cvterm_graph
+					FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
+						FILTER cvterm.graph_id == cv._id
+						FILTER cvterm.deprecated == false
+						FILTER cv.metadata.namespace == @ontology
+						FILTER e.type == 'plasmid'
+						%s
+						FILTER s.created_at <= DATE_ISO8601(@cursor)
+						SORT s.created_at DESC
+						LIMIT @limit
+						RETURN MERGE(s, {
+							plasmid_properties: {
+								image_map: stock_prop.image_map,
+								sequence: stock_prop.sequence,
+								name: stock_prop.name,
+								dicty_plasmid_property: cvterm.label
+							}
+						})
 	`
 )
