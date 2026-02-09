@@ -187,4 +187,28 @@ func TestListPlasmids(t *testing.T) {
 	t.Run("InvalidFilter", func(t *testing.T) {
 		testListPlasmidsInvalidFilter(params)
 	})
+
+	t.Run("ByTagExact", func(t *testing.T) {
+		testListPlasmidsByTagExact(params)
+	})
+
+	t.Run("ByTagPartialMatch", func(t *testing.T) {
+		testListPlasmidsByTagPartialMatch(params)
+	})
+
+	t.Run("ByTagWithLimit", func(t *testing.T) {
+		testListPlasmidsByTagWithLimit(params)
+	})
+
+	t.Run("ByTagWithCursor", func(t *testing.T) {
+		testListPlasmidsByTagWithCursor(params)
+	})
+
+	t.Run("ByTagEmpty", func(t *testing.T) {
+		testListPlasmidsByTagEmpty(params)
+	})
+
+	t.Run("ByTagCombined", func(t *testing.T) {
+		testListPlasmidsByTagCombined(params)
+	})
 }
