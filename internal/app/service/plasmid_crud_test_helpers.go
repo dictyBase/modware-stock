@@ -822,3 +822,182 @@ func testListPlasmidsInvalidFilter(params *testParams) {
 		expectedMsgSubstring: "",
 	})
 }
+
+// ============================================================================
+// Tag Filtering Test Helpers (New for this feature)
+// ============================================================================
+
+// testListPlasmidsByTagExact tests exact match filtering by tag
+func testListPlasmidsByTagExact(params *testParams) {
+	params.t.Helper()
+
+	// Create plasmids with different ontology terms
+	req1 := newTestPlasmid()
+	req1.Data.Attributes.DictyPlasmidProperty = testGatewayVector
+	resp1, err := params.client.CreatePlasmid(params.ctx, req1)
+	params.assert.NoError(err, "should create first plasmid")
+
+	req2 := newTestPlasmid()
+	req2.Data.Attributes.DictyPlasmidProperty = "expression vector"
+	_, err = params.client.CreatePlasmid(params.ctx, req2)
+	params.assert.NoError(err, "should create second plasmid")
+
+	// Filter by exact tag match
+	listReq := &stock.StockParameters{
+		Filter: "tag===Gateway vector",
+		Limit:  10,
+	}
+	resp, err := params.client.ListPlasmids(params.ctx, listReq)
+
+	params.assert.NoError(err, "should list plasmids without error")
+	params.assert.NotNil(resp, "response should not be nil")
+	params.assert.GreaterOrEqual(len(resp.Data), 1, "should find at least one plasmid")
+
+	// Verify only Gateway vector plasmids returned
+	found := false
+	for _, plasmid := range resp.Data {
+		params.assert.Equal(
+			testGatewayVector,
+			plasmid.Attributes.DictyPlasmidProperty,
+			"all results should have Gateway vector property",
+		)
+		if plasmid.Id == resp1.Data.Id {
+			found = true
+		}
+	}
+	params.assert.True(found, "should find the Gateway vector plasmid")
+}
+
+// testListPlasmidsByTagPartialMatch tests regex match
+func testListPlasmidsByTagPartialMatch(params *testParams) {
+	params.t.Helper()
+
+	for range 3 {
+		req := newTestPlasmid()
+		req.Data.Attributes.DictyPlasmidProperty = testGatewayVector
+		_, err := params.client.CreatePlasmid(params.ctx, req)
+		params.assert.NoError(err)
+	}
+
+	listReq := &stock.StockParameters{
+		Filter: "tag=~Gateway",
+		Limit:  10,
+	}
+	resp, err := params.client.ListPlasmids(params.ctx, listReq)
+
+	params.assert.NoError(err, "should list plasmids without error")
+	params.assert.GreaterOrEqual(len(resp.Data), 3, "should find at least 3 plasmids")
+
+	for _, plasmid := range resp.Data {
+		params.assert.Contains(
+			plasmid.Attributes.DictyPlasmidProperty,
+			"Gateway",
+			"all results should contain 'Gateway'",
+		)
+	}
+}
+
+// testListPlasmidsByTagWithLimit tests pagination with limit
+func testListPlasmidsByTagWithLimit(params *testParams) {
+	params.t.Helper()
+
+	for range 10 {
+		req := newTestPlasmid()
+		req.Data.Attributes.DictyPlasmidProperty = testGatewayVector
+		_, err := params.client.CreatePlasmid(params.ctx, req)
+		params.assert.NoError(err)
+	}
+
+	listReq := &stock.StockParameters{
+		Filter: "tag===Gateway vector",
+		Limit:  5,
+	}
+	resp, err := params.client.ListPlasmids(params.ctx, listReq)
+
+	params.assert.NoError(err)
+	params.assert.LessOrEqual(len(resp.Data), 5, "should respect limit")
+	params.assert.Equal(int64(5), resp.Meta.Limit, "meta limit should match request")
+}
+
+// testListPlasmidsByTagWithCursor tests cursor-based pagination
+func testListPlasmidsByTagWithCursor(params *testParams) {
+	params.t.Helper()
+
+	for range 15 {
+		req := newTestPlasmid()
+		req.Data.Attributes.DictyPlasmidProperty = testGatewayVector
+		_, err := params.client.CreatePlasmid(params.ctx, req)
+		params.assert.NoError(err)
+	}
+
+	// First page
+	req := &stock.StockParameters{
+		Filter: "tag===Gateway vector",
+		Limit:  5,
+	}
+	resp, err := params.client.ListPlasmids(params.ctx, req)
+	params.assert.NoError(err)
+
+	// Second page
+	if resp.Meta.NextCursor != 0 {
+		req2 := &stock.StockParameters{
+			Filter: "tag===Gateway vector",
+			Limit:  5,
+			Cursor: resp.Meta.NextCursor,
+		}
+		resp2, err := params.client.ListPlasmids(params.ctx, req2)
+		params.assert.NoError(err)
+
+		// Verify no overlap
+		firstPageIDs := make(map[string]bool)
+		for _, plasmid := range resp.Data {
+			firstPageIDs[plasmid.Id] = true
+		}
+		for _, plasmid := range resp2.Data {
+			params.assert.False(
+				firstPageIDs[plasmid.Id],
+				"second page should not overlap with first page",
+			)
+		}
+	}
+}
+
+// testListPlasmidsByTagEmpty tests empty results
+func testListPlasmidsByTagEmpty(params *testParams) {
+	params.t.Helper()
+
+	listReq := &stock.StockParameters{
+		Filter: "tag===NonExistentOntologyTerm",
+		Limit:  10,
+	}
+	resp, err := params.client.ListPlasmids(params.ctx, listReq)
+
+	params.assert.NoError(err, "should not error on empty result")
+	params.assert.NotNil(resp, "response should not be nil")
+	params.assert.Empty(resp.Data, "should return empty list")
+}
+
+// testListPlasmidsByTagCombined tests combined filters
+func testListPlasmidsByTagCombined(params *testParams) {
+	params.t.Helper()
+
+	req := newTestPlasmid()
+	req.Data.Attributes.DictyPlasmidProperty = testGatewayVector
+	req.Data.Attributes.Depositor = "Jane Smith"
+	_, err := params.client.CreatePlasmid(params.ctx, req)
+	params.assert.NoError(err)
+
+	listReq := &stock.StockParameters{
+		Filter: "tag===Gateway vector;depositor===Jane Smith",
+		Limit:  10,
+	}
+	resp, err := params.client.ListPlasmids(params.ctx, listReq)
+
+	params.assert.NoError(err)
+	params.assert.GreaterOrEqual(len(resp.Data), 1)
+
+	for _, plasmid := range resp.Data {
+		params.assert.Equal(testGatewayVector, plasmid.Attributes.DictyPlasmidProperty)
+		params.assert.Equal("Jane Smith", plasmid.Attributes.Depositor)
+	}
+}
