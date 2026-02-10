@@ -9,7 +9,12 @@ import (
 )
 
 // createTestParams creates test parameters for subtests
-func createTestParams(ctx context.Context, t *testing.T, client stock.StockServiceClient, assert *require.Assertions) *testParams {
+func createTestParams(
+	ctx context.Context,
+	t *testing.T,
+	client stock.StockServiceClient,
+	assert *require.Assertions,
+) *testParams {
 	t.Helper()
 	return &testParams{
 		t:      t,

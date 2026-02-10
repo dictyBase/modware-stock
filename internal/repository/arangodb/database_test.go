@@ -12,7 +12,12 @@ import (
 )
 
 // setupTestRepo creates a test repository with ontology collections
-func setupTestRepo(t *testing.T, connParams *manager.ConnectParams, collParams *CollectionParams, ontoParams *ontoarango.CollectionParams) (*arangorepository, func()) {
+func setupTestRepo(
+	t *testing.T,
+	connParams *manager.ConnectParams,
+	collParams *CollectionParams,
+	ontoParams *ontoarango.CollectionParams,
+) (*arangorepository, func()) {
 	t.Helper()
 	sess, db, err := manager.NewSessionDb(connParams)
 	require.NoError(t, err, "Failed to create session and database")
@@ -227,6 +232,52 @@ func TestDocCollections(t *testing.T) {
 	})
 }
 
+// verifyEdgeCollections verifies that all edge collections were created
+func verifyEdgeCollections(t *testing.T, repo *arangorepository) {
+	t.Helper()
+	require.NotNil(t, repo.stockc.stockType, "stockType edge collection should exist")
+	require.NotNil(t, repo.stockc.parentStrain, "parentStrain edge collection should exist")
+	require.NotNil(t, repo.stockc.stockTerm, "stockTerm edge collection should exist")
+}
+
+// verifyNamedGraphs verifies that all named graphs were created
+func verifyNamedGraphs(t *testing.T, repo *arangorepository) {
+	t.Helper()
+	require.NotNil(t, repo.stockc.stockPropType, "stockPropType graph should exist")
+	require.NotNil(t, repo.stockc.strain2Parent, "strain2Parent graph should exist")
+	require.NotNil(t, repo.stockc.stockOnto, "stockOnto graph should exist")
+}
+
+// setupRepoWithDocCollections sets up a repository with document collections
+func setupRepoWithDocCollections(
+	t *testing.T,
+	connParams *manager.ConnectParams,
+	collParams *CollectionParams,
+	ontoParams *ontoarango.CollectionParams,
+) (*arangorepository, func()) {
+	t.Helper()
+	sess, db, err := manager.NewSessionDb(connParams)
+	require.NoError(t, err, "Failed to create session and database")
+
+	ontoc, err := ontoarango.CreateCollection(db, ontoParams)
+	require.NoError(t, err, "Failed to create ontology collections")
+
+	repo := &arangorepository{
+		ontoc:    ontoc,
+		sess:     sess,
+		database: db,
+	}
+
+	err = docCollections(repo, collParams)
+	require.NoError(t, err, "Failed to create document collections")
+
+	cleanup := func() {
+		_ = db.Drop()
+	}
+
+	return repo, cleanup
+}
+
 // TestGraphAndEdgeCollections tests graph and edge collection creation
 func TestGraphAndEdgeCollections(t *testing.T) {
 	t.Run("successful graph and edge collections creation", func(t *testing.T) {
@@ -237,37 +288,14 @@ func TestGraphAndEdgeCollections(t *testing.T) {
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer func() { _ = db.Drop() }()
-		_ = sess
+		repo, cleanup := setupRepoWithDocCollections(t, connParams, collParams, ontoParams)
+		defer cleanup()
 
-		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
-		require.NoError(t, err, "Failed to create ontology collections")
-
-		repo := &arangorepository{
-			ontoc:    ontoc,
-			sess:     sess,
-			database: db,
-		}
-
-		// First create document collections
-		err = docCollections(repo, collParams)
-		require.NoError(t, err, "Failed to create document collections")
-
-		// Then create graph and edge collections
 		err = graphAndEdgeCollections(repo, collParams)
 		require.NoError(t, err, "Failed to create graph and edge collections")
 
-		// Verify edge collections were created
-		require.NotNil(t, repo.stockc.stockType, "stockType edge collection should exist")
-		require.NotNil(t, repo.stockc.parentStrain, "parentStrain edge collection should exist")
-		require.NotNil(t, repo.stockc.stockTerm, "stockTerm edge collection should exist")
-
-		// Verify named graphs were created
-		require.NotNil(t, repo.stockc.stockPropType, "stockPropType graph should exist")
-		require.NotNil(t, repo.stockc.strain2Parent, "strain2Parent graph should exist")
-		require.NotNil(t, repo.stockc.stockOnto, "stockOnto graph should exist")
+		verifyEdgeCollections(t, repo)
+		verifyNamedGraphs(t, repo)
 	})
 
 	t.Run("error in edge collections creation", func(t *testing.T) {
@@ -278,25 +306,9 @@ func TestGraphAndEdgeCollections(t *testing.T) {
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer func() { _ = db.Drop() }()
-		_ = sess
+		repo, cleanup := setupRepoWithDocCollections(t, connParams, collParams, ontoParams)
+		defer cleanup()
 
-		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
-		require.NoError(t, err, "Failed to create ontology collections")
-
-		repo := &arangorepository{
-			ontoc:    ontoc,
-			sess:     sess,
-			database: db,
-		}
-
-		// Create document collections first
-		err = docCollections(repo, collParams)
-		require.NoError(t, err, "Failed to create document collections")
-
-		// Create invalid collection params (empty edge collection name)
 		invalidCollParams := &CollectionParams{
 			Stock:              collParams.Stock,
 			StockProp:          collParams.StockProp,
@@ -656,6 +668,26 @@ func TestCreateNamedGraph(t *testing.T) {
 	})
 }
 
+// verifyStockIDIndexCreated verifies that stock_id index exists
+func verifyStockIDIndexCreated(t *testing.T, repo *arangorepository) {
+	t.Helper()
+	indices, err := repo.stockc.stock.Indexes(context.TODO())
+	require.NoError(t, err, "Failed to get collection indices")
+	require.NotEmpty(t, indices, "Collection should have indices")
+
+	foundStockIDIndex := false
+	for _, index := range indices {
+		if index.Type() == driver.PersistentIndex {
+			fields := index.Fields()
+			if len(fields) > 0 && fields[0] == "stock_id" {
+				foundStockIDIndex = true
+				break
+			}
+		}
+	}
+	require.True(t, foundStockIDIndex, "stock_id index should be created")
+}
+
 // TestCreateIndex tests index creation with various scenarios
 func TestCreateIndex(t *testing.T) {
 	t.Run("successful index creation", func(t *testing.T) {
@@ -666,45 +698,13 @@ func TestCreateIndex(t *testing.T) {
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer func() { _ = db.Drop() }()
-		_ = sess
+		repo, cleanup := setupRepoWithDocCollections(t, connParams, collParams, ontoParams)
+		defer cleanup()
 
-		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
-		require.NoError(t, err, "Failed to create ontology collections")
-
-		repo := &arangorepository{
-			ontoc:    ontoc,
-			sess:     sess,
-			database: db,
-		}
-
-		// Create document collections first
-		err = docCollections(repo, collParams)
-		require.NoError(t, err, "Failed to create document collections")
-
-		// Create index
 		err = createIndex(repo)
 		require.NoError(t, err, "Failed to create index")
 
-		// Verify index was created
-		indices, err := repo.stockc.stock.Indexes(context.TODO())
-		require.NoError(t, err, "Failed to get collection indices")
-		require.NotEmpty(t, indices, "Collection should have indices")
-
-		// Check for stock_id index
-		foundStockIDIndex := false
-		for _, index := range indices {
-			if index.Type() == driver.PersistentIndex {
-				fields := index.Fields()
-				if len(fields) > 0 && fields[0] == "stock_id" {
-					foundStockIDIndex = true
-					break
-				}
-			}
-		}
-		require.True(t, foundStockIDIndex, "stock_id index should be created")
+		verifyStockIDIndexCreated(t, repo)
 	})
 
 	t.Run("index creation is idempotent", func(t *testing.T) {
@@ -715,28 +715,12 @@ func TestCreateIndex(t *testing.T) {
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer func() { _ = db.Drop() }()
-		_ = sess
+		repo, cleanup := setupRepoWithDocCollections(t, connParams, collParams, ontoParams)
+		defer cleanup()
 
-		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
-		require.NoError(t, err, "Failed to create ontology collections")
-
-		repo := &arangorepository{
-			ontoc:    ontoc,
-			sess:     sess,
-			database: db,
-		}
-
-		err = docCollections(repo, collParams)
-		require.NoError(t, err, "Failed to create document collections")
-
-		// Create index first time
 		err = createIndex(repo)
 		require.NoError(t, err, "Failed to create index first time")
 
-		// Create index second time - should not fail
 		err = createIndex(repo)
 		require.NoError(t, err, "Failed to create index second time - should be idempotent")
 	})
