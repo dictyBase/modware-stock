@@ -11,6 +11,45 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// setupTestRepo creates a test repository with ontology collections
+func setupTestRepo(t *testing.T, connParams *manager.ConnectParams, collParams *CollectionParams, ontoParams *ontoarango.CollectionParams) (*arangorepository, func()) {
+	t.Helper()
+	sess, db, err := manager.NewSessionDb(connParams)
+	require.NoError(t, err, "Failed to create session and database")
+
+	ontoc, err := ontoarango.CreateCollection(db, ontoParams)
+	require.NoError(t, err, "Failed to create ontology collections")
+
+	repo := &arangorepository{
+		ontoc:       ontoc,
+		sess:        sess,
+		database:    db,
+		strainOnto:  collParams.StrainOntology,
+		plasmidOnto: collParams.PlasmidOntology,
+	}
+
+	cleanup := func() {
+		_ = db.Drop()
+	}
+
+	return repo, cleanup
+}
+
+// verifyStockCollections verifies that all stock collections were created
+func verifyStockCollections(t *testing.T, repo *arangorepository) {
+	t.Helper()
+	require.NotNil(t, repo.stockc, "stockc should be initialized")
+	require.NotNil(t, repo.stockc.stock, "stock collection should exist")
+	require.NotNil(t, repo.stockc.stockProp, "stockProp collection should exist")
+	require.NotNil(t, repo.stockc.stockKey, "stockKey collection should exist")
+	require.NotNil(t, repo.stockc.stockType, "stockType collection should exist")
+	require.NotNil(t, repo.stockc.parentStrain, "parentStrain collection should exist")
+	require.NotNil(t, repo.stockc.stockTerm, "stockTerm collection should exist")
+	require.NotNil(t, repo.stockc.stockPropType, "stockPropType graph should exist")
+	require.NotNil(t, repo.stockc.strain2Parent, "strain2Parent graph should exist")
+	require.NotNil(t, repo.stockc.stockOnto, "stockOnto graph should exist")
+}
+
 // TestCreateDbStruct tests the database structure creation with various scenarios
 func TestCreateDbStruct(t *testing.T) {
 	testArango, err := testarango.NewTestArangoFromEnv(true)
@@ -21,79 +60,23 @@ func TestCreateDbStruct(t *testing.T) {
 	ontoParams := getOntoParams()
 
 	t.Run("successful database structure creation", func(t *testing.T) {
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer func() { _ = db.Drop() }()
-		_ = sess
+		repo, cleanup := setupTestRepo(t, connParams, collParams, ontoParams)
+		defer cleanup()
 
-		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
-		require.NoError(t, err, "Failed to create ontology collections")
-
-		repo := &arangorepository{
-			ontoc:       ontoc,
-			sess:        sess,
-			database:    db,
-			strainOnto:  collParams.StrainOntology,
-			plasmidOnto: collParams.PlasmidOntology,
-		}
-
-		err = createDbStruct(repo, collParams)
+		err := createDbStruct(repo, collParams)
 		require.NoError(t, err, "Failed to create database structure")
 
-		// Verify stock collections were created
-		require.NotNil(t, repo.stockc, "stockc should be initialized")
-		require.NotNil(t, repo.stockc.stock, "stock collection should exist")
-		require.NotNil(t, repo.stockc.stockProp, "stockProp collection should exist")
-		require.NotNil(t, repo.stockc.stockKey, "stockKey collection should exist")
-		require.NotNil(t, repo.stockc.stockType, "stockType collection should exist")
-		require.NotNil(t, repo.stockc.parentStrain, "parentStrain collection should exist")
-		require.NotNil(t, repo.stockc.stockTerm, "stockTerm collection should exist")
-		require.NotNil(t, repo.stockc.stockPropType, "stockPropType graph should exist")
-		require.NotNil(t, repo.stockc.strain2Parent, "strain2Parent graph should exist")
-		require.NotNil(t, repo.stockc.stockOnto, "stockOnto graph should exist")
+		verifyStockCollections(t, repo)
 	})
 
 	t.Run("error in document collections creation", func(t *testing.T) {
-		testArango, err := testarango.NewTestArangoFromEnv(true)
-		require.NoError(t, err, "Failed to create test arango instance")
+		repo, cleanup := setupTestRepo(t, connParams, collParams, ontoParams)
+		defer cleanup()
 
-		connParams := getConnectParamsFromDb(testArango)
-		collParams := getCollectionParams()
-		ontoParams := getOntoParams()
-
-		sess, db, err := manager.NewSessionDb(connParams)
-		require.NoError(t, err, "Failed to create session and database")
-		defer func() { _ = db.Drop() }()
-		_ = sess
-
-		ontoc, err := ontoarango.CreateCollection(db, ontoParams)
-		require.NoError(t, err, "Failed to create ontology collections")
-
-		repo := &arangorepository{
-			ontoc:       ontoc,
-			sess:        sess,
-			database:    db,
-			strainOnto:  collParams.StrainOntology,
-			plasmidOnto: collParams.PlasmidOntology,
-		}
-
-		// Create invalid collection params (empty stock name)
-		invalidCollParams := &CollectionParams{
-			Stock:              "", // Invalid: empty collection name
-			StockProp:          collParams.StockProp,
-			StockType:          collParams.StockType,
-			StockKeyGenerator:  collParams.StockKeyGenerator,
-			ParentStrain:       collParams.ParentStrain,
-			StockTerm:          collParams.StockTerm,
-			StockPropTypeGraph: collParams.StockPropTypeGraph,
-			Strain2ParentGraph: collParams.Strain2ParentGraph,
-			StockOntoGraph:     collParams.StockOntoGraph,
-			KeyOffset:          collParams.KeyOffset,
-			StrainOntology:     collParams.StrainOntology,
-			PlasmidOntology:    collParams.PlasmidOntology,
-		}
-
-		err = createDbStruct(repo, invalidCollParams)
+		invalidCollParams := copyCollectionParamsWithOverride(collParams, func(c *CollectionParams) {
+			c.Stock = ""
+		})
+		err := createDbStruct(repo, invalidCollParams)
 		require.Error(t, err, "Should fail with invalid collection parameters")
 	})
 }
