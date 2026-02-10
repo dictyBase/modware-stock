@@ -5,52 +5,37 @@ import (
 	"testing"
 )
 
-func TestCreateStrain(t *testing.T) {
-	t.Parallel()
-	client, assert := setup(t)
-	ctx := context.Background()
-	params := &testParams{
+// createTestParams creates test parameters for subtests
+func createTestParams(t *testing.T, ctx context.Context, client *testClient, assert *testAssertions) *testParams {
+	t.Helper()
+	return &testParams{
 		t:      t,
 		ctx:    ctx,
 		client: client,
 		assert: assert,
 	}
+}
 
-	// Test cases for CreateStrain
+func TestCreateStrain(t *testing.T) {
+	t.Parallel()
+	client, assert := setup(t)
+	ctx := context.Background()
+	params := createTestParams(t, ctx, client, assert)
+
 	t.Run("ValidStrain", func(t *testing.T) {
-		testCreateValidStrain(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testCreateValidStrain(createTestParams(t, ctx, client, assert))
 	})
 
 	t.Run("StrainWithDefaultProperty", func(t *testing.T) {
-		testCreateStrainWithDefaultProperty(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testCreateStrainWithDefaultProperty(createTestParams(t, ctx, client, assert))
 	})
 
 	t.Run("StrainWithCustomProperty", func(t *testing.T) {
-		testCreateStrainWithCustomProperty(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testCreateStrainWithCustomProperty(createTestParams(t, ctx, client, assert))
 	})
 
 	t.Run("StrainMinimalFields", func(t *testing.T) {
-		testCreateStrainMinimalFields(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testCreateStrainMinimalFields(createTestParams(t, ctx, client, assert))
 	})
 
 	t.Run("StrainMissingRequiredFields", func(_ *testing.T) {
@@ -62,21 +47,11 @@ func TestCreateStrain(t *testing.T) {
 	})
 
 	t.Run("StrainPublisherSuccess", func(t *testing.T) {
-		testCreateStrainPublisherSuccess(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testCreateStrainPublisherSuccess(createTestParams(t, ctx, client, assert))
 	})
 
 	t.Run("StrainTimestampsSet", func(t *testing.T) {
-		testCreateStrainTimestampsSet(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testCreateStrainTimestampsSet(createTestParams(t, ctx, client, assert))
 	})
 }
 
@@ -171,77 +146,36 @@ func TestUpdateStrain(t *testing.T) {
 	client, assert := setup(t)
 	ctx := context.Background()
 
-	// Test cases for UpdateStrain
 	t.Run("ExistingStrain", func(t *testing.T) {
-		testUpdateExistingStrain(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testUpdateExistingStrain(createTestParams(t, ctx, client, assert))
 	})
 
 	t.Run("NonExistentStrain", func(t *testing.T) {
-		testUpdateNonExistentStrain(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testUpdateNonExistentStrain(createTestParams(t, ctx, client, assert))
 	})
 
 	t.Run("EmptyID", func(t *testing.T) {
-		testUpdateStrainWithEmptyID(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testUpdateStrainWithEmptyID(createTestParams(t, ctx, client, assert))
 	})
 
 	t.Run("PartialUpdate", func(t *testing.T) {
-		testUpdateStrainPartialUpdate(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testUpdateStrainPartialUpdate(createTestParams(t, ctx, client, assert))
 	})
 
 	t.Run("OntologyUpdate", func(t *testing.T) {
-		testUpdateStrainOntologyUpdate(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testUpdateStrainOntologyUpdate(createTestParams(t, ctx, client, assert))
 	})
 
 	t.Run("OntologyWithOtherFields", func(t *testing.T) {
-		testUpdateStrainOntologyWithOtherFields(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testUpdateStrainOntologyWithOtherFields(createTestParams(t, ctx, client, assert))
 	})
 
 	t.Run("InvalidOntology", func(t *testing.T) {
-		testUpdateStrainInvalidOntology(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testUpdateStrainInvalidOntology(createTestParams(t, ctx, client, assert))
 	})
 
 	t.Run("OntologyPreservation", func(t *testing.T) {
-		testUpdateStrainOntologyPreservation(&testParams{
-			t:      t,
-			ctx:    ctx,
-			client: client,
-			assert: assert,
-		})
+		testUpdateStrainOntologyPreservation(createTestParams(t, ctx, client, assert))
 	})
 }
 

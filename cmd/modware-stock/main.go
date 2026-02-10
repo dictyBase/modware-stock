@@ -41,7 +41,7 @@ func main() {
 			Name:   "start-server",
 			Usage:  "starts the modware-stock microservice with grpc backends",
 			Action: server.RunServer,
-			Before: validate.ValidateServerArgs,
+			Before: validate.ServerArgs,
 			Flags:  allFlags(),
 		},
 	}

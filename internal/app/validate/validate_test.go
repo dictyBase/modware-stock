@@ -15,7 +15,7 @@ type validateServerArgsTestCase struct {
 	errorMsg    string
 }
 
-func getValidateServerArgsTestCases() []validateServerArgsTestCase {
+func getServerArgsTestCases() []validateServerArgsTestCase {
 	cases := []validateServerArgsTestCase{
 		{
 			name: "all required parameters present",
@@ -122,69 +122,38 @@ func getMissingParameterTestCases() []validateServerArgsTestCase {
 	}
 }
 
-func getEmptyStringTestCases() []validateServerArgsTestCase {
-	return []validateServerArgsTestCase{
-		{
-			name: "empty string for arangodb-pass",
-			flagValues: map[string]string{
-				"arangodb-pass":     "",
-				"arangodb-database": "testdb",
-				"arangodb-user":     "testuser",
-				"nats-host":         "localhost",
-				"nats-port":         "4222",
-			},
-			expectError: true,
-			errorMsg:    "argument arangodb-pass is missing",
-		},
-		{
-			name: "empty string for arangodb-database",
-			flagValues: map[string]string{
-				"arangodb-pass":     "password123",
-				"arangodb-database": "",
-				"arangodb-user":     "testuser",
-				"nats-host":         "localhost",
-				"nats-port":         "4222",
-			},
-			expectError: true,
-			errorMsg:    "argument arangodb-database is missing",
-		},
-		{
-			name: "empty string for arangodb-user",
-			flagValues: map[string]string{
-				"arangodb-pass":     "password123",
-				"arangodb-database": "testdb",
-				"arangodb-user":     "",
-				"nats-host":         "localhost",
-				"nats-port":         "4222",
-			},
-			expectError: true,
-			errorMsg:    "argument arangodb-user is missing",
-		},
-		{
-			name: "empty string for nats-host",
-			flagValues: map[string]string{
-				"arangodb-pass":     "password123",
-				"arangodb-database": "testdb",
-				"arangodb-user":     "testuser",
-				"nats-host":         "",
-				"nats-port":         "4222",
-			},
-			expectError: true,
-			errorMsg:    "argument nats-host is missing",
-		},
-		{
-			name: "empty string for nats-port",
-			flagValues: map[string]string{
-				"arangodb-pass":     "password123",
-				"arangodb-database": "testdb",
-				"arangodb-user":     "testuser",
-				"nats-host":         "localhost",
-				"nats-port":         "",
-			},
-			expectError: true,
-			errorMsg:    "argument nats-port is missing",
-		},
+func buildEmptyStringTestCase(paramName string, allParams map[string]string) validateServerArgsTestCase {
+	flagValues := make(map[string]string)
+	for k, v := range allParams {
+		if k == paramName {
+			flagValues[k] = ""
+		} else {
+			flagValues[k] = v
+		}
 	}
+	return validateServerArgsTestCase{
+		name:        "empty string for " + paramName,
+		flagValues:  flagValues,
+		expectError: true,
+		errorMsg:    "argument " + paramName + " is missing",
+	}
+}
+
+func getEmptyStringTestCases() []validateServerArgsTestCase {
+	allParams := map[string]string{
+		"arangodb-pass":     "password123",
+		"arangodb-database": "testdb",
+		"arangodb-user":     "testuser",
+		"nats-host":         "localhost",
+		"nats-port":         "4222",
+	}
+
+	paramNames := []string{"arangodb-pass", "arangodb-database", "arangodb-user", "nats-host", "nats-port"}
+	cases := make([]validateServerArgsTestCase, 0, len(paramNames))
+	for _, param := range paramNames {
+		cases = append(cases, buildEmptyStringTestCase(param, allParams))
+	}
+	return cases
 }
 
 func createFlagSetWithValues(flagValues map[string]string) *flag.FlagSet {
@@ -211,10 +180,10 @@ func assertValidationError(t *testing.T, err error, expectedMsg string) {
 	require.Contains(t, exitErr.Error(), expectedMsg)
 }
 
-func TestValidateServerArgs(t *testing.T) {
+func TestServerArgs(t *testing.T) {
 	t.Parallel()
 
-	tests := getValidateServerArgsTestCases()
+	tests := getServerArgsTestCases()
 
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -222,7 +191,7 @@ func TestValidateServerArgs(t *testing.T) {
 
 			flagSet := createFlagSetWithValues(testCase.flagValues)
 			ctx := cli.NewContext(nil, flagSet, nil)
-			err := ValidateServerArgs(ctx)
+			err := ServerArgs(ctx)
 
 			if testCase.expectError {
 				assertValidationError(t, err, testCase.errorMsg)
@@ -233,70 +202,51 @@ func TestValidateServerArgs(t *testing.T) {
 	}
 }
 
-func TestValidateServerArgs_AllParametersOrder(t *testing.T) {
+func createFlagSetForParameterOrder(allFlags, providedFlags []string) *flag.FlagSet {
+	flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
+	for _, flagName := range allFlags {
+		flagSet.String(flagName, "", "")
+	}
+	for _, flagName := range providedFlags {
+		_ = flagSet.Set(flagName, "value")
+	}
+	return flagSet
+}
+
+func assertParameterOrderError(t *testing.T, err error, missingParam string) {
+	t.Helper()
+	require.Error(t, err)
+	exitErr, ok := err.(*cli.ExitError)
+	require.True(t, ok)
+	require.Equal(t, 2, exitErr.ExitCode())
+	require.Contains(t, exitErr.Error(), missingParam)
+}
+
+func TestServerArgs_AllParametersOrder(t *testing.T) {
 	t.Parallel()
 
+	allFlags := []string{"arangodb-pass", "arangodb-database", "arangodb-user", "nats-host", "nats-port"}
+
 	// Test that validation checks parameters in the documented order
-	// by providing only later parameters and expecting first missing one
 	testCases := []struct {
 		name          string
 		missingParam  string
 		providedFlags []string
 	}{
-		{
-			name:          "first parameter missing",
-			missingParam:  "arangodb-pass",
-			providedFlags: []string{"arangodb-database", "arangodb-user", "nats-host", "nats-port"},
-		},
-		{
-			name:          "second parameter missing",
-			missingParam:  "arangodb-database",
-			providedFlags: []string{"arangodb-pass", "arangodb-user", "nats-host", "nats-port"},
-		},
-		{
-			name:          "third parameter missing",
-			missingParam:  "arangodb-user",
-			providedFlags: []string{"arangodb-pass", "arangodb-database", "nats-host", "nats-port"},
-		},
-		{
-			name:          "fourth parameter missing",
-			missingParam:  "nats-host",
-			providedFlags: []string{"arangodb-pass", "arangodb-database", "arangodb-user", "nats-port"},
-		},
-		{
-			name:          "fifth parameter missing",
-			missingParam:  "nats-port",
-			providedFlags: []string{"arangodb-pass", "arangodb-database", "arangodb-user", "nats-host"},
-		},
+		{"first parameter missing", "arangodb-pass", allFlags[1:]},
+		{"second parameter missing", "arangodb-database", []string{allFlags[0], allFlags[2], allFlags[3], allFlags[4]}},
+		{"third parameter missing", "arangodb-user", []string{allFlags[0], allFlags[1], allFlags[3], allFlags[4]}},
+		{"fourth parameter missing", "nats-host", allFlags[:3]},
+		{"fifth parameter missing", "nats-port", allFlags[:4]},
 	}
-
-	allFlags := []string{"arangodb-pass", "arangodb-database", "arangodb-user", "nats-host", "nats-port"}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
-
-			flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
-
-			// Register all flags
-			for _, flagName := range allFlags {
-				flagSet.String(flagName, "", "")
-			}
-
-			// Set only the provided flags
-			for _, flagName := range testCase.providedFlags {
-				err := flagSet.Set(flagName, "value")
-				require.NoError(t, err)
-			}
-
+			flagSet := createFlagSetForParameterOrder(allFlags, testCase.providedFlags)
 			ctx := cli.NewContext(nil, flagSet, nil)
-			err := ValidateServerArgs(ctx)
-
-			require.Error(t, err)
-			exitErr, ok := err.(*cli.ExitError)
-			require.True(t, ok)
-			require.Equal(t, 2, exitErr.ExitCode())
-			require.Contains(t, exitErr.Error(), testCase.missingParam)
+			err := ServerArgs(ctx)
+			assertParameterOrderError(t, err, testCase.missingParam)
 		})
 	}
 }
@@ -309,22 +259,22 @@ func createLongValue(size int) string {
 	return string(longValue)
 }
 
-func testValidateServerArgsWithValues(t *testing.T, values map[string]string) {
+func testServerArgsWithValues(t *testing.T, values map[string]string) {
 	t.Helper()
 	flagSet := createFlagSetWithValues(values)
 	ctx := cli.NewContext(nil, flagSet, nil)
-	err := ValidateServerArgs(ctx)
+	err := ServerArgs(ctx)
 	require.NoError(t, err)
 }
 
-func TestValidateServerArgs_EdgeCases(t *testing.T) {
+func TestServerArgs_EdgeCases(t *testing.T) {
 	t.Parallel()
 
 	t.Run("very long parameter values", func(t *testing.T) {
 		t.Parallel()
 
 		longValue := createLongValue(10000)
-		testValidateServerArgsWithValues(t, map[string]string{
+		testServerArgsWithValues(t, map[string]string{
 			"arangodb-pass":     longValue,
 			"arangodb-database": longValue,
 			"arangodb-user":     longValue,
@@ -336,7 +286,7 @@ func TestValidateServerArgs_EdgeCases(t *testing.T) {
 	t.Run("special characters in values", func(t *testing.T) {
 		t.Parallel()
 
-		testValidateServerArgsWithValues(t, map[string]string{
+		testServerArgsWithValues(t, map[string]string{
 			"arangodb-pass":     "p@$$w0rd!#%&*(){}[]|\\:;\"'<>,.?/~`",
 			"arangodb-database": "db-name_123",
 			"arangodb-user":     "user@domain.com",
@@ -348,7 +298,7 @@ func TestValidateServerArgs_EdgeCases(t *testing.T) {
 	t.Run("unicode characters in values", func(t *testing.T) {
 		t.Parallel()
 
-		testValidateServerArgsWithValues(t, map[string]string{
+		testServerArgsWithValues(t, map[string]string{
 			"arangodb-pass":     "密码123",
 			"arangodb-database": "データベース",
 			"arangodb-user":     "usuario",

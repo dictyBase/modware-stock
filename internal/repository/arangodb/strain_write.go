@@ -29,6 +29,47 @@ func (ar *arangorepository) AddStrain(
 	})
 }
 
+func (ar *arangorepository) updateStrainOntologyTerm(stockID, term string) error {
+	tid, tidErr := ar.termID(term, ar.strainOnto)
+	if tidErr != nil {
+		return tidErr
+	}
+
+	_, err := ar.database.DoRun(
+		statement.StrainTermUpd,
+		map[string]any{
+			"@stock_term_collection": ar.stockc.stockTerm.Name(),
+			"from": fmt.Sprintf("%s/%s", ar.stockc.stock.Name(), stockID),
+			"to":   tid,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to update strain ontology term for %s: %w",
+			stockID,
+			err,
+		)
+	}
+	return nil
+}
+
+func (ar *arangorepository) buildEditStrainBindVars(
+	us *stock.StrainUpdate,
+	propKey string,
+) map[string]any {
+	bindVars := getUpdatableStrainBindParams(us.Data.Attributes)
+	bindStVars := getUpdatableStrainPropBindParams(us.Data.Attributes)
+	return mergeBindParams(
+		map[string]any{
+			"@stock_properties_collection": ar.stockc.stockProp.Name(),
+			"@stock_collection":            ar.stockc.stock.Name(),
+			"key":                          us.Data.Id,
+			"propkey":                      propKey,
+		},
+		bindVars, bindStVars,
+	)
+}
+
 // EditStrain updates an existing strain
 func (ar *arangorepository) EditStrain(
 	us *stock.StrainUpdate,
@@ -38,50 +79,20 @@ func (ar *arangorepository) EditStrain(
 	if err != nil {
 		return stockDoc, err
 	}
-	// term is the ontology term for the strain
-	term := us.Data.Attributes.DictyStrainProperty
-	if len(term) > 0 {
-		tid, tidErr := ar.termID(term, ar.strainOnto)
-		if tidErr != nil {
-			return stockDoc, tidErr
-		}
 
-		// Run the UPSERT query to update the ontology term
-		_, err = ar.database.DoRun(
-			statement.StrainTermUpd,
-			map[string]any{
-				// collection bind var for @@stock_term_collection
-				"@stock_term_collection": ar.stockc.stockTerm.Name(),
-				"from": fmt.Sprintf(
-					"%s/%s",
-					ar.stockc.stock.Name(),
-					us.Data.Id,
-				),
-				"to": tid,
-			},
-		)
-		if err != nil {
-			return stockDoc, fmt.Errorf(
-				"failed to update strain ontology term for %s: %w",
-				us.Data.Id,
-				err,
-			)
+	if term := us.Data.Attributes.DictyStrainProperty; len(term) > 0 {
+		if err := ar.updateStrainOntologyTerm(us.Data.Id, term); err != nil {
+			return stockDoc, err
 		}
 	}
+
 	bindVars := getUpdatableStrainBindParams(us.Data.Attributes)
 	bindStVars := getUpdatableStrainPropBindParams(us.Data.Attributes)
-	cmBindVars := mergeBindParams(
-		map[string]any{
-			"@stock_properties_collection": ar.stockc.stockProp.Name(),
-			"@stock_collection":            ar.stockc.stock.Name(),
-			"key":                          us.Data.Id,
-			"propkey":                      propKey,
-		},
-		bindVars, bindStVars,
-	)
-	parent := us.Data.Attributes.Parent
+	cmBindVars := ar.buildEditStrainBindVars(us, propKey)
+
 	stmt := statement.StrainUpd
-	if len(parent) > 0 { // in case parent is present
+	parent := us.Data.Attributes.Parent
+	if len(parent) > 0 {
 		pVars, pStmt, nerr := ar.handleEditStrainWithParent(parent, us.Data.Id)
 		if nerr != nil {
 			return stockDoc, nerr
@@ -90,19 +101,13 @@ func (ar *arangorepository) EditStrain(
 		cmBindVars = mergeBindParams(cmBindVars, pVars)
 		stockDoc.StrainProperties = &model.StrainProperties{Parent: parent}
 	}
+
 	rupd, err := ar.database.DoRun(
-		fmt.Sprintf(
-			stmt,
-			genAQLDocExpression(bindVars),
-			genAQLDocExpression(bindStVars),
-		),
+		fmt.Sprintf(stmt, genAQLDocExpression(bindVars), genAQLDocExpression(bindStVars)),
 		cmBindVars,
 	)
 	if err != nil {
-		return stockDoc, errors.Errorf(
-			"error in editing strain %s %s",
-			us.Data.Id, err,
-		)
+		return stockDoc, errors.Errorf("error in editing strain %s %s", us.Data.Id, err)
 	}
 	err = rupd.Read(stockDoc)
 	return stockDoc, err

@@ -16,6 +16,7 @@ import (
 	"github.com/dictyBase/go-obograph/graph"
 	"github.com/dictyBase/go-obograph/storage"
 	ontoarango "github.com/dictyBase/go-obograph/storage/arangodb"
+	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -132,6 +133,7 @@ func loadData(ta *testarango.TestArango) error {
 		if err != nil {
 			return fmt.Errorf("unable to get current dir %s", err)
 		}
+		//nolint:gosec // G304: Safe test file path, hardcoded testdata directory
 		reader, err := os.Open(
 			filepath.Join(
 				filepath.Dir(filepath.Dir(dir)),
@@ -178,35 +180,30 @@ func loadData(ta *testarango.TestArango) error {
 	return nil
 }
 
-// setup initializes the test environment with a test database, repository, and gRPC server/client.
-func setup(t *testing.T) (stock.StockServiceClient, *require.Assertions) {
+func setupTestRepository(t *testing.T, assert *require.Assertions) repository.StockRepository {
 	t.Helper()
-	assert := require.New(t)
-
-	// Create test ArangoDB instance
 	tra, err := testarango.NewTestArangoFromEnv(true)
 	assert.NoError(err, "expect no error from creating an arangodb instance")
 
-	// Create repository with test collections
 	repo, err := arangodb.NewStockRepo(
 		getConnectParamsFromDb(tra),
 		getCollectionParams(),
 		getOntoParams(),
 	)
-	assert.NoErrorf(
-		err,
-		"expect no error connecting to stock repository, received %s",
-		err,
-	)
+	assert.NoErrorf(err, "expect no error connecting to stock repository, received %s", err)
 
-	// Load required ontology data
 	err = loadData(tra)
 	assert.NoError(err, "expect no error from loading ontology")
 
-	// Create service with mock dependencies
-	svc := NewStockService(repo, &MockPublisher{})
+	t.Cleanup(func() {
+		_ = repo.Dbh().Drop()
+	})
 
-	// Set up default params required by the service
+	return repo
+}
+
+func setupTestService(repo repository.StockRepository) *StockService {
+	svc := NewStockService(repo, &MockPublisher{})
 	svc.Params = map[string]string{
 		"strain_term":  "general strain",
 		"plasmid_term": "vector",
@@ -215,36 +212,51 @@ func setup(t *testing.T) (stock.StockServiceClient, *require.Assertions) {
 		"stockCreate": "StockService.Create",
 		"stockUpdate": "StockService.Update",
 	}
+	return svc
+}
 
-	// GRPC server setup
+func setupGrpcServer(t *testing.T, svc *StockService) (*grpc.Server, *bufconn.Listener) {
+	t.Helper()
 	server := grpc.NewServer()
 	stock.RegisterStockServiceServer(server, svc)
 	lis := bufconn.Listen(1024 * 1024)
 	go func() {
-		if err = server.Serve(lis); err != nil {
+		if err := server.Serve(lis); err != nil {
 			t.Logf("Server exited with error: %v", err)
 			os.Exit(1)
 		}
 	}()
+	return server, lis
+}
 
+func setupGrpcClient(t *testing.T, assert *require.Assertions, lis *bufconn.Listener) *grpc.ClientConn {
+	t.Helper()
 	dialer := func(context.Context, string) (net.Conn, error) {
 		conn, errd := lis.Dial()
 		assert.NoError(errd, "expect no error from creating listener")
 		return conn, nil
 	}
-
 	resolver.SetDefaultScheme("passthrough")
-
-	// GRPC client setup
 	conn, err := grpc.NewClient(
 		"bufnet",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialer),
 	)
 	assert.NoError(err)
+	return conn
+}
+
+// setup initializes the test environment with a test database, repository, and gRPC server/client.
+func setup(t *testing.T) (stock.StockServiceClient, *require.Assertions) {
+	t.Helper()
+	assert := require.New(t)
+
+	repo := setupTestRepository(t, assert)
+	svc := setupTestService(repo)
+	server, lis := setupGrpcServer(t, svc)
+	conn := setupGrpcClient(t, assert, lis)
 
 	t.Cleanup(func() {
-		_ = repo.Dbh().Drop()
 		if err := conn.Close(); err != nil {
 			t.Logf("failed to close connection: %v", err)
 		}

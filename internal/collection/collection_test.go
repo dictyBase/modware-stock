@@ -338,6 +338,22 @@ func TestFilterFlags_Partial(t *testing.T) {
 	})
 }
 
+func assertAllFlagsAreStringFlags(t *testing.T, flags []cli.Flag) {
+	t.Helper()
+	for _, flag := range flags {
+		_, ok := flag.(cli.StringFlag)
+		require.True(t, ok)
+	}
+}
+
+func assertFlagNames(t *testing.T, flags []cli.Flag, expectedNames ...string) {
+	t.Helper()
+	require.Len(t, flags, len(expectedNames))
+	for i, expected := range expectedNames {
+		require.Equal(t, expected, flags[i].GetName())
+	}
+}
+
 func TestFilterFlags_ByType(t *testing.T) {
 	t.Parallel()
 
@@ -358,12 +374,7 @@ func TestFilterFlags_ByType(t *testing.T) {
 		})
 
 		require.Len(t, result, 3)
-		_, ok := result[0].(cli.StringFlag)
-		require.True(t, ok)
-		_, ok = result[1].(cli.StringFlag)
-		require.True(t, ok)
-		_, ok = result[2].(cli.StringFlag)
-		require.True(t, ok)
+		assertAllFlagsAreStringFlags(t, result)
 	})
 
 	t.Run("filter by flag type - BoolFlag only", func(t *testing.T) {
@@ -381,9 +392,7 @@ func TestFilterFlags_ByType(t *testing.T) {
 			return ok
 		})
 
-		require.Len(t, result, 2)
-		require.Equal(t, "bool1", result[0].GetName())
-		require.Equal(t, "bool2", result[1].GetName())
+		assertFlagNames(t, result, "bool1", "bool2")
 	})
 
 	t.Run("filter by flag type - IntFlag only", func(t *testing.T) {
@@ -402,10 +411,7 @@ func TestFilterFlags_ByType(t *testing.T) {
 			return ok
 		})
 
-		require.Len(t, result, 3)
-		require.Equal(t, "int1", result[0].GetName())
-		require.Equal(t, "int2", result[1].GetName())
-		require.Equal(t, "int3", result[2].GetName())
+		assertFlagNames(t, result, "int1", "int2", "int3")
 	})
 }
 
@@ -427,10 +433,7 @@ func TestFilterFlags_ByNamePattern(t *testing.T) {
 			return strings.HasPrefix(flag.GetName(), "db-")
 		})
 
-		require.Len(t, result, 3)
-		require.Equal(t, "db-host", result[0].GetName())
-		require.Equal(t, "db-port", result[1].GetName())
-		require.Equal(t, "db-name", result[2].GetName())
+		assertFlagNames(t, result, "db-host", "db-port", "db-name")
 	})
 
 	t.Run("filter by name suffix", func(t *testing.T) {
@@ -465,9 +468,7 @@ func TestFilterFlags_ByNamePattern(t *testing.T) {
 			return strings.Contains(flag.GetName(), "arango")
 		})
 
-		require.Len(t, result, 2)
-		require.Equal(t, "arangodb-host", result[0].GetName())
-		require.Equal(t, "arangodb-port", result[1].GetName())
+		assertFlagNames(t, result, "arangodb-host", "arangodb-port")
 	})
 }
 
@@ -490,10 +491,7 @@ func TestFilterFlags_ComplexPredicates(t *testing.T) {
 			return isBool || flag.GetName() == "config"
 		})
 
-		require.Len(t, result, 3)
-		require.Equal(t, "config", result[0].GetName())
-		require.Equal(t, "verbose", result[1].GetName())
-		require.Equal(t, "debug", result[2].GetName())
+		assertFlagNames(t, result, "config", "verbose", "debug")
 	})
 
 	t.Run("complex flag with EnvVar", func(t *testing.T) {
@@ -512,9 +510,7 @@ func TestFilterFlags_ComplexPredicates(t *testing.T) {
 			return false
 		})
 
-		require.Len(t, result, 2)
-		require.Equal(t, "flag1", result[0].GetName())
-		require.Equal(t, "flag2", result[1].GetName())
+		assertFlagNames(t, result, "flag1", "flag2")
 	})
 
 	t.Run("filter flags with usage text", func(t *testing.T) {
@@ -533,10 +529,25 @@ func TestFilterFlags_ComplexPredicates(t *testing.T) {
 			return false
 		})
 
-		require.Len(t, result, 2)
-		require.Equal(t, "flag1", result[0].GetName())
-		require.Equal(t, "flag3", result[1].GetName())
+		assertFlagNames(t, result, "flag1", "flag3")
 	})
+}
+
+func captureOriginalFlagData(flags []cli.Flag) (int, []string) {
+	originalLen := len(flags)
+	originalNames := make([]string, len(flags))
+	for idx, flag := range flags {
+		originalNames[idx] = flag.GetName()
+	}
+	return originalLen, originalNames
+}
+
+func assertOriginalSliceUnchanged(t *testing.T, flags []cli.Flag, originalLen int, originalNames []string) {
+	t.Helper()
+	require.Len(t, flags, originalLen)
+	for idx, flag := range flags {
+		require.Equal(t, originalNames[idx], flag.GetName())
+	}
 }
 
 func TestFilterFlags_Behavior(t *testing.T) {
@@ -557,10 +568,7 @@ func TestFilterFlags_Behavior(t *testing.T) {
 			return name == "z-flag" || name == "m-flag" || name == "b-flag"
 		})
 
-		require.Len(t, result, 3)
-		require.Equal(t, "z-flag", result[0].GetName())
-		require.Equal(t, "m-flag", result[1].GetName())
-		require.Equal(t, "b-flag", result[2].GetName())
+		assertFlagNames(t, result, "z-flag", "m-flag", "b-flag")
 	})
 
 	t.Run("nil predicate behavior is not applicable - requires function", func(t *testing.T) {
@@ -586,20 +594,13 @@ func TestFilterFlags_Behavior(t *testing.T) {
 			cli.StringFlag{Name: "flag3"},
 		}
 
-		originalLen := len(input)
-		originalNames := make([]string, len(input))
-		for idx, flag := range input {
-			originalNames[idx] = flag.GetName()
-		}
+		originalLen, originalNames := captureOriginalFlagData(input)
 
 		FilterFlags(input, func(flag cli.Flag) bool {
 			return flag.GetName() == "flag1"
 		})
 
-		require.Len(t, input, originalLen)
-		for idx, flag := range input {
-			require.Equal(t, originalNames[idx], flag.GetName())
-		}
+		assertOriginalSliceUnchanged(t, input, originalLen, originalNames)
 	})
 }
 

@@ -11,6 +11,46 @@ import (
 	"github.com/urfave/cli"
 )
 
+// runServerIntegrationTestDoc provides comprehensive documentation for testing RunServer.
+// This documentation describes the integration testing requirements for the RunServer function.
+//
+// The RunServer function performs the following operations:
+// 1. Connects to ArangoDB using arangodb.NewStockRepo()
+// 2. Connects to NATS messaging server using nats.NewPublisher()
+// 3. Creates a gRPC server with logging interceptors
+// 4. Registers the StockService with the gRPC server
+// 5. Optionally enables gRPC reflection
+// 6. Starts listening on a TCP port
+// 7. Serves gRPC requests
+//
+// To properly test this function, you would need:
+//
+// 1. ArangoDB Test Instance:
+//   - Use testcontainers-go to spin up an ArangoDB container
+//   - Initialize required collections and graphs
+//   - Provide connection parameters via cli.Context
+//
+// 2. NATS Test Instance:
+//   - Use testcontainers-go/modules/nats to spin up a NATS container
+//   - Provide NATS host and port via cli.Context
+//
+// 3. Test Strategy:
+//   - Happy path: Server starts successfully with valid dependencies
+//   - Error path: ArangoDB connection failure
+//   - Error path: NATS connection failure
+//   - Error path: Port already in use
+//   - Test gRPC reflection enabled/disabled
+//
+// 4. Dependencies needed:
+//   - github.com/testcontainers/testcontainers-go
+//   - github.com/testcontainers/testcontainers-go/modules/nats
+//   - ArangoDB testcontainer (custom or community module)
+//
+// 5. Reference existing integration tests:
+//   - See internal/message/nats/nats_integration_test.go for NATS integration testing
+//   - See internal/repository/arangodb/*_test.go for ArangoDB setup patterns
+const runServerIntegrationTestDoc = ""
+
 func TestStrainType(t *testing.T) {
 	t.Parallel()
 
@@ -131,86 +171,13 @@ func TestAllParams(t *testing.T) {
 	})
 }
 
-// TestRunServer documents the integration testing requirements for the RunServer function
-// This function is intentionally skipped as it requires external infrastructure
+// TestRunServer documents the integration testing requirements for the RunServer function.
+// This function is intentionally skipped as it requires external infrastructure.
+// See runServerIntegrationTestDoc for detailed testing requirements and examples.
 func TestRunServer(t *testing.T) {
 	t.Skip(
-		"RunServer requires integration testing with ArangoDB, NATS, and gRPC - see documentation below",
+		"RunServer requires integration testing with ArangoDB, NATS, and gRPC - see runServerIntegrationTestDoc",
 	)
-
-	// INTEGRATION TESTING REQUIREMENTS FOR RunServer()
-	//
-	// The RunServer function performs the following operations:
-	// 1. Connects to ArangoDB using arangodb.NewStockRepo()
-	// 2. Connects to NATS messaging server using nats.NewPublisher()
-	// 3. Creates a gRPC server with logging interceptors
-	// 4. Registers the StockService with the gRPC server
-	// 5. Optionally enables gRPC reflection
-	// 6. Starts listening on a TCP port
-	// 7. Serves gRPC requests
-	//
-	// To properly test this function, you would need:
-	//
-	// 1. ArangoDB Test Instance:
-	//    - Use testcontainers-go to spin up an ArangoDB container
-	//    - Initialize required collections and graphs
-	//    - Provide connection parameters via cli.Context
-	//
-	// 2. NATS Test Instance:
-	//    - Use testcontainers-go/modules/nats to spin up a NATS container
-	//    - Provide NATS host and port via cli.Context
-	//
-	// 3. Test Strategy:
-	//    a) Happy path: Server starts successfully with valid dependencies
-	//    b) Error path: ArangoDB connection failure
-	//    c) Error path: NATS connection failure
-	//    d) Error path: Port already in use
-	//    e) Test gRPC reflection enabled/disabled
-	//
-	// 4. Example Integration Test Structure:
-	//
-	// func TestRunServerIntegration(t *testing.T) {
-	//     if testing.Short() {
-	//         t.Skip("skipping integration test")
-	//     }
-	//
-	//     // Start ArangoDB container
-	//     arangoContainer := setupArangoContainer(t)
-	//     defer arangoContainer.Terminate()
-	//
-	//     // Start NATS container
-	//     natsContainer := setupNATSContainer(t)
-	//     defer natsContainer.Terminate()
-	//
-	//     // Create CLI context with connection parameters
-	//     ctx := createFullTestContext(t, arangoContainer, natsContainer)
-	//
-	//     // Run server in a goroutine
-	//     errCh := make(chan error, 1)
-	//     go func() {
-	//         errCh <- RunServer(ctx)
-	//     }()
-	//
-	//     // Wait for server to start (with timeout)
-	//     time.Sleep(100 * time.Millisecond)
-	//
-	//     // Test gRPC connection
-	//     conn, err := grpc.Dial("localhost:9560", grpc.WithInsecure())
-	//     require.NoError(t, err)
-	//     defer conn.Close()
-	//
-	//     client := stock.NewStockServiceClient(conn)
-	//     // Make test requests...
-	// }
-	//
-	// 5. Dependencies needed:
-	//    - github.com/testcontainers/testcontainers-go
-	//    - github.com/testcontainers/testcontainers-go/modules/nats
-	//    - ArangoDB testcontainer (custom or community module)
-	//
-	// 6. Reference existing integration tests:
-	//    - See internal/message/nats/nats_test.go for NATS integration testing
-	//    - See internal/repository/arangodb/*_test.go for ArangoDB setup patterns
 }
 
 // Test implementation functions for strainType
