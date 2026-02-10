@@ -1,3 +1,4 @@
+// Command modware-stock provides a gRPC server for managing biological stock inventory.
 package main
 
 import (
