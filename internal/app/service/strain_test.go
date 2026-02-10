@@ -53,11 +53,11 @@ func TestCreateStrain(t *testing.T) {
 		})
 	})
 
-	t.Run("StrainMissingRequiredFields", func(t *testing.T) {
+	t.Run("StrainMissingRequiredFields", func(_ *testing.T) {
 		testCreateStrainMissingRequiredFields(params)
 	})
 
-	t.Run("StrainInvalidType", func(t *testing.T) {
+	t.Run("StrainInvalidType", func(_ *testing.T) {
 		testCreateStrainInvalidType(params)
 	})
 

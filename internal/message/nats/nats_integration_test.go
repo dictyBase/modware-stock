@@ -124,7 +124,11 @@ func TestPublishStrain_Success(t *testing.T) {
 	publisher, err := NewPublisher("localhost", extractPort(connStr))
 	require.NoError(t, err, "Failed to create publisher")
 	require.NotNil(t, publisher)
-	defer publisher.Close()
+	defer func() {
+		if err := publisher.Close(); err != nil {
+			t.Logf("failed to close publisher: %v", err)
+		}
+	}()
 
 	// Create test strain
 	testStrain := createTestStrain()
@@ -206,7 +210,11 @@ func TestPublishPlasmid_Success(t *testing.T) {
 	publisher, err := NewPublisher("localhost", extractPort(connStr))
 	require.NoError(t, err, "Failed to create publisher")
 	require.NotNil(t, publisher)
-	defer publisher.Close()
+	defer func() {
+		if err := publisher.Close(); err != nil {
+			t.Logf("failed to close publisher: %v", err)
+		}
+	}()
 
 	// Create test plasmid
 	testPlasmid := createTestPlasmid()
@@ -288,7 +296,11 @@ func TestPublishMultipleStrains(t *testing.T) {
 	publisher, err := NewPublisher("localhost", extractPort(connStr))
 	require.NoError(t, err, "Failed to create publisher")
 	require.NotNil(t, publisher)
-	defer publisher.Close()
+	defer func() {
+		if err := publisher.Close(); err != nil {
+			t.Logf("failed to close publisher: %v", err)
+		}
+	}()
 
 	// Set up subscriber
 	msgChan := make(chan *gnats.Msg, 5)
@@ -352,8 +364,8 @@ func TestPublishMultipleStrains(t *testing.T) {
 
 // waitForStrainMessage waits for a strain message on a channel and verifies it
 func waitForStrainMessage(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	msgChan <-chan *gnats.Msg,
 	expectedID string,
 	subjectName string,
@@ -390,7 +402,11 @@ func TestPublishWithDifferentSubjects(t *testing.T) {
 	publisher, err := NewPublisher("localhost", extractPort(connStr))
 	require.NoError(t, err, "Failed to create publisher")
 	require.NotNil(t, publisher)
-	defer publisher.Close()
+	defer func() {
+		if err := publisher.Close(); err != nil {
+			t.Logf("failed to close publisher: %v", err)
+		}
+	}()
 
 	// Create different subjects
 	subject1 := "stock.strain.created"
@@ -434,8 +450,8 @@ func TestPublishWithDifferentSubjects(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify messages on correct subjects
-	waitForStrainMessage(t, ctx, msgChan1, strain1.Data.Id, "subject1")
-	waitForStrainMessage(t, ctx, msgChan2, strain2.Data.Id, "subject2")
+	waitForStrainMessage(ctx, t, msgChan1, strain1.Data.Id, "subject1")
+	waitForStrainMessage(ctx, t, msgChan2, strain2.Data.Id, "subject2")
 }
 
 // TestPublisher_ConnectionError tests publisher creation with invalid connection
@@ -487,7 +503,11 @@ func TestPublishNilStrain(t *testing.T) {
 	publisher, err := NewPublisher("localhost", extractPort(connStr))
 	require.NoError(t, err, "Failed to create publisher")
 	require.NotNil(t, publisher)
-	defer publisher.Close()
+	defer func() {
+		if err := publisher.Close(); err != nil {
+			t.Logf("failed to close publisher: %v", err)
+		}
+	}()
 
 	// Attempt to publish nil strain - this may or may not error depending on protobuf
 	err = publisher.PublishStrain(testSubject, nil)
@@ -510,7 +530,11 @@ func TestPublishNilPlasmid(t *testing.T) {
 	publisher, err := NewPublisher("localhost", extractPort(connStr))
 	require.NoError(t, err, "Failed to create publisher")
 	require.NotNil(t, publisher)
-	defer publisher.Close()
+	defer func() {
+		if err := publisher.Close(); err != nil {
+			t.Logf("failed to close publisher: %v", err)
+		}
+	}()
 
 	// Attempt to publish nil plasmid
 	err = publisher.PublishPlasmid(testSubject, nil)
@@ -532,7 +556,11 @@ func TestPublishEmptySubject(t *testing.T) {
 	publisher, err := NewPublisher("localhost", extractPort(connStr))
 	require.NoError(t, err, "Failed to create publisher")
 	require.NotNil(t, publisher)
-	defer publisher.Close()
+	defer func() {
+		if err := publisher.Close(); err != nil {
+			t.Logf("failed to close publisher: %v", err)
+		}
+	}()
 
 	// Create test strain
 	testStrain := createTestStrain()
@@ -580,8 +608,8 @@ func publishConcurrently(
 
 // verifyMessageCount verifies that expected number of messages were received
 func verifyMessageCount(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	msgChan <-chan *gnats.Msg,
 	expectedCount int,
 ) {
@@ -632,7 +660,11 @@ func TestConcurrentPublishing(t *testing.T) {
 	publisher, err := NewPublisher("localhost", extractPort(connStr))
 	require.NoError(t, err, "Failed to create publisher")
 	require.NotNil(t, publisher)
-	defer publisher.Close()
+	defer func() {
+		if err := publisher.Close(); err != nil {
+			t.Logf("failed to close publisher: %v", err)
+		}
+	}()
 
 	// Set up subscriber
 	msgChan := make(chan *gnats.Msg, 20)
@@ -654,7 +686,7 @@ func TestConcurrentPublishing(t *testing.T) {
 	totalMessages := numGoroutines * messagesPerGoroutine
 
 	publishConcurrently(t, publisher, numGoroutines, messagesPerGoroutine)
-	verifyMessageCount(t, ctx, msgChan, totalMessages)
+	verifyMessageCount(ctx, t, msgChan, totalMessages)
 }
 
 // extractPort extracts the port number from a NATS connection string

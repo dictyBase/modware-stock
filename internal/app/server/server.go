@@ -1,3 +1,4 @@
+// Package server provides the gRPC server setup and lifecycle management for the stock service.
 package server
 
 import (

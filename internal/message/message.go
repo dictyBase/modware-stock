@@ -1,3 +1,4 @@
+// Package message defines interfaces for publishing stock-related events to messaging systems.
 package message
 
 import (

@@ -1,3 +1,4 @@
+// Package service provides helper utilities for the stock gRPC service implementation.
 package service
 
 import (

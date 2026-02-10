@@ -47,7 +47,7 @@ var (
 )
 
 // Magma for map merging (last key wins)
-var lastWins = M.MakeMagma(func(a, b any) any { return b })
+var lastWins = M.MakeMagma(func(_, b any) any { return b })
 
 // selectStatementByCursor selects statement based on cursor presence
 var selectStatementByCursor = F.Curry2(

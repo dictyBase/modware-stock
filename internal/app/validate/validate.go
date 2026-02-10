@@ -1,3 +1,4 @@
+// Package validate provides validation utilities for server configuration and CLI arguments.
 package validate
 
 import (
@@ -6,6 +7,7 @@ import (
 	"github.com/urfave/cli"
 )
 
+// ValidateServerArgs validates required CLI arguments for the stock server.
 func ValidateServerArgs(c *cli.Context) error {
 	for _, p := range []string{
 		"arangodb-pass",

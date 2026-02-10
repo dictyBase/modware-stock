@@ -1,11 +1,14 @@
 package statement
 
+// AQL read queries for stock operations
 const (
-	StockFindIdQ = `
+	// StockFindIDQ finds the stock properties ID for a given stock ID
+	StockFindIDQ = `
 		FOR stock_prop IN 1..1 OUTBOUND
 			CONCAT(@stock_collection,"/",@stock_id) GRAPH @stock_prop_graph
 			RETURN stock_prop._key
 	`
+	// StockFindQ retrieves stock document ID by stock_id
 	StockFindQ = `
 		FOR s IN @@stock_collection
 			FILTER s.stock_id == @id

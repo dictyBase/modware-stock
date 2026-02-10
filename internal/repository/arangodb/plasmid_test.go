@@ -705,7 +705,7 @@ func TestAddPlasmidWithOntologyTerms(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(_ *testing.T) {
 			np := newTestPlasmid("pfey@dictybase.org")
 			np.Data.Attributes.DictyPlasmidProperty = tc.term
 			result23 := F.Pipe2(repo.AddPlasmid(np), ToEither, toStockDocResult)

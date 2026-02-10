@@ -2,6 +2,7 @@ package arangodb
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -247,7 +248,11 @@ func loadData(ta *testarango.TestArango) error {
 		if err != nil {
 			return err
 		}
-		defer r.Close()
+		defer func() {
+			if closeErr := r.Close(); closeErr != nil {
+				err = errors.Join(err, closeErr)
+			}
+		}()
 		g, err := graph.BuildGraph(r)
 		if err != nil {
 			return fmt.Errorf("error in building graph %s", err)
@@ -297,7 +302,11 @@ func TestLoadOboJson(t *testing.T) {
 	defer tearDown(repo)
 	fh, err := oboReader()
 	assert.NoErrorf(err, "expect no error, received %s", err)
-	defer fh.Close()
+	defer func() {
+		if err := fh.Close(); err != nil {
+			t.Logf("failed to close file: %v", err)
+		}
+	}()
 	m, err := repo.LoadOboJSON(bufio.NewReader(fh))
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.True(m.IsCreated, "should match created status")
