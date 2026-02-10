@@ -458,41 +458,17 @@ func TestNewStockRepo_ValidationErrors(t *testing.T) {
 	ontoParams := getOntoParams()
 
 	t.Run("invalid collection params - missing stock collection", func(t *testing.T) {
-		invalidCollParams := &CollectionParams{
-			Stock:              "", // Invalid: required field
-			StockProp:          collParams.StockProp,
-			StockType:          collParams.StockType,
-			StockKeyGenerator:  collParams.StockKeyGenerator,
-			ParentStrain:       collParams.ParentStrain,
-			StockTerm:          collParams.StockTerm,
-			StockPropTypeGraph: collParams.StockPropTypeGraph,
-			Strain2ParentGraph: collParams.Strain2ParentGraph,
-			StockOntoGraph:     collParams.StockOntoGraph,
-			KeyOffset:          collParams.KeyOffset,
-			StrainOntology:     collParams.StrainOntology,
-			PlasmidOntology:    collParams.PlasmidOntology,
-		}
-
+		invalidCollParams := copyCollectionParamsWithOverride(collParams, func(c *CollectionParams) {
+			c.Stock = ""
+		})
 		_, err := NewStockRepo(connParams, invalidCollParams, ontoParams)
 		require.Error(t, err, "Should fail validation with missing stock collection")
 	})
 
 	t.Run("invalid collection params - missing stock prop collection", func(t *testing.T) {
-		invalidCollParams := &CollectionParams{
-			Stock:              collParams.Stock,
-			StockProp:          "", // Invalid: required field
-			StockType:          collParams.StockType,
-			StockKeyGenerator:  collParams.StockKeyGenerator,
-			ParentStrain:       collParams.ParentStrain,
-			StockTerm:          collParams.StockTerm,
-			StockPropTypeGraph: collParams.StockPropTypeGraph,
-			Strain2ParentGraph: collParams.Strain2ParentGraph,
-			StockOntoGraph:     collParams.StockOntoGraph,
-			KeyOffset:          collParams.KeyOffset,
-			StrainOntology:     collParams.StrainOntology,
-			PlasmidOntology:    collParams.PlasmidOntology,
-		}
-
+		invalidCollParams := copyCollectionParamsWithOverride(collParams, func(c *CollectionParams) {
+			c.StockProp = ""
+		})
 		_, err := NewStockRepo(connParams, invalidCollParams, ontoParams)
 		require.Error(t, err, "Should fail validation with missing stock prop collection")
 	})
@@ -506,15 +482,9 @@ func TestNewStockRepo_ValidationErrors(t *testing.T) {
 			Port:     9999,
 			Istls:    false,
 		}
-
 		_, err := NewStockRepo(invalidConnParams, collParams, ontoParams)
 		require.Error(t, err, "Should fail with invalid connection params")
-		require.Contains(
-			t,
-			err.Error(),
-			"error in creating database session",
-			"Error should mention database session creation",
-		)
+		require.Contains(t, err.Error(), "error in creating database session")
 	})
 }
 
