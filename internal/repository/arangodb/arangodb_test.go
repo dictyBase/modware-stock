@@ -240,6 +240,7 @@ func loadData(ta *testarango.TestArango) error {
 		if err != nil {
 			return fmt.Errorf("unable to get current dir %s", err)
 		}
+		//nolint:gosec // G304: Safe test file path, hardcoded testdata directory
 		r, err := os.Open(
 			filepath.Join(
 				filepath.Dir(dir), "testdata", f,

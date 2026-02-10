@@ -109,90 +109,53 @@ func createTestPlasmid() *stock.Plasmid {
 	}
 }
 
-// TestPublishStrain_Success tests successful strain message publishing
-func TestPublishStrain_Success(t *testing.T) {
-	ctx := context.Background()
+// setupPublisherAndSubscription sets up a publisher and test subscription channel
+func setupPublisherAndSubscription(
+	t *testing.T,
+	connStr string,
+	subject string,
+) (message.Publisher, *gnats.Conn, <-chan *gnats.Msg, func()) {
+	t.Helper()
 
-	// Start NATS container
-	connStr, cleanup := setupNATSContainer(ctx, t)
-	defer cleanup()
-
-	// Create test connection for subscribing
 	testConn := createTestConn(t, connStr)
-
-	// Create publisher using connection string components
 	publisher, err := NewPublisher("localhost", extractPort(connStr))
 	require.NoError(t, err, "Failed to create publisher")
 	require.NotNil(t, publisher)
-	defer func() {
-		if err := publisher.Close(); err != nil {
-			t.Logf("failed to close publisher: %v", err)
-		}
-	}()
 
-	// Create test strain
-	testStrain := createTestStrain()
-
-	// Set up subscriber to verify message
-	msgChan := make(chan *gnats.Msg, 1)
-	sub, err := testConn.ChanSubscribe(testSubject, msgChan)
+	msgChan := make(chan *gnats.Msg, 5)
+	sub, err := testConn.ChanSubscribe(subject, msgChan)
 	require.NoError(t, err, "Failed to create subscription")
 	require.NotNil(t, sub)
-	defer func() {
-		if unsubErr := sub.Unsubscribe(); unsubErr != nil {
-			t.Logf("Failed to unsubscribe: %v", unsubErr)
-		}
-	}()
 
-	// Wait for subscription to be fully established
 	require.NoError(t, testConn.Flush(), "Failed to flush subscription setup")
 	time.Sleep(100 * time.Millisecond)
 
-	// Publish strain
-	err = publisher.PublishStrain(testSubject, testStrain)
+	cleanup := func() {
+		if unsubErr := sub.Unsubscribe(); unsubErr != nil {
+			t.Logf("Failed to unsubscribe: %v", unsubErr)
+		}
+		if closeErr := publisher.Close(); closeErr != nil {
+			t.Logf("failed to close publisher: %v", closeErr)
+		}
+	}
+
+	return publisher, testConn, msgChan, cleanup
+}
+
+// TestPublishStrain_Success tests successful strain message publishing
+func TestPublishStrain_Success(t *testing.T) {
+	ctx := context.Background()
+	connStr, cleanup := setupNATSContainer(ctx, t)
+	defer cleanup()
+
+	publisher, _, msgChan, pubCleanup := setupPublisherAndSubscription(t, connStr, testSubject)
+	defer pubCleanup()
+
+	testStrain := createTestStrain()
+	err := publisher.PublishStrain(testSubject, testStrain)
 	require.NoError(t, err, "Failed to publish strain")
 
-	// Wait for message with timeout
-	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
-	select {
-	case msg := <-msgChan:
-		require.NotNil(t, msg, "Received nil message")
-		require.NotEmpty(t, msg.Data, "Received empty message data")
-
-		// Unmarshal and verify the message
-		receivedStrain := &stock.Strain{}
-		err = proto.Unmarshal(msg.Data, receivedStrain)
-		require.NoError(t, err, "Failed to unmarshal received strain")
-
-		// Verify strain data
-		require.Equal(t, testStrain.Data.Id, receivedStrain.Data.Id)
-		require.Equal(t, testStrain.Data.Type, receivedStrain.Data.Type)
-		require.Equal(
-			t,
-			testStrain.Data.Attributes.Label,
-			receivedStrain.Data.Attributes.Label,
-		)
-		require.Equal(
-			t,
-			testStrain.Data.Attributes.Species,
-			receivedStrain.Data.Attributes.Species,
-		)
-		require.Equal(
-			t,
-			testStrain.Data.Attributes.CreatedBy,
-			receivedStrain.Data.Attributes.CreatedBy,
-		)
-		require.ElementsMatch(
-			t,
-			testStrain.Data.Attributes.Genes,
-			receivedStrain.Data.Attributes.Genes,
-		)
-
-	case <-timeoutCtx.Done():
-		t.Fatal("Timeout waiting for published message")
-	}
+	verifyReceivedStrain(ctx, t, msgChan, testStrain)
 }
 
 // TestPublishPlasmid_Success tests successful plasmid message publishing

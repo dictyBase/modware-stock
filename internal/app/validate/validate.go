@@ -7,8 +7,8 @@ import (
 	"github.com/urfave/cli"
 )
 
-// ValidateServerArgs validates required CLI arguments for the stock server.
-func ValidateServerArgs(c *cli.Context) error {
+// ServerArgs validates required CLI arguments for the stock server.
+func ServerArgs(c *cli.Context) error {
 	for _, p := range []string{
 		"arangodb-pass",
 		"arangodb-database",
