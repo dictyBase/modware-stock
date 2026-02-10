@@ -52,31 +52,38 @@ func verifyStockCollections(t *testing.T, repo *arangorepository) {
 
 // TestCreateDbStruct tests the database structure creation with various scenarios
 func TestCreateDbStruct(t *testing.T) {
-	testArango, err := testarango.NewTestArangoFromEnv(true)
-	require.NoError(t, err, "Failed to create test arango instance")
-
-	connParams := getConnectParamsFromDb(testArango)
-	collParams := getCollectionParams()
-	ontoParams := getOntoParams()
-
 	t.Run("successful database structure creation", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		repo, cleanup := setupTestRepo(t, connParams, collParams, ontoParams)
 		defer cleanup()
 
-		err := createDbStruct(repo, collParams)
+		err = createDbStruct(repo, collParams)
 		require.NoError(t, err, "Failed to create database structure")
 
 		verifyStockCollections(t, repo)
 	})
 
 	t.Run("error in document collections creation", func(t *testing.T) {
+		testArango, err := testarango.NewTestArangoFromEnv(true)
+		require.NoError(t, err, "Failed to create test arango instance")
+
+		connParams := getConnectParamsFromDb(testArango)
+		collParams := getCollectionParams()
+		ontoParams := getOntoParams()
+
 		repo, cleanup := setupTestRepo(t, connParams, collParams, ontoParams)
 		defer cleanup()
 
 		invalidCollParams := copyCollectionParamsWithOverride(collParams, func(c *CollectionParams) {
 			c.Stock = ""
 		})
-		err := createDbStruct(repo, invalidCollParams)
+		err = createDbStruct(repo, invalidCollParams)
 		require.Error(t, err, "Should fail with invalid collection parameters")
 	})
 }
