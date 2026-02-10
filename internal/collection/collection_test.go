@@ -254,7 +254,7 @@ func TestFilterFlags_EmptyAndAll(t *testing.T) {
 		t.Parallel()
 
 		input := []cli.Flag{}
-		result := FilterFlags(input, func(flag cli.Flag) bool {
+		result := FilterFlags(input, func(_ cli.Flag) bool {
 			return true
 		})
 
@@ -271,7 +271,7 @@ func TestFilterFlags_EmptyAndAll(t *testing.T) {
 			cli.StringFlag{Name: "flag3"},
 		}
 
-		result := FilterFlags(input, func(flag cli.Flag) bool {
+		result := FilterFlags(input, func(_ cli.Flag) bool {
 			return true
 		})
 
@@ -288,7 +288,7 @@ func TestFilterFlags_EmptyAndAll(t *testing.T) {
 			cli.StringFlag{Name: "flag3"},
 		}
 
-		result := FilterFlags(input, func(flag cli.Flag) bool {
+		result := FilterFlags(input, func(_ cli.Flag) bool {
 			return false
 		})
 
@@ -570,7 +570,7 @@ func TestFilterFlags_Behavior(t *testing.T) {
 			cli.StringFlag{Name: "flag1"},
 		}
 
-		result := FilterFlags(input, func(flag cli.Flag) bool {
+		result := FilterFlags(input, func(_ cli.Flag) bool {
 			return false
 		})
 
@@ -636,7 +636,7 @@ func TestFilterFlags_EdgeCases(t *testing.T) {
 			cli.StringFlag{Name: "single"},
 		}
 
-		result := FilterFlags(input, func(flag cli.Flag) bool {
+		result := FilterFlags(input, func(_ cli.Flag) bool {
 			return true
 		})
 
@@ -651,7 +651,7 @@ func TestFilterFlags_EdgeCases(t *testing.T) {
 			cli.StringFlag{Name: "single"},
 		}
 
-		result := FilterFlags(input, func(flag cli.Flag) bool {
+		result := FilterFlags(input, func(_ cli.Flag) bool {
 			return false
 		})
 

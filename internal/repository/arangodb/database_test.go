@@ -704,17 +704,17 @@ func TestCreateIndex(t *testing.T) {
 		require.NotEmpty(t, indices, "Collection should have indices")
 
 		// Check for stock_id index
-		foundStockIdIndex := false
+		foundStockIDIndex := false
 		for _, index := range indices {
 			if index.Type() == driver.PersistentIndex {
 				fields := index.Fields()
 				if len(fields) > 0 && fields[0] == "stock_id" {
-					foundStockIdIndex = true
+					foundStockIDIndex = true
 					break
 				}
 			}
 		}
-		require.True(t, foundStockIdIndex, "stock_id index should be created")
+		require.True(t, foundStockIDIndex, "stock_id index should be created")
 	})
 
 	t.Run("index creation is idempotent", func(t *testing.T) {

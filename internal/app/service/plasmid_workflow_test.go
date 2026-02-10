@@ -12,13 +12,13 @@ func TestPlasmidWorkflowPredicates(t *testing.T) {
 	t.Parallel()
 	assert := require.New(t)
 
-	t.Run("isNotFoundError", func(t *testing.T) {
+	t.Run("isNotFoundError", func(_ *testing.T) {
 		assert.True(isNotFoundError(errors.New("could not find plasmid with ID 123")))
 		assert.False(isNotFoundError(errors.New("some other error")))
 		assert.False(isNotFoundError(nil))
 	})
 
-	t.Run("hasEnoughResults", func(t *testing.T) {
+	t.Run("hasEnoughResults", func(_ *testing.T) {
 		limit := int64(10)
 		lctx := withPlasmidCollectionData{
 			withStockDocList: withStockDocList{
@@ -41,7 +41,7 @@ func TestPlasmidWorkflowPredicates(t *testing.T) {
 		assert.False(hasEnoughResults(lctx))
 	})
 
-	t.Run("shouldTrimLastItem", func(t *testing.T) {
+	t.Run("shouldTrimLastItem", func(_ *testing.T) {
 		ctx := withNextCursor{
 			nextCursor: 12345,
 			withPlasmidCollectionData: withPlasmidCollectionData{

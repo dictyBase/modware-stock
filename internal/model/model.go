@@ -1,3 +1,4 @@
+// Package model defines data structures for biological stock management in the database layer.
 package model
 
 import (
@@ -6,12 +7,14 @@ import (
 	driver "github.com/arangodb/go-driver"
 )
 
+// UploadStatus represents the status of an upload operation.
 type UploadStatus int
 
+// Upload status constants
 const (
-	Created UploadStatus = iota
-	Updated
-	Failed
+	Created UploadStatus = iota // Created indicates a new record was created
+	Updated                     // Updated indicates an existing record was updated
+	Failed                      // Failed indicates the upload operation failed
 )
 
 // StockDoc is the data structure for biological stocks

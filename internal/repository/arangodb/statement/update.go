@@ -1,6 +1,8 @@
 package statement
 
+// AQL update statements for stock operations
 const (
+	// StockUpd updates base stock document fields
 	StockUpd = `
 		UPDATE { _key: @key }
 			WITH { updated_at: DATE_ISO8601(DATE_NOW()), %s }

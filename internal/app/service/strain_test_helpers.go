@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -45,20 +46,23 @@ type assertGrpcErrorParams struct {
 // MockPublisher is a mock implementation of the message.Publisher interface.
 type MockPublisher struct{}
 
+// PublishStrain is a no-op mock implementation for testing
 func (mp *MockPublisher) PublishStrain(
-	subject string,
-	strain *stock.Strain,
+	_ string,
+	_ *stock.Strain,
 ) error {
 	return nil
 }
 
+// PublishPlasmid is a no-op mock implementation for testing
 func (mp *MockPublisher) PublishPlasmid(
-	subject string,
-	plasmid *stock.Plasmid,
+	_ string,
+	_ *stock.Plasmid,
 ) error {
 	return nil
 }
 
+// Close is a no-op mock implementation for testing
 func (mp *MockPublisher) Close() error {
 	return nil
 }
@@ -139,7 +143,11 @@ func loadData(ta *testarango.TestArango) error {
 		if err != nil {
 			return err
 		}
-		defer reader.Close()
+		defer func() {
+			if closeErr := reader.Close(); closeErr != nil {
+				err = errors.Join(err, closeErr)
+			}
+		}()
 		grp, err := graph.BuildGraph(reader)
 		if err != nil {
 			return fmt.Errorf("error in building graph %s", err)
@@ -237,8 +245,12 @@ func setup(t *testing.T) (stock.StockServiceClient, *require.Assertions) {
 
 	t.Cleanup(func() {
 		_ = repo.Dbh().Drop()
-		conn.Close()
-		lis.Close()
+		if err := conn.Close(); err != nil {
+			t.Logf("failed to close connection: %v", err)
+		}
+		if err := lis.Close(); err != nil {
+			t.Logf("failed to close listener: %v", err)
+		}
 		server.Stop()
 	})
 

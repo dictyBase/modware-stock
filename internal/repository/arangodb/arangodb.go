@@ -1,3 +1,4 @@
+// Package arangodb provides ArangoDB implementation of the stock repository interface.
 package arangodb
 
 import (
@@ -61,7 +62,7 @@ func NewStockRepo(connP *manager.ConnectParams,
 
 func (ar *arangorepository) checkStock(id string) (string, error) {
 	r, err := ar.database.GetRow(
-		statement.StockFindIdQ,
+		statement.StockFindIDQ,
 		map[string]any{
 			"stock_collection": ar.stockc.stock.Name(),
 			"stock_prop_graph": ar.stockc.stockPropType.Name(),

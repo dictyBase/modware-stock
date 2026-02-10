@@ -1,3 +1,4 @@
+// Package nats provides NATS messaging implementation for publishing stock events.
 package nats
 
 import (
@@ -13,6 +14,7 @@ type natsPublisher struct {
 	conn *gnats.Conn
 }
 
+// NewPublisher creates a new NATS publisher connected to the specified host and port.
 func NewPublisher(
 	host, port string,
 	options ...gnats.Option,

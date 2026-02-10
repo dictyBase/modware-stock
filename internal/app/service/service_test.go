@@ -19,19 +19,19 @@ func TestRemoveStock(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("RemovesExistingStock", func(t *testing.T) {
-		testRemoveExistingStock(t, ctx, client, assert)
+		testRemoveExistingStock(ctx, t, client, assert)
 	})
 
 	t.Run("ReturnsErrorForNonExistentStock", func(t *testing.T) {
-		testRemoveNonExistentStock(t, ctx, client, assert)
+		testRemoveNonExistentStock(ctx, t, client, assert)
 	})
 
 	t.Run("ReturnsErrorForEmptyID", func(t *testing.T) {
-		testRemoveStockWithEmptyID(t, ctx, client, assert)
+		testRemoveStockWithEmptyID(ctx, t, client, assert)
 	})
 
 	t.Run("ReturnsErrorForInvalidID", func(t *testing.T) {
-		testRemoveStockWithInvalidID(t, ctx, client, assert)
+		testRemoveStockWithInvalidID(ctx, t, client, assert)
 	})
 }
 
@@ -93,15 +93,15 @@ func TestStockModelList(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("ReturnsModelListWithValidParams", func(t *testing.T) {
-		testStockModelListValid(t, ctx, client, assert)
+		testStockModelListValid(ctx, t, client, assert)
 	})
 
 	t.Run("ReturnsErrorForInvalidFilter", func(t *testing.T) {
-		testStockModelListInvalidFilter(t, ctx, client, assert)
+		testStockModelListInvalidFilter(ctx, t, client, assert)
 	})
 
 	t.Run("ReturnsNotFoundWhenNoResults", func(t *testing.T) {
-		testStockModelListNoResults(t, ctx, client, assert)
+		testStockModelListNoResults(ctx, t, client, assert)
 	})
 }
 
@@ -131,8 +131,8 @@ func TestLimitVal(t *testing.T) {
 // Test implementations for RemoveStock
 
 func testRemoveExistingStock(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	client stock.StockServiceClient,
 	assert *require.Assertions,
 ) {
@@ -158,8 +158,8 @@ func testRemoveExistingStock(
 }
 
 func testRemoveNonExistentStock(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	client stock.StockServiceClient,
 	assert *require.Assertions,
 ) {
@@ -174,8 +174,8 @@ func testRemoveNonExistentStock(
 }
 
 func testRemoveStockWithEmptyID(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	client stock.StockServiceClient,
 	assert *require.Assertions,
 ) {
@@ -189,8 +189,8 @@ func testRemoveStockWithEmptyID(
 }
 
 func testRemoveStockWithInvalidID(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	client stock.StockServiceClient,
 	assert *require.Assertions,
 ) {
@@ -308,8 +308,8 @@ func testStockAQLStatementComplexFilter(t *testing.T) {
 // Test implementations for stockModelList
 
 func testStockModelListValid(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	client stock.StockServiceClient,
 	assert *require.Assertions,
 ) {
@@ -334,8 +334,8 @@ func testStockModelListValid(
 }
 
 func testStockModelListInvalidFilter(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	client stock.StockServiceClient,
 	assert *require.Assertions,
 ) {
@@ -354,8 +354,8 @@ func testStockModelListInvalidFilter(
 }
 
 func testStockModelListNoResults(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	client stock.StockServiceClient,
 	assert *require.Assertions,
 ) {

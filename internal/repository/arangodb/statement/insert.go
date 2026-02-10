@@ -1,6 +1,9 @@
+// Package statement provides AQL query templates for stock database operations.
 package statement
 
+// AQL insert statements for stock operations
 const (
+	// StockStrainIns creates a new strain record with auto-generated ID
 	StockStrainIns = `
 		LET kg = (
 			INSERT {} INTO @@stock_key_generator RETURN NEW

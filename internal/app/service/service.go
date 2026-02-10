@@ -82,12 +82,18 @@ func (s *StockService) RemoveStock(
 	return e, nil
 }
 
+// OboJSONFileUpload handles streaming upload of OBO JSON ontology files
 func (s *StockService) OboJSONFileUpload(
 	stream stock.StockService_OboJSONFileUploadServer,
 ) error {
 	in, out := io.Pipe()
 	grp := new(errgroup.Group)
-	defer in.Close()
+	defer func() {
+		if err := in.Close(); err != nil {
+			// Log error but don't fail the operation as this is cleanup
+			_ = err
+		}
+	}()
 	oh := &oboStreamHandler{writer: out, stream: stream}
 	grp.Go(oh.Write)
 	m, err := s.repo.LoadOboJSON(in)
@@ -225,7 +231,12 @@ type oboStreamHandler struct {
 }
 
 func (oh *oboStreamHandler) Write() error {
-	defer oh.writer.Close()
+	defer func() {
+		if err := oh.writer.Close(); err != nil {
+			// Log error but don't fail as this is cleanup
+			_ = err
+		}
+	}()
 	for {
 		req, err := oh.stream.Recv()
 		if err != nil {

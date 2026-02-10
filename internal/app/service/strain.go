@@ -34,7 +34,7 @@ func (s *StockService) GetStrain(
 	return st, nil
 }
 
-// LoadStock loads strains with existing IDs into the database
+// LoadStrain loads strains with existing IDs into the database
 func (s *StockService) LoadStrain(
 	ctx context.Context,
 	r *stock.ExistingStrain,

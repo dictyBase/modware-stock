@@ -1,3 +1,4 @@
+// Package collection provides functional programming utilities for working with slices and collections.
 package collection
 
 import (

@@ -1,3 +1,4 @@
+// Package repository defines interfaces for persisting and retrieving biological stock data.
 package repository
 
 import (

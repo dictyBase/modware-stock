@@ -1,6 +1,8 @@
 package statement
 
+// AQL queries for ontology term operations
 const (
+	// StrainExistTermQ checks if an ontology term exists for strain characteristics
 	StrainExistTermQ = `
 		FOR cv IN @@cv_collection
 			FOR cvt IN @@cvterm_collection
