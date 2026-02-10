@@ -90,6 +90,31 @@ const (
 	OntologyTermDoxONVector   = "doxON vector"
 )
 
+// assertPlasmidBasicFields asserts basic plasmid document fields
+func assertPlasmidBasicFields(
+	assert *require.Assertions,
+	doc *model.StockDoc,
+	attrs *stock.NewPlasmidAttributes,
+) {
+	assert.Equal(doc.CreatedBy, attrs.CreatedBy, "should match created_by id")
+	assert.Equal(doc.UpdatedBy, attrs.UpdatedBy, "should match updated_by id")
+	assert.Equal(doc.Summary, attrs.Summary, "should match summary")
+	assert.Equal(doc.EditableSummary, attrs.EditableSummary, "should match editable_summary")
+	assert.Equal(doc.Depositor, attrs.Depositor, "should match depositor")
+	assert.ElementsMatch(doc.Publications, attrs.Publications, "should match publications")
+}
+
+// assertPlasmidPropertiesFields asserts plasmid-specific properties
+func assertPlasmidPropertiesFields(
+	assert *require.Assertions,
+	doc *model.StockDoc,
+	attrs *stock.NewPlasmidAttributes,
+) {
+	assert.Equal(doc.PlasmidProperties.ImageMap, attrs.ImageMap, "should match image_map")
+	assert.Equal(doc.PlasmidProperties.Sequence, attrs.Sequence, "should match sequence")
+	assert.Equal(doc.PlasmidProperties.Name, attrs.Name, "should match name")
+}
+
 func TestLoadStockWithPlasmids(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
@@ -175,24 +200,61 @@ func assertRetrievedPlasmidOntology(
 	)
 }
 
-func TestListPlasmidsWithFilter(t *testing.T) {
-	assert, repo := setUp(t)
-	defer tearDown(repo)
-	// add 10 new test plasmids
-	for i := 1; i <= 10; i++ {
+// createTestPlasmids creates n test plasmids for testing
+func createTestPlasmids(
+	assert *require.Assertions,
+	repo repository.StockRepository,
+	count int,
+) {
+	for i := 1; i <= count; i++ {
 		np := newTestPlasmid(
 			fmt.Sprintf("%s@cye.com", arangomanager.RandomString(15, 25)),
 		)
-		result3 := F.Pipe2(
-			repo.AddPlasmid(np),
-			ToEither,
-			toStockDocResult,
-		)
-
-		_, err := result3.F1, result3.F2
+		result := F.Pipe2(repo.AddPlasmid(np), ToEither, toStockDocResult)
+		_, err := result.F1, result.F2
 		assert.NoErrorf(err, "expect no error, received %s", err)
 		time.Sleep(100 * time.Millisecond)
 	}
+}
+
+// testPlasmidListFilter tests a plasmid list with specific filter
+func testPlasmidListFilter(
+	assert *require.Assertions,
+	repo repository.StockRepository,
+	params *stock.StockParameters,
+	expectedLen int,
+) {
+	result := F.Pipe2(repo.ListPlasmids(params), ToEither, toStockDocListResult)
+	docs, err := result.F1, result.F2
+	assert.NoErrorf(err, "expect no error, received %s", err)
+	assert.Len(docs, expectedLen, "should match expected length")
+}
+
+// runPlasmidFilterTests runs multiple plasmid filter tests
+func runPlasmidFilterTests(
+	assert *require.Assertions,
+	repo repository.StockRepository,
+	cursor int64,
+) {
+	testPlasmidListFilter(assert, repo, &stock.StockParameters{
+		Limit: 100, Filter: pfilterTwo}, 0)
+	testPlasmidListFilter(assert, repo, &stock.StockParameters{
+		Cursor: cursor, Limit: 10, Filter: pfilterThree}, 5)
+	testPlasmidListFilter(assert, repo, &stock.StockParameters{
+		Cursor: cursor, Limit: 10, Filter: pfilterFour}, 0)
+	testPlasmidListFilter(assert, repo, &stock.StockParameters{
+		Limit: 10, Filter: pfilterFive}, 10)
+	testPlasmidListFilter(assert, repo, &stock.StockParameters{
+		Limit: 10, Filter: pfilterSix}, 10)
+	testPlasmidListFilter(assert, repo, &stock.StockParameters{
+		Cursor: cursor, Limit: 10, Filter: pfilterSeven}, 5)
+}
+
+func TestListPlasmidsWithFilter(t *testing.T) {
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	createTestPlasmids(assert, repo, 10)
+
 	result4 := F.Pipe2(repo.ListPlasmids(
 		&stock.StockParameters{Limit: 10, Filter: georgeFilter},
 	), ToEither, toStockDocListResult)
@@ -201,63 +263,11 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(sf, 10, "should list ten plasmids")
 	for _, um := range sf {
-		assert.Equal(
-			um.Summary,
-			"this is a test plasmid",
-			"should match summary",
-		)
-		assert.Equal(
-			um.PlasmidProperties.Name,
-			"p123456",
-			"should match name",
-		)
+		assert.Equal(um.Summary, "this is a test plasmid", "should match summary")
+		assert.Equal(um.PlasmidProperties.Name, "p123456", "should match name")
 	}
-	result5 := F.Pipe2(repo.ListPlasmids(
-		&stock.StockParameters{Limit: 100, Filter: pfilterTwo},
-	), ToEither, toStockDocListResult)
 
-	n, err := result5.F1, result5.F2
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Len(n, 0, "should list no plasmids")
-	// do a check for array filter
-	result29 := F.Pipe2(repo.ListPlasmids(&stock.StockParameters{
-		Cursor: toTimestamp(sf[5].CreatedAt),
-		Limit:  10,
-		Filter: pfilterThree,
-	}), ToEither, toStockDocListResult)
-	as, err := result29.F1, result29.F2
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Len(as, 5, "should list five plasmids")
-	result30 := F.Pipe2(repo.ListPlasmids(&stock.StockParameters{
-		Cursor: toTimestamp(sf[5].CreatedAt),
-		Limit:  10,
-		Filter: pfilterFour,
-	}), ToEither, toStockDocListResult)
-	da, err := result30.F1, result30.F2
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Len(da, 0, "should list no plasmids")
-	result6 := F.Pipe2(repo.ListPlasmids(
-		&stock.StockParameters{Limit: 10, Filter: pfilterFive},
-	), ToEither, toStockDocListResult)
-
-	ff, err := result6.F1, result6.F2
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Len(ff, 10, "should list ten plasmids")
-	result7 := F.Pipe2(repo.ListPlasmids(
-		&stock.StockParameters{Limit: 10, Filter: pfilterSix},
-	), ToEither, toStockDocListResult)
-
-	fs, err := result7.F1, result7.F2
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Len(fs, 10, "should list ten plasmids")
-	result31 := F.Pipe2(repo.ListPlasmids(&stock.StockParameters{
-		Cursor: toTimestamp(sf[5].CreatedAt),
-		Limit:  10,
-		Filter: pfilterSeven,
-	}), ToEither, toStockDocListResult)
-	fv, err := result31.F1, result31.F2
-	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Len(fv, 5, "should list five plasmids")
+	runPlasmidFilterTests(assert, repo, toTimestamp(sf[5].CreatedAt))
 }
 
 func TestListPlasmids(t *testing.T) {
@@ -376,6 +386,31 @@ func testFilteredPlasmidList(
 	assert.Len(cursorDocs, 6, "should list six plasmids")
 }
 
+// assertPlasmidStockID asserts plasmid stock ID format
+func assertPlasmidStockID(assert *require.Assertions, stockID string) {
+	assert.Regexp(
+		regexp.MustCompile(`^DBP0\d{6,}$`),
+		stockID,
+		"should have a plasmid stock id",
+	)
+}
+
+// assertPlasmidTimestamps asserts plasmid timestamp equality
+func assertPlasmidTimestamps(
+	assert *require.Assertions,
+	expected *model.StockDoc,
+	actual *model.StockDoc,
+) {
+	assert.True(
+		expected.CreatedAt.Equal(actual.CreatedAt),
+		"should match created time of stock",
+	)
+	assert.True(
+		expected.UpdatedAt.Equal(actual.UpdatedAt),
+		"should match updated time of stock",
+	)
+}
+
 func TestGetPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
@@ -388,64 +423,49 @@ func TestGetPlasmid(t *testing.T) {
 
 	g, err := result14.F1, result14.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Regexp(
-		regexp.MustCompile(`^DBP0\d{6,}$`),
-		g.StockID,
-		"should have a plasmid stock id",
-	)
-	assert.Equal(
-		g.CreatedBy,
-		ns.Data.Attributes.CreatedBy,
-		"should match created_by id",
-	)
-	assert.Equal(
-		g.UpdatedBy,
-		ns.Data.Attributes.UpdatedBy,
-		"should match updated_by id",
-	)
-	assert.Equal(
-		g.Depositor,
-		ns.Data.Attributes.Depositor,
-		"should match depositor",
-	)
-	assert.Equal(g.Summary, ns.Data.Attributes.Summary, "should match summary")
-	assert.Equal(
-		g.EditableSummary,
-		ns.Data.Attributes.EditableSummary,
-		"should match editable_summary",
-	)
-	assert.Equal(
-		g.PlasmidProperties.ImageMap,
-		ns.Data.Attributes.ImageMap,
-		"should match image_map",
-	)
-	assert.Equal(
-		g.PlasmidProperties.Sequence,
-		ns.Data.Attributes.Sequence,
-		"should match sequence",
-	)
-	assert.Equal(
-		g.PlasmidProperties.Name,
-		ns.Data.Attributes.Name,
-		"should match name",
-	)
-	assert.True(
-		um.CreatedAt.Equal(g.CreatedAt),
-		"should match created time of stock",
-	)
-	assert.True(
-		um.UpdatedAt.Equal(g.UpdatedAt),
-		"should match updated time of stock",
-	)
+	assertPlasmidStockID(assert, g.StockID)
+	assertPlasmidBasicFields(assert, g, ns.Data.Attributes)
+	assertPlasmidPropertiesFields(assert, g, ns.Data.Attributes)
+	assertPlasmidTimestamps(assert, um, g)
 
 	result15 := F.Pipe2(repo.GetPlasmid("DBP01"), ToEither, toStockDocResult)
-
 	_, err = result15.F1, result15.F2
 	assert.Error(err, "expect error for non-existent plasmid")
 	assert.Contains(
 		err.Error(),
 		"not found",
 		"error should indicate plasmid was not found",
+	)
+}
+
+// assertPlasmidUpdate asserts plasmid update results
+func assertPlasmidUpdate(
+	assert *require.Assertions,
+	updated *model.StockDoc,
+	original *stock.NewPlasmid,
+	updateAttrs *stock.PlasmidUpdateAttributes,
+) {
+	assert.Equal(updated.UpdatedBy, updateAttrs.UpdatedBy, "should match updatedby")
+	assert.Equal(
+		updated.Depositor,
+		original.Data.Attributes.Depositor,
+		"depositor name should not be updated",
+	)
+	assert.Equal(updated.Summary, updateAttrs.Summary, "should have updated summary")
+	assert.Equal(
+		updated.EditableSummary,
+		updateAttrs.EditableSummary,
+		"should have updated editable summary",
+	)
+	assert.ElementsMatch(
+		updated.Publications,
+		updateAttrs.Publications,
+		"should match updated list of publications",
+	)
+	assert.ElementsMatch(
+		updated.Dbxrefs,
+		original.Data.Attributes.Dbxrefs,
+		"dbxrefs should remain unchanged",
 	)
 }
 
@@ -475,37 +495,8 @@ func TestEditPlasmid(t *testing.T) {
 
 	um, err := result17.F1, result17.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Equal(um.StockID, um.StockID, "should match the stock id")
-	assert.Equal(
-		um.UpdatedBy,
-		us.Data.Attributes.UpdatedBy,
-		"should match updatedby",
-	)
-	assert.Equal(
-		um.Depositor,
-		ns.Data.Attributes.Depositor,
-		"depositor name should not be updated",
-	)
-	assert.Equal(
-		um.Summary,
-		us.Data.Attributes.Summary,
-		"should have updated summary",
-	)
-	assert.Equal(
-		um.EditableSummary,
-		us.Data.Attributes.EditableSummary,
-		"should have updated editable summary",
-	)
-	assert.ElementsMatch(
-		um.Publications,
-		us.Data.Attributes.Publications,
-		"should match updated list of publications",
-	)
-	assert.ElementsMatch(
-		um.Dbxrefs,
-		ns.Data.Attributes.Dbxrefs,
-		"dbxrefs should remain unchanged",
-	)
+	assert.Equal(um.StockID, m.StockID, "should match the stock id")
+	assertPlasmidUpdate(assert, um, ns, us.Data.Attributes)
 	assert.Equal(
 		um.PlasmidProperties.ImageMap,
 		us.Data.Attributes.ImageMap,
@@ -539,6 +530,32 @@ func PlasmidUpdateInstance(
 	}
 }
 
+// assertPlasmidGeneUpdate asserts gene-related fields after update
+func assertPlasmidGeneUpdate(
+	assert *require.Assertions,
+	updated *model.StockDoc,
+	previous *model.StockDoc,
+	updateAttrs *stock.PlasmidUpdateAttributes,
+) {
+	assert.Equal(updated.StockID, previous.StockID, "should match the previous stock id")
+	assert.Equal(
+		updated.UpdatedBy,
+		updateAttrs.UpdatedBy,
+		"should have updated the updatedby field",
+	)
+	assert.ElementsMatch(updated.Genes, updateAttrs.Genes, "should have the genes list")
+	assert.ElementsMatch(
+		updated.Publications,
+		previous.Publications,
+		"publications list should remain the same",
+	)
+	assert.ElementsMatch(
+		updated.Dbxrefs,
+		previous.Dbxrefs,
+		"dbxrefs list should remain the same",
+	)
+}
+
 func TestEditPlasmidGene(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
@@ -552,27 +569,7 @@ func TestEditPlasmidGene(t *testing.T) {
 
 	um2, err := result19.F1, result19.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Equal(um2.StockID, um.StockID, "should match the previous stock id")
-	assert.Equal(
-		um2.UpdatedBy,
-		us2.Data.Attributes.UpdatedBy,
-		"should have updated the updatedby field",
-	)
-	assert.ElementsMatch(
-		um2.Genes,
-		us2.Data.Attributes.Genes,
-		"should have the genes list",
-	)
-	assert.ElementsMatch(
-		um2.Publications,
-		um.Publications,
-		"publications list should remain the same",
-	)
-	assert.ElementsMatch(
-		um2.Dbxrefs,
-		um.Dbxrefs,
-		"dbxrefs list should remain the same",
-	)
+	assertPlasmidGeneUpdate(assert, um2, um, us2.Data.Attributes)
 	assert.Equal(
 		um2.PlasmidProperties.ImageMap,
 		um.PlasmidProperties.ImageMap,
@@ -583,6 +580,7 @@ func TestEditPlasmidGene(t *testing.T) {
 		us2.Data.Attributes.Sequence,
 		"sequence plasmid property should have been updated",
 	)
+
 	us3 := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
 			Type: ns.Data.Type,
@@ -621,6 +619,20 @@ func TestEditPlasmidGene(t *testing.T) {
 	)
 }
 
+// assertAddedPlasmidFields asserts fields after adding a plasmid
+func assertAddedPlasmidFields(
+	assert *require.Assertions,
+	doc *model.StockDoc,
+	attrs *stock.NewPlasmidAttributes,
+) {
+	assertPlasmidStockID(assert, doc.StockID)
+	assert.Equal(doc.Key, doc.StockID, "should have identical key and stock ID")
+	assertPlasmidBasicFields(assert, doc, attrs)
+	assert.Empty(doc.Genes, "should have empty genes field")
+	assert.Empty(doc.Dbxrefs, "should have empty dbxrefs field")
+	assertPlasmidPropertiesFields(assert, doc, attrs)
+}
+
 func TestAddPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
@@ -629,57 +641,9 @@ func TestAddPlasmid(t *testing.T) {
 
 	um, err := result21.F1, result21.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Regexp(
-		regexp.MustCompile(`^DBP0\d{6,}$`),
-		um.StockID,
-		"should have a plasmid stock id",
-	)
-	assert.Equal(um.Key, um.StockID, "should have identical key and stock ID")
-	assert.Equal(
-		um.CreatedBy,
-		ns.Data.Attributes.CreatedBy,
-		"should match created_by id",
-	)
-	assert.Equal(
-		um.UpdatedBy,
-		ns.Data.Attributes.UpdatedBy,
-		"should match updated_by id",
-	)
-	assert.Equal(um.Summary, ns.Data.Attributes.Summary, "should match summary")
-	assert.Equal(
-		um.EditableSummary,
-		ns.Data.Attributes.EditableSummary,
-		"should match editable_summary",
-	)
-	assert.Equal(
-		um.Depositor,
-		ns.Data.Attributes.Depositor,
-		"should match depositor",
-	)
-	assert.Empty(um.Genes, "should have empty genes field")
-	assert.Empty(um.Dbxrefs, "should have empty dbxrefs field")
-	assert.ElementsMatch(
-		um.Publications,
-		ns.Data.Attributes.Publications,
-		"should match publications",
-	)
-	assert.Equal(
-		um.PlasmidProperties.ImageMap,
-		ns.Data.Attributes.ImageMap,
-		"should match image_map",
-	)
-	assert.Equal(
-		um.PlasmidProperties.Sequence,
-		ns.Data.Attributes.Sequence,
-		"should match sequence",
-	)
-	assert.Equal(
-		um.PlasmidProperties.Name,
-		ns.Data.Attributes.Name,
-		"should match name",
-	)
-	result22 := F.Pipe2(repo.GetPlasmid(um.StockID), ToEither, toStockDocResult)
+	assertAddedPlasmidFields(assert, um, ns.Data.Attributes)
 
+	result22 := F.Pipe2(repo.GetPlasmid(um.StockID), ToEither, toStockDocResult)
 	gm, err := result22.F1, result22.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(

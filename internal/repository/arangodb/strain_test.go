@@ -126,6 +126,32 @@ func createTestStrains(
 	return nil
 }
 
+// assertStrainBasicFields asserts basic strain document fields
+func assertStrainBasicFields(
+	assert *require.Assertions,
+	doc *model.StockDoc,
+	attrs *stock.ExistingStrainAttributes,
+) {
+	assert.Equal(doc.Key, doc.StockID, "should have identical key and stock ID")
+	assert.Equal(doc.CreatedBy, attrs.CreatedBy, "should match created_by id")
+	assert.Equal(doc.UpdatedBy, attrs.UpdatedBy, "should match updated_by id")
+	assert.Equal(doc.Summary, attrs.Summary, "should match summary")
+	assert.Equal(doc.EditableSummary, attrs.EditableSummary, "should match editable_summary")
+	assert.Equal(doc.Depositor, attrs.Depositor, "should match depositor")
+	assert.ElementsMatch(doc.Dbxrefs, attrs.Dbxrefs, "should match dbxrefs")
+}
+
+// assertStrainSpecificProperties asserts strain-specific property fields
+func assertStrainSpecificProperties(
+	assert *require.Assertions,
+	doc *model.StockDoc,
+	attrs *stock.ExistingStrainAttributes,
+) {
+	assert.Equal(doc.StrainProperties.Label, attrs.Label, "should match descriptor")
+	assert.Equal(doc.StrainProperties.Species, attrs.Species, "should match species")
+	assert.ElementsMatch(doc.StrainProperties.Names, attrs.Names, "should match names")
+}
+
 func TestLoadStrainWithID(t *testing.T) {
 	t.Parallel()
 	assert, repo := setUp(t)
@@ -154,50 +180,10 @@ func TestLoadStrainWithID(t *testing.T) {
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.True(m.CreatedAt.Equal(tm), "should match created_at")
 	assert.Equal("DBS0252873", m.StockID, "should match given stock id")
-	assert.Equal(m.Key, m.StockID, "should have identical key and stock ID")
-	assert.Equal(
-		m.CreatedBy,
-		nsp.Data.Attributes.CreatedBy,
-		"should match created_by id",
-	)
-	assert.Equal(
-		m.UpdatedBy,
-		nsp.Data.Attributes.UpdatedBy,
-		"should match updated_by id",
-	)
-	assert.Equal(m.Summary, nsp.Data.Attributes.Summary, "should match summary")
-	assert.Equal(
-		m.EditableSummary,
-		nsp.Data.Attributes.EditableSummary,
-		"should match editable_summary",
-	)
-	assert.Equal(
-		m.Depositor,
-		nsp.Data.Attributes.Depositor,
-		"should match depositor",
-	)
-	assert.ElementsMatch(
-		m.Dbxrefs,
-		nsp.Data.Attributes.Dbxrefs,
-		"should match dbxrefs",
-	)
+	assertStrainBasicFields(assert, m, nsp.Data.Attributes)
 	assert.Empty(m.Genes, "should not be tied to any genes")
 	assert.Empty(m.Publications, "should not be tied to any publications")
-	assert.Equal(
-		m.StrainProperties.Label,
-		nsp.Data.Attributes.Label,
-		"should match descriptor",
-	)
-	assert.Equal(
-		m.StrainProperties.Species,
-		nsp.Data.Attributes.Species,
-		"should match species",
-	)
-	assert.ElementsMatch(
-		m.StrainProperties.Names,
-		nsp.Data.Attributes.Names,
-		"should match names",
-	)
+	assertStrainSpecificProperties(assert, m, nsp.Data.Attributes)
 	assert.Empty(m.StrainProperties.Plasmid, "should not have any plasmid")
 	assert.Empty(m.StrainProperties.Parent, "should not have any parent")
 }
@@ -376,75 +362,96 @@ func TestListStrainsWithType(t *testing.T) {
 	)
 }
 
+// testStrainListFilterScenario tests a specific filter scenario
+func testStrainListFilterScenario(
+	assert *require.Assertions,
+	repo repository.StockRepository,
+	params *stock.StockParameters,
+	expectedLen int,
+	description string,
+	shouldError bool,
+) {
+	strains, err := repo.ListStrains(params)
+	if shouldError {
+		assert.Error(err, description)
+		return
+	}
+	assert.NoError(err, description)
+	assert.Len(strains, expectedLen, description)
+}
+
+// runStrainListFilters runs multiple strain list filter tests
+func runStrainListFilters(
+	assert *require.Assertions,
+	repo repository.StockRepository,
+	cursor int64,
+) {
+	testStrainListFilterScenario(
+		assert,
+		repo,
+		&stock.StockParameters{Limit: 100, Filter: filterTwo},
+		0,
+		"expect no error getting list of stocks with two depositors with AND logic",
+		false,
+	)
+	testStrainListFilterScenario(
+		assert,
+		repo,
+		&stock.StockParameters{Cursor: cursor, Limit: 10, Filter: filterThree},
+		5,
+		"expect no error getting list of stocks with cursor and filter",
+		false,
+	)
+	testStrainListFilterScenario(
+		assert,
+		repo,
+		&stock.StockParameters{Cursor: cursor, Limit: 10, Filter: filterFour},
+		0,
+		"expect no error getting list of stocks with cursor and date filter",
+		false,
+	)
+	testStrainListFilterScenario(
+		assert,
+		repo,
+		&stock.StockParameters{Limit: 10, Filter: filterFive},
+		10,
+		"expect no error getting list of strains with label substring",
+		false,
+	)
+	testStrainListFilterScenario(
+		assert,
+		repo,
+		&stock.StockParameters{Limit: 10, Filter: filterSix},
+		10,
+		"expect no error in matching summary substring",
+		false,
+	)
+	testStrainListFilterScenario(
+		assert,
+		repo,
+		&stock.StockParameters{Limit: 2, Filter: filterBad},
+		0,
+		"expect have error with the query",
+		true,
+	)
+}
+
 func TestListStrainsWithFilter(t *testing.T) {
 	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	err := createTestStrains(10, General, repo)
 	assert.NoError(err, "expect no error from creating strains")
-	sf, err := repo.ListStrains(
-		&stock.StockParameters{Limit: 10, Filter: filterOne},
-	)
+
+	sf, err := repo.ListStrains(&stock.StockParameters{Limit: 10, Filter: filterOne})
 	assert.NoError(err, "expect no error in getting list of strains")
 	assert.Len(sf, 10, "should list ten strains")
 	for _, m := range sf {
-		assert.Equal(
-			m.Summary,
-			"Radiation-sensitive mutant.",
-			"should match summary",
-		)
+		assert.Equal(m.Summary, "Radiation-sensitive mutant.", "should match summary")
 		assert.Equal(m.StrainProperties.Label, "yS13", "should match label")
 	}
-	n, err := repo.ListStrains(
-		&stock.StockParameters{Limit: 100, Filter: filterTwo},
-	)
-	assert.NoError(
-		err,
-		"expect no error getting list of stocks with two depositors with AND logic",
-	)
-	assert.Len(n, 0, "should list no strains")
-	// do a check for array filter
-	as, err := repo.ListStrains(
-		&stock.StockParameters{
-			Cursor: toTimestamp(sf[5].CreatedAt),
-			Limit:  10,
-			Filter: filterThree,
-		},
-	)
-	assert.NoError(
-		err,
-		"expect no error getting list of stocks with cursor and filter",
-	)
-	assert.Len(as, 5, "should list five strains")
-	da, err := repo.ListStrains(
-		&stock.StockParameters{
-			Cursor: toTimestamp(sf[5].CreatedAt),
-			Limit:  10,
-			Filter: filterFour,
-		},
-	)
-	assert.NoError(
-		err,
-		"expect no error getting list of stocks with cursor and date filter",
-	)
-	assert.Len(da, 0, "should list no strains")
-	ff, err := repo.ListStrains(
-		&stock.StockParameters{Limit: 10, Filter: filterFive},
-	)
-	assert.NoError(
-		err,
-		"expect no error getting list of strains with label substring",
-	)
-	assert.Len(ff, 10, "should list ten strains")
-	fs, err := repo.ListStrains(
-		&stock.StockParameters{Limit: 10, Filter: filterSix},
-	)
-	assert.NoError(err, "expect no error in matching summary substring")
-	assert.Len(fs, 10, "should list ten strains")
-	_, err = repo.ListStrains(
-		&stock.StockParameters{Limit: 2, Filter: filterBad},
-	)
-	assert.Error(err, "expect have error with the query")
+
+	runStrainListFilters(assert, repo, toTimestamp(sf[5].CreatedAt))
 }
 
 func TestListStrains(t *testing.T) {
@@ -517,40 +524,47 @@ func TestListStrains(t *testing.T) {
 	testModelListSort(ls3, t)
 }
 
-func TestListStrainsByIDs(t *testing.T) {
-	t.Parallel()
-	assert, repo := setUp(t)
-	defer tearDown(repo)
-	// add 10 new test strains
-	ids, err := createTestStrainsWithIDs(30, General, repo)
-	assert.NoError(err, "expect no error from creating strains")
-	// get first five results
-	ls, err := repo.ListStrainsByIDs(&stock.StockIdList{Id: ids})
-	assert.NoError(err, "expect no error in getting strains")
-	assert.Len(ls, 30, "should match the provided limit number")
-	for _, stock := range ls {
-		assert.Equal(
-			stock.Depositor,
-			"george@costanza.com",
-			"should match the depositor",
-		)
+// assertStrainListItems asserts common properties across strain list items
+func assertStrainListItems(
+	assert *require.Assertions,
+	strains []*model.StockDoc,
+	expectedParent string,
+	expectedProperty string,
+) {
+	for _, stock := range strains {
+		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
 		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
 		assert.Regexp(
 			regexp.MustCompile(`^DBS0\d{6,}$`),
 			stock.StockID,
 			"should have a strain stock id",
 		)
-		assert.Empty(
+		assert.Equal(
 			stock.StrainProperties.Parent,
-			"parent field should be empty",
+			expectedParent,
+			"parent field should match expected",
 		)
 		assert.Equal(
 			stock.StrainProperties.DictyStrainProperty,
-			"general strain",
+			expectedProperty,
 			"should match ontology strain property",
 		)
 	}
-	// strain with parents
+}
+
+func TestListStrainsByIDs(t *testing.T) {
+	t.Parallel()
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+
+	ids, err := createTestStrainsWithIDs(30, General, repo)
+	assert.NoError(err, "expect no error from creating strains")
+
+	ls, err := repo.ListStrainsByIDs(&stock.StockIdList{Id: ids})
+	assert.NoError(err, "expect no error in getting strains")
+	assert.Len(ls, 30, "should match the provided limit number")
+	assertStrainListItems(assert, ls, "", "general strain")
+
 	pm, err := repo.AddStrain(newTestParentStrain("j@peterman.org"))
 	assert.NoErrorf(
 		err,
@@ -562,30 +576,8 @@ func TestListStrainsByIDs(t *testing.T) {
 	pls, err := repo.ListStrainsByIDs(&stock.StockIdList{Id: pids})
 	assert.NoError(err, "expect no error in getting 30 stocks with parents")
 	assert.Len(pls, 30, "should match the provided limit number")
-	for _, stock := range pls {
-		assert.Equal(
-			stock.Depositor,
-			"george@costanza.com",
-			"should match the depositor",
-		)
-		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
-		assert.Regexp(
-			regexp.MustCompile(`^DBS0\d{6,}$`),
-			stock.StockID,
-			"should have a strain stock id",
-		)
-		assert.Equal(
-			stock.StrainProperties.Parent,
-			pm.StockID,
-			"should match parent id",
-		)
-		assert.Equal(
-			stock.StrainProperties.DictyStrainProperty,
-			"general strain",
-			"should match ontology strain property",
-		)
-	}
-	// Non-existing ids
+	assertStrainListItems(assert, pls, pm.StockID, "general strain")
+
 	els, err := repo.ListStrainsByIDs(
 		&stock.StockIdList{Id: []string{"DBN589343", "DBN48473232"}},
 	)
@@ -634,71 +626,45 @@ func assertRegexp(assert *require.Assertions, stockID string) {
 	)
 }
 
+// assertNewStrainBasicFields asserts basic fields for NewStrain
+func assertNewStrainBasicFields(
+	assert *require.Assertions,
+	doc *model.StockDoc,
+	attrs *stock.NewStrainAttributes,
+) {
+	assert.Equal(doc.CreatedBy, attrs.CreatedBy, "should match created_by id")
+	assert.Equal(doc.UpdatedBy, attrs.UpdatedBy, "should match updated_by id")
+	assert.Equal(doc.Summary, attrs.Summary, "should match summary")
+	assert.Equal(doc.EditableSummary, attrs.EditableSummary, "should match editable_summary")
+	assert.Equal(doc.Depositor, attrs.Depositor, "should match depositor")
+	assert.ElementsMatch(doc.Dbxrefs, attrs.Dbxrefs, "should match dbxrefs")
+	assert.ElementsMatch(doc.Genes, attrs.Genes, "should match genes")
+}
+
+// assertNewStrainPropertiesFields asserts strain-specific properties for NewStrain
+func assertNewStrainPropertiesFields(
+	assert *require.Assertions,
+	doc *model.StockDoc,
+	attrs *stock.NewStrainAttributes,
+) {
+	assert.ElementsMatch(doc.StrainProperties.Names, attrs.Names, "should match names")
+	assert.Equal(doc.StrainProperties.Label, attrs.Label, "should match descriptor")
+	assert.Equal(doc.StrainProperties.Species, attrs.Species, "should match species")
+	assert.Equal(doc.StrainProperties.Plasmid, attrs.Plasmid, "should match plasmid")
+	assert.Equal(
+		doc.StrainProperties.DictyStrainProperty,
+		"general strain",
+		"should match ontology strain property",
+	)
+}
+
 func assertStrainProperties(
 	assert *require.Assertions,
 	g *model.StockDoc,
 	ns *stock.NewStrain,
 ) {
-	assert.Equal(
-		g.CreatedBy,
-		ns.Data.Attributes.CreatedBy,
-		"should match created_by id",
-	)
-	assert.Equal(
-		g.UpdatedBy,
-		ns.Data.Attributes.UpdatedBy,
-		"should match updated_by id",
-	)
-	assert.Equal(
-		g.Summary,
-		ns.Data.Attributes.Summary,
-		"should match summary",
-	)
-	assert.Equal(
-		g.EditableSummary,
-		ns.Data.Attributes.EditableSummary,
-		"should match editable_summary",
-	)
-	assert.Equal(
-		g.Depositor,
-		ns.Data.Attributes.Depositor,
-		"should match depositor",
-	)
-	assert.ElementsMatch(
-		g.Dbxrefs,
-		ns.Data.Attributes.Dbxrefs,
-		"should match dbxrefs",
-	)
-	assert.ElementsMatch(
-		g.StrainProperties.Names,
-		ns.Data.Attributes.Names,
-		"should match names",
-	)
-	assert.ElementsMatch(
-		g.Genes,
-		ns.Data.Attributes.Genes,
-		"should match genes",
-	)
-	assert.Equal(
-		g.StrainProperties.Label,
-		ns.Data.Attributes.Label,
-		"should match descriptor",
-	)
-	assert.Equal(
-		g.StrainProperties.Species,
-		ns.Data.Attributes.Species,
-		"should match species",
-	)
-	assert.Equal(
-		g.StrainProperties.Plasmid,
-		ns.Data.Attributes.Plasmid,
-		"should match plasmid",
-	)
-	assert.Equal(
-		g.StrainProperties.DictyStrainProperty,
-		"general strain",
-		"should match ontology strain property",
-	)
+	assertNewStrainBasicFields(assert, g, ns.Data.Attributes)
+	assertNewStrainPropertiesFields(assert, g, ns.Data.Attributes)
 }
 
 func TestAddParentStrain(t *testing.T) {
@@ -846,6 +812,43 @@ func strainUpdateInstance(
 	}
 }
 
+// assertStrainUpdate asserts strain update results
+func assertStrainUpdate(
+	assert *require.Assertions,
+	updated *model.StockDoc,
+	original *model.StockDoc,
+	updateAttrs *stock.StrainUpdateAttributes,
+) {
+	assert.Equal(updated.StockID, original.StockID, "should match the stock id")
+	assert.Equal(updated.UpdatedBy, updateAttrs.UpdatedBy, "should match updatedby")
+	assert.Equal(
+		updated.Depositor,
+		original.Depositor,
+		"depositor name should not be updated",
+	)
+	assert.Equal(updated.Summary, updateAttrs.Summary, "should have updated summary")
+	assert.Equal(
+		updated.EditableSummary,
+		updateAttrs.EditableSummary,
+		"should have updated editable summary",
+	)
+	assert.ElementsMatch(
+		updated.Genes,
+		updateAttrs.Genes,
+		"should match updated list of genes",
+	)
+	assert.ElementsMatch(
+		updated.Dbxrefs,
+		updateAttrs.Dbxrefs,
+		"should match updated list of dbxrefs",
+	)
+	assert.ElementsMatch(
+		updated.Publications,
+		original.Publications,
+		"publications list should remain unchanged",
+	)
+}
+
 func TestEditStrain(t *testing.T) {
 	t.Parallel()
 	assert, repo := setUp(t)
@@ -856,42 +859,7 @@ func TestEditStrain(t *testing.T) {
 	us := strainUpdateInstance(ns, m)
 	um, err := repo.EditStrain(us)
 	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Equal(um.StockID, m.StockID, "should match the stock id")
-	assert.Equal(
-		um.UpdatedBy,
-		us.Data.Attributes.UpdatedBy,
-		"should match updatedby",
-	)
-	assert.Equal(
-		um.Depositor,
-		m.Depositor,
-		"depositor name should not be updated",
-	)
-	assert.Equal(
-		um.Summary,
-		us.Data.Attributes.Summary,
-		"should have updated summary",
-	)
-	assert.Equal(
-		um.EditableSummary,
-		us.Data.Attributes.EditableSummary,
-		"should have updated editable summary",
-	)
-	assert.ElementsMatch(
-		um.Genes,
-		us.Data.Attributes.Genes,
-		"should match updated list of genes",
-	)
-	assert.ElementsMatch(
-		um.Dbxrefs,
-		us.Data.Attributes.Dbxrefs,
-		"should match updated list of dbxrefs",
-	)
-	assert.ElementsMatch(
-		um.Publications,
-		m.Publications,
-		"publications list should remain unchanged",
-	)
+	assertStrainUpdate(assert, um, m, us.Data.Attributes)
 	assert.Equal(
 		um.StrainProperties.Species,
 		m.StrainProperties.Species,
@@ -957,6 +925,49 @@ func TestListStrainsWithGeneFilter(t *testing.T) {
 	)
 }
 
+// assertStrainParentUpdate asserts parent-related update results
+func assertStrainParentUpdate(
+	assert *require.Assertions,
+	updated *model.StockDoc,
+	original *model.StockDoc,
+	updateAttrs *stock.StrainUpdateAttributes,
+) {
+	assert.Equal(updated.StockID, original.StockID, "should match their id")
+	assert.Equal(updated.Depositor, updateAttrs.Depositor, "depositor name should be updated")
+	assert.Equal(updated.CreatedBy, original.CreatedBy, "created by should not be updated")
+	assert.Equal(updated.Summary, original.Summary, "summary should not be updated")
+	assert.ElementsMatch(
+		updated.Publications,
+		original.Publications,
+		"publications list should remains unchanged",
+	)
+	assert.ElementsMatch(updated.Genes, original.Genes, "genes list should not be updated")
+	assert.ElementsMatch(updated.Dbxrefs, original.Dbxrefs, "dbxrefs list should not be updated")
+}
+
+// assertStrainPropertiesUnchanged asserts strain properties remain unchanged
+func assertStrainPropertiesUnchanged(
+	assert *require.Assertions,
+	updated *model.StockDoc,
+	original *model.StockDoc,
+) {
+	assert.Equal(
+		updated.StrainProperties.Label,
+		original.StrainProperties.Label,
+		"strain descriptor should not be updated",
+	)
+	assert.ElementsMatch(
+		updated.StrainProperties.Names,
+		original.StrainProperties.Names,
+		"strain names should not be updated",
+	)
+	assert.Equal(
+		updated.StrainProperties.Plasmid,
+		original.StrainProperties.Plasmid,
+		"plasmid should not be updated",
+	)
+}
+
 func TestEditStrainWithParent(t *testing.T) {
 	t.Parallel()
 	assert, repo := setUp(t)
@@ -980,48 +991,8 @@ func TestEditStrainWithParent(t *testing.T) {
 	}
 	um2, err := repo.EditStrain(us2)
 	assert.NoErrorf(err, "expect no error, received %s", err)
-	assert.Equal(um2.StockID, ust.StockID, "should match their id")
-	assert.Equal(
-		um2.Depositor,
-		us2.Data.Attributes.Depositor,
-		"depositor name should be updated",
-	)
-	assert.Equal(
-		um2.CreatedBy,
-		ust.CreatedBy,
-		"created by should not be updated",
-	)
-	assert.Equal(um2.Summary, ust.Summary, "summary should not be updated")
-	assert.ElementsMatch(
-		um2.Publications,
-		ust.Publications,
-		"publications list should remains unchanged",
-	)
-	assert.ElementsMatch(
-		um2.Genes,
-		ust.Genes,
-		"genes list should not be updated",
-	)
-	assert.ElementsMatch(
-		um2.Dbxrefs,
-		ust.Dbxrefs,
-		"dbxrefs list should not be updated",
-	)
-	assert.Equal(
-		um2.StrainProperties.Label,
-		ust.StrainProperties.Label,
-		"strain descriptor should not be updated",
-	)
-	assert.ElementsMatch(
-		um2.StrainProperties.Names,
-		ust.StrainProperties.Names,
-		"strain names should not be updated",
-	)
-	assert.Equal(
-		um2.StrainProperties.Plasmid,
-		ust.StrainProperties.Plasmid,
-		"plasmid should not be updated",
-	)
+	assertStrainParentUpdate(assert, um2, ust, us2.Data.Attributes)
+	assertStrainPropertiesUnchanged(assert, um2, ust)
 	assert.Equal(
 		um2.StrainProperties.Parent,
 		us2.Data.Attributes.Parent,

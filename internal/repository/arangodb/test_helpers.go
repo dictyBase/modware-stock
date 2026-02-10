@@ -2,7 +2,7 @@ package arangodb
 
 // copyCollectionParamsWithOverride creates a copy of CollectionParams with modifications
 func copyCollectionParamsWithOverride(original *CollectionParams, modify func(*CollectionParams)) *CollectionParams {
-	copy := &CollectionParams{
+	params := &CollectionParams{
 		Stock:              original.Stock,
 		StockProp:          original.StockProp,
 		StockType:          original.StockType,
@@ -16,6 +16,6 @@ func copyCollectionParamsWithOverride(original *CollectionParams, modify func(*C
 		StrainOntology:     original.StrainOntology,
 		PlasmidOntology:    original.PlasmidOntology,
 	}
-	modify(copy)
-	return copy
+	modify(params)
+	return params
 }
