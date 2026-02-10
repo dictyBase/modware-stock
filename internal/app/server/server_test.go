@@ -49,7 +49,6 @@ import (
 // 5. Reference existing integration tests:
 //   - See internal/message/nats/nats_integration_test.go for NATS integration testing
 //   - See internal/repository/arangodb/*_test.go for ArangoDB setup patterns
-const runServerIntegrationTestDoc = ""
 
 func TestStrainType(t *testing.T) {
 	t.Parallel()
@@ -173,10 +172,10 @@ func TestAllParams(t *testing.T) {
 
 // TestRunServer documents the integration testing requirements for the RunServer function.
 // This function is intentionally skipped as it requires external infrastructure.
-// See runServerIntegrationTestDoc for detailed testing requirements and examples.
+// See package documentation above for detailed testing requirements and examples.
 func TestRunServer(t *testing.T) {
 	t.Skip(
-		"RunServer requires integration testing with ArangoDB, NATS, and gRPC - see runServerIntegrationTestDoc",
+		"RunServer requires integration testing with ArangoDB, NATS, and gRPC - see package documentation",
 	)
 }
 
