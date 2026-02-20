@@ -1,15 +1,19 @@
 # Multi-Architecture Docker Build Justfile
 # Recipes for building, testing, and pushing modware-stock images
+# Automatically uses apple/container on macOS, docker buildx on Linux
 
 # Variables
-name := "modware-stock"
-namespace := "dictybase"
-dockerfile := "build/package/Dockerfile.multiarch"
-platforms := "linux/amd64,linux/arm64"
-
-image := namespace + "/" + name
+name        := "modware-stock"
+namespace   := "dictybase"
+dockerfile  := "build/package/Dockerfile.multiarch"
+platforms   := "linux/amd64,linux/arm64"
 github_user := "sba964"
+
+image      := namespace + "/" + name
 ghcr_image := "ghcr.io/" + image
+
+# OS detection — routes to apple/container on macOS, docker on Linux
+on_macos := if os() == "macos" { "true" } else { "false" }
 
 # Default recipe - show help
 default:
