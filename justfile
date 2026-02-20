@@ -32,23 +32,13 @@ build-multiarch:
 # Build and load AMD64 image locally for testing
 build-amd64:
     @echo "Building {{image}} for linux/amd64 (local)..."
-    docker buildx build \
-        --platform linux/amd64 \
-        --load \
-        -t {{image}}:amd64 \
-        -f {{dockerfile}} \
-        .
+    {{ if on_macos == "true" { "container build --arch amd64 --load -t " + image + ":amd64 -f " + dockerfile + " ." } else { "docker buildx build --platform linux/amd64 --load -t " + image + ":amd64 -f " + dockerfile + " ." } }}
     @echo "✓ AMD64 image built and loaded"
 
-# Build and load ARM64 image locally for testing (requires emulation)
+# Build and load ARM64 image locally for testing
 build-arm64:
-    @echo "Building {{image}} for linux/arm64 (emulated)..."
-    docker buildx build \
-        --platform linux/arm64 \
-        --load \
-        -t {{image}}:arm64 \
-        -f {{dockerfile}} \
-        .
+    @echo "Building {{image}} for linux/arm64..."
+    {{ if on_macos == "true" { "container build --arch arm64 --load -t " + image + ":arm64 -f " + dockerfile + " ." } else { "docker buildx build --platform linux/arm64 --load -t " + image + ":arm64 -f " + dockerfile + " ." } }}
     @echo "✓ ARM64 image built and loaded"
 
 # Test the locally loaded AMD64 image
