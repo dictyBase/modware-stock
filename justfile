@@ -49,15 +49,15 @@ test-arm64: build-arm64
     {{ if on_macos == "true" { "container run --rm --arch arm64 " + image + ":arm64 --help" } else { "docker run --rm --platform linux/arm64 " + image + ":arm64 --help" } }}
     @echo "✓ ARM64 image test passed"
 
-# Setup Docker buildx if not available
+# Setup container tool (buildx on Linux, container daemon on macOS)
 setup-buildx:
-    @echo "Setting up Docker buildx..."
-    @docker buildx create --use || docker buildx use default
-    @docker buildx ls
+    @echo "Setting up container tool..."
+    {{ if on_macos == "true" { "container system start || true" } else { "docker buildx create --use || docker buildx use default" } }}
+    {{ if on_macos == "true" { "container system status" } else { "docker buildx ls" } }}
 
 # Show available platforms
 show-platforms:
-    @docker buildx ls
+    {{ if on_macos == "true" { "container system property get build.rosetta && echo 'Platforms: linux/arm64 (native), linux/amd64 (Rosetta 2)'" } else { "docker buildx ls" } }}
 
 # Clean up images
 clean:
