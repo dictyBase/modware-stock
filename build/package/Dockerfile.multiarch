@@ -1,0 +1,36 @@
+# Build Stage
+FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
+
+# Install upx for binary compression
+RUN apk add --no-cache upx
+
+WORKDIR /app
+
+# Copy dependency files first for better caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY cmd/ ./cmd/
+COPY internal/ ./internal/
+
+# Build binary with stripped symbols
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
+    -ldflags="-s -w" \
+    -o /bin/modware-stock \
+    ./cmd/modware-stock
+
+# Compress binary
+RUN upx -9 -q /bin/modware-stock
+
+# Runtime Stage
+FROM gcr.io/distroless/static-debian12
+
+LABEL org.opencontainers.image.source=https://github.com/dictyBase/modware-stock
+
+COPY --from=builder /bin/modware-stock /bin/modware-stock
+
+ENTRYPOINT ["/bin/modware-stock"]
