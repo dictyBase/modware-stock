@@ -66,23 +66,15 @@ clean:
 
 # Build for GitHub Container Registry
 build-ghcr tag="latest":
-    @echo "Building {{ghcr_image}}:{{tag}} for {{platforms}}..."
-    docker buildx build \
-        --platform {{platforms}} \
-        -t {{ghcr_image}}:{{tag}} \
-        -f {{dockerfile}} \
-        .
+    @echo "Building {{ghcr_image}}:{{tag}} for amd64 and arm64..."
+    {{ if on_macos == "true" { "container build --arch arm64 --arch amd64 -t " + ghcr_image + ":" + tag + " -f " + dockerfile + " ." } else { "docker buildx build --platform " + platforms + " -t " + ghcr_image + ":" + tag + " -f " + dockerfile + " ." } }}
     @echo "✓ GitHub Container Registry build completed"
 
 # Push to GitHub Container Registry
 push-ghcr tag="latest":
     @echo "Logging into GitHub Container Registry..."
-    echo $GITHUB_REGISTRY_TOKEN | docker login ghcr.io -u {{github_user}} --password-stdin
-    @echo "Building and pushing {{ghcr_image}}:{{tag}} for {{platforms}}..."
-    docker buildx build \
-        --platform {{platforms}} \
-        -t {{ghcr_image}}:{{tag}} \
-        -f {{dockerfile}} \
-        --push \
-        .
+    {{ if on_macos == "true" { "echo $GITHUB_REGISTRY_TOKEN | container registry login --username " + github_user + " --password-stdin ghcr.io" } else { "echo $GITHUB_REGISTRY_TOKEN | docker login ghcr.io -u " + github_user + " --password-stdin" } }}
+    @echo "Building {{ghcr_image}}:{{tag}}..."
+    {{ if on_macos == "true" { "container build --arch arm64 --arch amd64 -t " + ghcr_image + ":" + tag + " -f " + dockerfile + " ." } else { "docker buildx build --platform " + platforms + " -t " + ghcr_image + ":" + tag + " -f " + dockerfile + " . --push" } }}
+    {{ if on_macos == "true" { "container image push " + ghcr_image + ":" + tag } else { "" } }}
     @echo "✓ Successfully pushed to GitHub Container Registry"
