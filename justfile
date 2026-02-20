@@ -7,7 +7,7 @@ name        := "modware-stock"
 namespace   := "dictybase"
 dockerfile  := "build/package/Dockerfile.multiarch"
 platforms   := "linux/amd64,linux/arm64"
-github_user := "sba964"
+github_user := "cybersiddhu"
 
 image      := namespace + "/" + name
 ghcr_image := "ghcr.io/" + image
@@ -28,13 +28,13 @@ build-multiarch:
 # Build and load AMD64 image locally for testing
 build-amd64:
     @echo "Building {{image}} for linux/amd64 (local)..."
-    {{ if on_macos == "true" { "container build --arch amd64 --load -t " + image + ":amd64 -f " + dockerfile + " ." } else { "docker buildx build --platform linux/amd64 --load -t " + image + ":amd64 -f " + dockerfile + " ." } }}
+    {{ if on_macos == "true" { "container build --arch amd64 -t " + image + ":amd64 -f " + dockerfile + " ." } else { "docker buildx build --platform linux/amd64 --load -t " + image + ":amd64 -f " + dockerfile + " ." } }}
     @echo "✓ AMD64 image built and loaded"
 
 # Build and load ARM64 image locally for testing
 build-arm64:
     @echo "Building {{image}} for linux/arm64..."
-    {{ if on_macos == "true" { "container build --arch arm64 --load -t " + image + ":arm64 -f " + dockerfile + " ." } else { "docker buildx build --platform linux/arm64 --load -t " + image + ":arm64 -f " + dockerfile + " ." } }}
+    {{ if on_macos == "true" { "container build --arch arm64 -t " + image + ":arm64 -f " + dockerfile + " ." } else { "docker buildx build --platform linux/arm64 --load -t " + image + ":arm64 -f " + dockerfile + " ." } }}
     @echo "✓ ARM64 image built and loaded"
 
 # Test the locally loaded AMD64 image
