@@ -1,12 +1,5 @@
 # Go Coding Conventions
 
-## Bug Tracking Rule
-
-When the user pastes error output, command failures, or build errors, ALWAYS:
-1. Run `bd create --title="..." --type=bug --priority=P1` FIRST before any investigation or fix
-2. Mark it `in_progress` with `bd update <id> --status=in_progress` before starting the fix
-3. Close it with `bd close <id> --reason="..."` after the fix is committed
-
 -- **Build, Test, and Lint Commands**
     - Run all tests: `gotestsum --format-hide-empty-pkg --format dots`
     - Run specific test: `gotestsum --format-hide-empty-pkg --format dots -- -run TestFindSimilar ./...`
