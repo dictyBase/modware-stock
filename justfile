@@ -21,12 +21,8 @@ default:
 
 # Build multi-architecture image (no push)
 build-multiarch:
-    @echo "Building {{image}} for {{platforms}}..."
-    docker buildx build \
-        --platform {{platforms}} \
-        -t {{image}}:multiarch \
-        -f {{dockerfile}} \
-        .
+    @echo "Building {{image}} for amd64 and arm64..."
+    {{ if on_macos == "true" { "container build --arch arm64 --arch amd64 -t " + image + ":multiarch -f " + dockerfile + " ." } else { "docker buildx build --platform " + platforms + " -t " + image + ":multiarch -f " + dockerfile + " ." } }}
     @echo "✓ Multi-architecture build completed"
 
 # Build and load AMD64 image locally for testing
