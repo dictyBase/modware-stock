@@ -8,6 +8,8 @@ dockerfile := "build/package/Dockerfile.multiarch"
 platforms := "linux/amd64,linux/arm64"
 
 image := namespace + "/" + name
+github_user := "sba964"
+ghcr_image := "ghcr.io/" + image
 
 # Default recipe - show help
 default:
@@ -71,3 +73,26 @@ show-platforms:
 clean:
     docker rmi {{image}}:multiarch {{image}}:amd64 {{image}}:arm64 2>/dev/null || true
     @echo "✓ Cleanup completed"
+
+# Build for GitHub Container Registry
+build-ghcr tag="latest":
+    @echo "Building {{ghcr_image}}:{{tag}} for {{platforms}}..."
+    docker buildx build \
+        --platform {{platforms}} \
+        -t {{ghcr_image}}:{{tag}} \
+        -f {{dockerfile}} \
+        .
+    @echo "✓ GitHub Container Registry build completed"
+
+# Push to GitHub Container Registry
+push-ghcr tag="latest":
+    @echo "Logging into GitHub Container Registry..."
+    echo $GITHUB_REGISTRY_TOKEN | docker login ghcr.io -u {{github_user}} --password-stdin
+    @echo "Building and pushing {{ghcr_image}}:{{tag}} for {{platforms}}..."
+    docker buildx build \
+        --platform {{platforms}} \
+        -t {{ghcr_image}}:{{tag}} \
+        -f {{dockerfile}} \
+        --push \
+        .
+    @echo "✓ Successfully pushed to GitHub Container Registry"
