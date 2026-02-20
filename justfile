@@ -40,13 +40,13 @@ build-arm64:
 # Test the locally loaded AMD64 image
 test-amd64: build-amd64
     @echo "Testing {{image}}:amd64..."
-    docker run --rm {{image}}:amd64 --help
+    {{ if on_macos == "true" { "container run --rm --arch amd64 " + image + ":amd64 --help" } else { "docker run --rm --platform linux/amd64 " + image + ":amd64 --help" } }}
     @echo "✓ AMD64 image test passed"
 
-# Test the ARM64 image (via emulation)
+# Test the ARM64 image
 test-arm64: build-arm64
     @echo "Testing {{image}}:arm64..."
-    docker run --rm --platform linux/arm64 {{image}}:arm64 --help
+    {{ if on_macos == "true" { "container run --rm --arch arm64 " + image + ":arm64 --help" } else { "docker run --rm --platform linux/arm64 " + image + ":arm64 --help" } }}
     @echo "✓ ARM64 image test passed"
 
 # Setup Docker buildx if not available
