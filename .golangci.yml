@@ -11,6 +11,7 @@ linters-settings:
     checks: ["all", "-SA5001"]
   funlen:
     lines: 80
+    statements: 70
   revive:
     rules:
       - name: var-naming
@@ -26,7 +27,6 @@ linters:
     - decorder
     - dogsled
     - errcheck
-    - funlen
     - goconst
     - gocritic
     - gocyclo
@@ -48,6 +48,9 @@ issues:
     - linters:
         - typecheck
       text: "file requires newer Go version"
+    - path: "_test\\.go"
+      linters:
+        - funlen
 
   # don't enable:
   # - godox

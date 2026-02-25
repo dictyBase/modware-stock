@@ -211,4 +211,12 @@ func TestListPlasmids(t *testing.T) {
 	t.Run("ByTagCombined", func(_ *testing.T) {
 		testListPlasmidsByTagCombined(params)
 	})
+
+	t.Run("ByNameExact", func(_ *testing.T) {
+		testListPlasmidsByNameExact(params)
+	})
+
+	t.Run("ByNamePartialMatch", func(_ *testing.T) {
+		testListPlasmidsByNamePartialMatch(params)
+	})
 }

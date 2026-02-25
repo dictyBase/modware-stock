@@ -15,5 +15,5 @@ var FMap = map[string]string{
 	"ontology":     "cv.metadata.namespace",
 	"tag":          "cvterm.label",
 	"parent":       "parent",
-	"plasmid_name": "name",
+	"plasmid_name": "stock_prop.name",
 }
