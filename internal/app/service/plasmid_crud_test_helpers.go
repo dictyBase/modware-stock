@@ -1001,3 +1001,67 @@ func testListPlasmidsByTagCombined(params *testParams) {
 		params.assert.Equal("Jane Smith", plasmid.Attributes.Depositor)
 	}
 }
+
+// testListPlasmidsByNameExact tests exact match filtering by plasmid_name.
+func testListPlasmidsByNameExact(params *testParams) {
+	params.t.Helper()
+
+	// Create a plasmid with the default test name "pDV101"
+	req := newTestPlasmid()
+	resp1, err := params.client.CreatePlasmid(params.ctx, req)
+	params.assert.NoError(err, "should create plasmid")
+
+	// Create a plasmid with a different name
+	req2 := newTestPlasmid()
+	req2.Data.Attributes.Name = "pOther"
+	_, err = params.client.CreatePlasmid(params.ctx, req2)
+	params.assert.NoError(err, "should create second plasmid")
+
+	listReq := &stock.StockParameters{
+		Filter: "plasmid_name===pDV101",
+		Limit:  10,
+	}
+	resp, err := params.client.ListPlasmids(params.ctx, listReq)
+
+	params.assert.NoError(err, "should list plasmids without error")
+	params.assert.NotNil(resp, "response should not be nil")
+	params.assert.GreaterOrEqual(len(resp.Data), 1, "should find at least one plasmid")
+
+	found := false
+	for _, plasmid := range resp.Data {
+		params.assert.Equal("pDV101", plasmid.Attributes.Name, "all results should have name pDV101")
+		if plasmid.Id == resp1.Data.Id {
+			found = true
+		}
+	}
+	params.assert.True(found, "should find the created pDV101 plasmid")
+}
+
+// testListPlasmidsByNamePartialMatch tests regex match filtering by plasmid_name.
+func testListPlasmidsByNamePartialMatch(params *testParams) {
+	params.t.Helper()
+
+	for range 3 {
+		req := newTestPlasmid()
+		req.Data.Attributes.Name = "pDV101"
+		_, err := params.client.CreatePlasmid(params.ctx, req)
+		params.assert.NoError(err)
+	}
+
+	listReq := &stock.StockParameters{
+		Filter: "plasmid_name=~pDV",
+		Limit:  10,
+	}
+	resp, err := params.client.ListPlasmids(params.ctx, listReq)
+
+	params.assert.NoError(err, "should list plasmids without error")
+	params.assert.GreaterOrEqual(len(resp.Data), 3, "should find at least 3 plasmids")
+
+	for _, plasmid := range resp.Data {
+		params.assert.Contains(
+			plasmid.Attributes.Name,
+			"pDV",
+			"all results should contain 'pDV'",
+		)
+	}
+}
