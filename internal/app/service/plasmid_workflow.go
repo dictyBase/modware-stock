@@ -32,27 +32,26 @@ var (
 
 	isNotFoundError = F.Pipe1(isNotNilError, P.And(hasNotFoundPrefix))
 
+	// -- Field extractors for predicate lifting --
+
+	cursorVal       = func(ctx withNextCursor) int64 { return ctx.nextCursor }
+	cursorLen       = func(ctx withNextCursor) int { return len(ctx.collectionData) }
+	collectionLen   = func(lctx withPlasmidCollectionData) int { return len(lctx.collectionData) }
+	collectionExcess = func(lctx withPlasmidCollectionData) int {
+		return len(lctx.collectionData) - int(lctx.limit)
+	}
+
 	// hasPositiveNextCursor checks that the next cursor value is positive
-	hasPositiveNextCursor = P.ContraMap(
-		func(ctx withNextCursor) int64 { return ctx.nextCursor },
-	)(isPositive)
+	hasPositiveNextCursor = F.Pipe1(isPositive, P.ContraMap(cursorVal))
 
 	// hasCollectionItems checks that the cursor context has collection items
-	hasCollectionItems = P.ContraMap(
-		func(ctx withNextCursor) int { return len(ctx.collectionData) },
-	)(isPositiveInt)
+	hasCollectionItems = F.Pipe1(isPositiveInt, P.ContraMap(cursorLen))
 
 	// hasAnyCollectionResults checks that the collection has at least one result
-	hasAnyCollectionResults = P.ContraMap(
-		func(lctx withPlasmidCollectionData) int { return len(lctx.collectionData) },
-	)(isPositiveInt)
+	hasAnyCollectionResults = F.Pipe1(isPositiveInt, P.ContraMap(collectionLen))
 
 	// hasMinimumResults checks that results exceed the limit, signalling a next page exists
-	hasMinimumResults = P.ContraMap(
-		func(lctx withPlasmidCollectionData) int {
-			return len(lctx.collectionData) - int(lctx.limit)
-		},
-	)(isPositiveInt)
+	hasMinimumResults = F.Pipe1(isPositiveInt, P.ContraMap(collectionExcess))
 
 	hasEnoughResults = F.Pipe1(
 		hasMinimumResults,
