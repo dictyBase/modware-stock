@@ -10,6 +10,7 @@ import (
 	F "github.com/IBM/fp-go/function"
 	IOE "github.com/IBM/fp-go/ioeither"
 	O "github.com/IBM/fp-go/option"
+	ORD "github.com/IBM/fp-go/ord"
 	P "github.com/IBM/fp-go/predicate"
 	S "github.com/IBM/fp-go/string"
 	T "github.com/IBM/fp-go/tuple"
@@ -19,12 +20,39 @@ import (
 )
 
 var (
+	// -- Ord instances for numeric comparisons --
+
+	intOrd       = ORD.FromStrictCompare[int]()
+	isPositiveInt = ORD.Gt(intOrd)(int(0))
+
 	// -- Shared Predicates & Helpers --
 
 	// Use fp-go string API directly
 	isNonEmptyString = S.IsNonEmpty
 
 	isNotFoundError = F.Pipe1(isNotNilError, P.And(hasNotFoundPrefix))
+
+	// hasPositiveNextCursor checks that the next cursor value is positive
+	hasPositiveNextCursor = P.ContraMap(
+		func(ctx withNextCursor) int64 { return ctx.nextCursor },
+	)(isPositive)
+
+	// hasCollectionItems checks that the cursor context has collection items
+	hasCollectionItems = P.ContraMap(
+		func(ctx withNextCursor) int { return len(ctx.collectionData) },
+	)(isPositiveInt)
+
+	// hasAnyCollectionResults checks that the collection has at least one result
+	hasAnyCollectionResults = P.ContraMap(
+		func(lctx withPlasmidCollectionData) int { return len(lctx.collectionData) },
+	)(isPositiveInt)
+
+	// hasMinimumResults checks that results exceed the limit, signalling a next page exists
+	hasMinimumResults = P.ContraMap(
+		func(lctx withPlasmidCollectionData) int {
+			return len(lctx.collectionData) - int(lctx.limit)
+		},
+	)(isPositiveInt)
 
 	hasEnoughResults = F.Pipe1(
 		hasMinimumResults,
@@ -316,18 +344,6 @@ func toServiceResult(ctx context.Context) PlasmidConverter {
 
 // ListPlasmids workflow functions
 
-func hasPositiveNextCursor(
-	ctx withNextCursor,
-) bool {
-	return ctx.nextCursor > 0
-}
-
-func hasCollectionItems(
-	ctx withNextCursor,
-) bool {
-	return len(ctx.collectionData) > 0
-}
-
 func extractCollectionData(ctx withNextCursor) []*stock.PlasmidCollection_Data {
 	return ctx.collectionData
 }
@@ -383,15 +399,6 @@ func retrievePlasmidsFromRepository(
 // transformToPlasmidCollection transforms stock documents to plasmid collection data
 func transformToPlasmidCollection(lctx withStockDocList) []*stock.PlasmidCollection_Data {
 	return F.Pipe1(lctx.stockDocs, plasmidModelToCollectionSlice)
-}
-
-// computeNextCursor computes the next cursor value based on results
-func hasMinimumResults(lctx withPlasmidCollectionData) bool {
-	return len(lctx.collectionData) > int(lctx.limit)
-}
-
-func hasAnyCollectionResults(lctx withPlasmidCollectionData) bool {
-	return len(lctx.collectionData) > 0
 }
 
 func lastItemCursorVal(lctx withPlasmidCollectionData) int64 {
