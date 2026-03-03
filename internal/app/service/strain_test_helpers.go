@@ -1230,3 +1230,27 @@ func testUpdateStrainOntologyPreservation(params *testParams) {
 		"summary should be updated",
 	)
 }
+
+// testListStrainsSmallLimit is a regression test for the pagination bug where
+// Limit <= 3 would incorrectly trim the only result and return an empty collection.
+func testListStrainsSmallLimit(params *testParams) {
+	params.t.Helper()
+
+	uniqueLabel := "sSmallLimit1"
+	req := newTestStrain()
+	req.Data.Attributes.Label = uniqueLabel
+	_, err := params.client.CreateStrain(params.ctx, req)
+	params.assert.NoError(err, "should create strain")
+
+	listReq := &stock.StockParameters{
+		Filter: "label===" + uniqueLabel,
+		Limit:  1,
+	}
+	resp, err := params.client.ListStrains(params.ctx, listReq)
+
+	params.assert.NoError(err, "should list strains without error")
+	params.assert.NotNil(resp, "response should not be nil")
+	params.assert.Equal(1, len(resp.Data), "should return exactly one strain")
+	params.assert.Equal(uniqueLabel, resp.Data[0].Attributes.Label, "should match the queried label")
+	params.assert.Equal(int64(0), resp.Meta.NextCursor, "should have no next cursor")
+}

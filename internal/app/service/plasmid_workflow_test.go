@@ -28,12 +28,12 @@ func TestPlasmidWorkflowPredicates(t *testing.T) {
 			},
 		}
 
-		// Not enough
-		lctx.collectionData = make([]*stock.PlasmidCollection_Data, 7)
+		// Not enough (exactly limit — no next page)
+		lctx.collectionData = make([]*stock.PlasmidCollection_Data, 10)
 		assert.False(hasEnoughResults(lctx))
 
-		// Just enough (limit - 2)
-		lctx.collectionData = make([]*stock.PlasmidCollection_Data, 8)
+		// Just enough (limit + 1 — next page exists)
+		lctx.collectionData = make([]*stock.PlasmidCollection_Data, 11)
 		assert.True(hasEnoughResults(lctx))
 
 		// Empty
