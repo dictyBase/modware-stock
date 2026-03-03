@@ -6,3 +6,6 @@ cover.out
 .opencode
 opencode.json
 .tool-versions
+
+.gemini/
+gha-creds-*.json
