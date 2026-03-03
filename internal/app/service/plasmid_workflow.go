@@ -387,7 +387,7 @@ func transformToPlasmidCollection(lctx withStockDocList) []*stock.PlasmidCollect
 
 // computeNextCursor computes the next cursor value based on results
 func hasMinimumResults(lctx withPlasmidCollectionData) bool {
-	return len(lctx.collectionData) >= int(lctx.limit)-2
+	return len(lctx.collectionData) > int(lctx.limit)
 }
 
 func hasAnyCollectionResults(lctx withPlasmidCollectionData) bool {

@@ -168,7 +168,7 @@ func (s *StockService) ListStrains(
 		return scn, err
 	}
 	sdata := strainModelToCollectionSlice(mc)
-	if len(sdata) < int(limit)-2 { // fewer results than limit
+	if len(sdata) <= int(limit) { // no next page: returned at most limit items
 		scn.Data = sdata
 		scn.Meta.Total = int64(len(sdata))
 		return scn, nil
@@ -177,7 +177,7 @@ func (s *StockService) ListStrains(
 	scn.Meta.NextCursor = genNextCursorVal(
 		sdata[len(sdata)-1].Attributes.CreatedAt,
 	)
-	scn.Meta.Total = int64(len(sdata))
+	scn.Meta.Total = int64(len(scn.Data))
 	return scn, nil
 }
 

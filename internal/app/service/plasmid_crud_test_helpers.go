@@ -1065,3 +1065,27 @@ func testListPlasmidsByNamePartialMatch(params *testParams) {
 		)
 	}
 }
+
+// testListPlasmidsSmallLimit is a regression test for the pagination bug where
+// Limit <= 3 would incorrectly trim the only result and return an empty collection.
+func testListPlasmidsSmallLimit(params *testParams) {
+	params.t.Helper()
+
+	uniqueName := "pSmallLimit1"
+	req := newTestPlasmid()
+	req.Data.Attributes.Name = uniqueName
+	_, err := params.client.CreatePlasmid(params.ctx, req)
+	params.assert.NoError(err, "should create plasmid")
+
+	listReq := &stock.StockParameters{
+		Filter: "plasmid_name===" + uniqueName,
+		Limit:  1,
+	}
+	resp, err := params.client.ListPlasmids(params.ctx, listReq)
+
+	params.assert.NoError(err, "should list plasmids without error")
+	params.assert.NotNil(resp, "response should not be nil")
+	params.assert.Equal(1, len(resp.Data), "should return exactly one plasmid")
+	params.assert.Equal(uniqueName, resp.Data[0].Attributes.Name, "should match the queried name")
+	params.assert.Equal(int64(0), resp.Meta.NextCursor, "should have no next cursor")
+}

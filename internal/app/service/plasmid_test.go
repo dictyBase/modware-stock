@@ -219,4 +219,8 @@ func TestListPlasmids(t *testing.T) {
 	t.Run("ByNamePartialMatch", func(_ *testing.T) {
 		testListPlasmidsByNamePartialMatch(params)
 	})
+
+	t.Run("SmallLimit", func(_ *testing.T) {
+		testListPlasmidsSmallLimit(params)
+	})
 }

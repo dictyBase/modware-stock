@@ -271,4 +271,13 @@ func TestListStrains(t *testing.T) {
 			assert: assert,
 		})
 	})
+
+	t.Run("SmallLimit", func(t *testing.T) {
+		testListStrainsSmallLimit(&testParams{
+			t:      t,
+			ctx:    ctx,
+			client: client,
+			assert: assert,
+		})
+	})
 }
