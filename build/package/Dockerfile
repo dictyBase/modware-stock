@@ -1,4 +1,4 @@
-FROM golang:1.25-bookworm
+FROM golang:1.25-trixie
 LABEL maintainer="Siddhartha Basu <siddhartha-basu@northwestern.edu>"
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
