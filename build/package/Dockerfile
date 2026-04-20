@@ -5,7 +5,7 @@ ENV GO111MODULE=on \
     GOOS=linux \
     GOARCH=amd64
 RUN apt-get -qq update \
-    && apt-get -yqq install upx
+    && apt-get -yqq install upx-ucl
 RUN mkdir -p /modware-stock
 WORKDIR /modware-stock
 COPY go.mod ./
