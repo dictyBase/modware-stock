@@ -13,7 +13,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli v1.22.17
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 	// Explicitly require the new split genproto modules to avoid ambiguous imports
 	google.golang.org/genproto/googleapis/api v0.0.0-20260120221211-b8f7ae30c516 // indirect
 	google.golang.org/grpc v1.80.0
@@ -107,4 +107,4 @@ require (
 // to prevent ambiguous imports with the new split modules
 exclude google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
 
-go 1.24.0
+go 1.25.0
