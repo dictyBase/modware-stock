@@ -1,4 +1,4 @@
-FROM golang:1.24-bullseye
+FROM golang:1.25-bullseye
 LABEL maintainer="Siddhartha Basu <siddhartha-basu@northwestern.edu>"
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
