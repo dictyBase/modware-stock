@@ -2,7 +2,7 @@ module github.com/dictyBase/modware-stock
 
 require (
 	github.com/arangodb/go-driver v1.6.9
-	github.com/cockroachdb/errors v1.13.0
+	github.com/cockroachdb/errors v1.14.0
 	github.com/dictyBase/aphgrpc v1.4.2
 	github.com/dictyBase/arangomanager v0.8.0
 	github.com/dictyBase/go-genproto v0.0.0-20211001224012-6cf691015622
