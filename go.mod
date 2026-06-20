@@ -7,7 +7,7 @@ require (
 	github.com/dictyBase/arangomanager v0.8.0
 	github.com/dictyBase/go-genproto v0.0.0-20211001224012-6cf691015622
 	github.com/dictyBase/go-obograph v1.6.0
-	github.com/go-playground/validator/v10 v10.30.2
+	github.com/go-playground/validator/v10 v10.30.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/nats-io/nats.go v1.52.0
 	github.com/sirupsen/logrus v1.9.4
@@ -92,8 +92,8 @@ require (
 	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
-	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171 // indirect
