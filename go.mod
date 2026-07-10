@@ -6,8 +6,8 @@ require (
 	github.com/dictyBase/aphgrpc v1.4.2
 	github.com/dictyBase/arangomanager v0.8.0
 	github.com/dictyBase/go-genproto v0.0.0-20211001224012-6cf691015622
-	github.com/dictyBase/go-obograph v1.6.0
-	github.com/go-playground/validator/v10 v10.30.2
+	github.com/dictyBase/go-obograph v1.6.1
+	github.com/go-playground/validator/v10 v10.30.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/nats-io/nats.go v1.52.0
 	github.com/sirupsen/logrus v1.9.4
@@ -104,4 +104,4 @@ require (
 // to prevent ambiguous imports with the new split modules
 exclude google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
 
-go 1.25.8
+go 1.26
