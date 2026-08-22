@@ -10,7 +10,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/nats-io/nats.go v1.53.1
-	github.com/sirupsen/logrus v1.9.4
+	github.com/sirupsen/logrus v1.10.1
 	github.com/stretchr/testify v1.12.1
 	github.com/urfave/cli v1.22.17
 	golang.org/x/sync v0.22.0
