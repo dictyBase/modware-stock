@@ -54,8 +54,8 @@ github.com/dictyBase/arangomanager v0.8.0 h1:wXWmq7QYBn37eGs0nELPxqccMbTvx9G99k/
 github.com/dictyBase/arangomanager v0.8.0/go.mod h1:Fm3AuYBeMccsYcu8M6iq2a96XlPIe4Y55x95TAWmGs4=
 github.com/dictyBase/go-genproto v0.0.0-20211001224012-6cf691015622 h1:UqICH4tshsyfhtwFv/0i48bddx9cJXcPsYEbZFVyULE=
 github.com/dictyBase/go-genproto v0.0.0-20211001224012-6cf691015622/go.mod h1:KY6iUqXl1lLq81WTW9u5DfZE58xM61PsGLSLwwtePlk=
-github.com/dictyBase/go-obograph v1.6.0 h1:otuiEadRCJ25o6X/5tWhDjiiAbK0R8LBLQpBxVREotc=
-github.com/dictyBase/go-obograph v1.6.0/go.mod h1:osNZ7PRqai1OTnrLy8SoDavKIMaDp7Sw8CFh52ddBkY=
+github.com/dictyBase/go-obograph v1.6.1 h1:2qWF1OPVUAV20OeCZxi6bEQyMFzKdV7DNzmG7qT9otE=
+github.com/dictyBase/go-obograph v1.6.1/go.mod h1:GJjVU6iquV7OUsMLAZFFqI64gN+GyXOfdnOWdR/Bj4A=
 github.com/distribution/reference v0.6.0 h1:0IXCQ5g4/QMHHkarYzh5l+u8T3t73zM5QvfrDyIgxBk=
 github.com/distribution/reference v0.6.0/go.mod h1:BbU0aIcezP1/5jX/8MP0YiH4SdvB5Y4f/wlDRiLyi3E=
 github.com/docker/go-connections v0.7.0 h1:6SsRfJddP22WMrCkj19x9WKjEDTB+ahsdiGYf0mN39c=
@@ -98,8 +98,8 @@ github.com/go-playground/locales v0.14.1 h1:EWaQ/wswjilfKLTECiXz7Rh+3BjFhfDFKv/o
 github.com/go-playground/locales v0.14.1/go.mod h1:hxrqLVvrK65+Rwrd5Fc6F2O76J/NuW9t0sjnWqG1slY=
 github.com/go-playground/universal-translator v0.18.1 h1:Bcnm0ZwsGyWbCzImXv+pAJnYK9S473LQFuzCbDbfSFY=
 github.com/go-playground/universal-translator v0.18.1/go.mod h1:xekY+UJKNuX9WP91TpwSH2VMlDf28Uj24BCp08ZFTUY=
-github.com/go-playground/validator/v10 v10.30.2 h1:JiFIMtSSHb2/XBUbWM4i/MpeQm9ZK2xqPNk8vgvu5JQ=
-github.com/go-playground/validator/v10 v10.30.2/go.mod h1:mAf2pIOVXjTEBrwUMGKkCWKKPs9NheYGabeB04txQSc=
+github.com/go-playground/validator/v10 v10.30.3 h1:4MU6YkEwx7GbcPJOZxrtbu+QfF3pJLJuaYTeAH0DYy8=
+github.com/go-playground/validator/v10 v10.30.3/go.mod h1:4Axh7oCNGcoGkqLoE4YWt6n20mcEIsPRlB7vPk3lpyc=
 github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
 github.com/gogo/protobuf v1.3.0/go.mod h1:SlYgWuQ5SjCEi6WLHjHCa1yvBfUnHcTbrrZtXPKa29o=
 github.com/gogo/protobuf v1.3.2 h1:Ov1cvc58UF3b5XjBnZv7+opcTcQFZebYjWzi34vdm4Q=
