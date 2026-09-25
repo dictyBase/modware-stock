@@ -6,14 +6,14 @@ require (
 	github.com/dictyBase/aphgrpc v1.4.2
 	github.com/dictyBase/arangomanager v0.8.0
 	github.com/dictyBase/go-genproto v0.0.0-20211001224012-6cf691015622
-	github.com/dictyBase/go-obograph v1.6.0
+	github.com/dictyBase/go-obograph v1.6.1
 	github.com/go-playground/validator/v10 v10.30.4
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/nats-io/nats.go v1.53.1
 	github.com/sirupsen/logrus v1.10.2
 	github.com/stretchr/testify v1.12.1
 	github.com/urfave/cli v1.22.17
-	golang.org/x/sync v0.22.0
+	golang.org/x/sync v0.23.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
 )
