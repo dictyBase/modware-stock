@@ -88,16 +88,16 @@ func TestBuildFilterBindParams(t *testing.T) {
 			params := ar.buildFilterBindParams(tc.params)
 
 			// Assertions
-			assert.Contains(t, params, "@cvterm_collection")
-			assert.Contains(t, params, "@cv_collection")
-			assert.Contains(t, params, "stock_prop_graph")
-			assert.Contains(t, params, "stock_cvterm_graph")
-			assert.Contains(t, params, "ontology")
-			assert.Contains(t, params, "limit")
-			assert.Equal(t, tc.params.Limit+1, params["limit"])
+			assert.Contains(t, params, bindCvtermCollection)
+			assert.Contains(t, params, bindCVCollection)
+			assert.Contains(t, params, nameStockPropGraph)
+			assert.Contains(t, params, nameStockCvtermGraph)
+			assert.Contains(t, params, paramOntology)
+			assert.Contains(t, params, paramLimit)
+			assert.Equal(t, tc.params.Limit+1, params[paramLimit])
 
 			// Should NOT contain stock collection (ontology first)
-			assert.NotContains(t, params, "@stock_collection")
+			assert.NotContains(t, params, bindStockCollection)
 
 			if tc.params.Cursor > 0 {
 				assert.Contains(t, params, "cursor")
@@ -133,16 +133,16 @@ func TestBuildNoFilterBindParams(t *testing.T) {
 			params := ar.buildNoFilterBindParams(tc.params)
 
 			// Assertions
-			assert.Contains(t, params, "@stock_collection")
-			assert.Contains(t, params, "stock_prop_graph")
-			assert.Contains(t, params, "stock_cvterm_graph")
-			assert.Contains(t, params, "ontology")
-			assert.Contains(t, params, "@cv_collection")
-			assert.Contains(t, params, "limit")
-			assert.Equal(t, tc.params.Limit+1, params["limit"])
+			assert.Contains(t, params, bindStockCollection)
+			assert.Contains(t, params, nameStockPropGraph)
+			assert.Contains(t, params, nameStockCvtermGraph)
+			assert.Contains(t, params, paramOntology)
+			assert.Contains(t, params, bindCVCollection)
+			assert.Contains(t, params, paramLimit)
+			assert.Equal(t, tc.params.Limit+1, params[paramLimit])
 
 			// Should NOT contain cvterm collection (stock first)
-			assert.NotContains(t, params, "@cvterm_collection")
+			assert.NotContains(t, params, bindCvtermCollection)
 
 			if tc.params.Cursor > 0 {
 				assert.Contains(t, params, "cursor")

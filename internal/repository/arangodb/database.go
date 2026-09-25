@@ -175,7 +175,7 @@ func createNamedGraph(ar *arangorepository, collP *CollectionParams) error {
 func createIndex(ar *arangorepository) error {
 	_, _, err := ar.database.EnsurePersistentIndex(
 		ar.stockc.stock.Name(),
-		[]string{"stock_id"},
+		[]string{paramStockID},
 		&driver.EnsurePersistentIndexOptions{
 			Unique:       true,
 			InBackground: true,

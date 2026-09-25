@@ -183,7 +183,7 @@ func (s *StockService) ListStrains(
 
 func makeStrainData(m *model.StockDoc) *stock.Strain_Data {
 	return &stock.Strain_Data{
-		Type:       "strain",
+		Type:       stockTypeStrain,
 		Id:         m.Key,
 		Attributes: makeStrainAttributes(m),
 	}
@@ -194,7 +194,7 @@ func strainModelToCollectionSlice(
 ) []*stock.StrainCollection_Data {
 	return collection.Map(mc, func(m *model.StockDoc) *stock.StrainCollection_Data {
 		return &stock.StrainCollection_Data{
-			Type:       "strain",
+			Type:       stockTypeStrain,
 			Id:         m.Key,
 			Attributes: makeStrainAttributes(m),
 		}
@@ -204,7 +204,7 @@ func strainModelToCollectionSlice(
 func strainModelToListSlice(mc []*model.StockDoc) []*stock.StrainList_Data {
 	return collection.Map(mc, func(m *model.StockDoc) *stock.StrainList_Data {
 		return &stock.StrainList_Data{
-			Type:       "strain",
+			Type:       stockTypeStrain,
 			Id:         m.Key,
 			Attributes: makeStrainAttributes(m),
 		}

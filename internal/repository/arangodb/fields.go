@@ -2,18 +2,18 @@ package arangodb
 
 // FMap maps filters to database fields
 var FMap = map[string]string{
-	"created_at":   "s.created_at",
-	"updated_at":   "s.updated_at",
-	"depositor":    "s.depositor",
-	"summary":      "s.summary",
+	fieldCreatedAt: "s.created_at",
+	fieldUpdatedAt: "s.updated_at",
+	fieldDepositor: "s.depositor",
+	fieldSummary:   "s.summary",
 	"id":           "s.stock_id",
 	"gene":         "s.genes",
-	"plasmid":      "stock_prop.plasmid",
-	"species":      "stock_prop.species",
-	"name":         "stock_prop.names",
-	"label":        "stock_prop.label",
-	"ontology":     "cv.metadata.namespace",
+	fieldPlasmid:   "stock_prop.plasmid",
+	fieldSpecies:   "stock_prop.species",
+	paramName:      "stock_prop.names",
+	fieldLabel:     "stock_prop.label",
+	paramOntology:  "cv.metadata.namespace",
 	"tag":          "cvterm.label",
-	"parent":       "parent",
+	paramParent:    paramParent,
 	"plasmid_name": "stock_prop.name",
 }

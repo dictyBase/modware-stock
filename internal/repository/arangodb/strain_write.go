@@ -20,11 +20,11 @@ func (ar *arangorepository) AddStrain(
 		statement:       statement.StockStrainIns,
 		parentStatement: statement.StockStrainWithParentsIns,
 		bindVars: mergeBindParams(map[string]any{
-			"@stock_collection":            ar.stockc.stock.Name(),
-			"@stock_key_generator":         ar.stockc.stockKey.Name(),
-			"@stock_properties_collection": ar.stockc.stockProp.Name(),
-			"@stock_type_collection":       ar.stockc.stockType.Name(),
-			"@stock_term_collection":       ar.stockc.stockTerm.Name(),
+			bindStockCollection:     ar.stockc.stock.Name(),
+			"@stock_key_generator":  ar.stockc.stockKey.Name(),
+			bindStockPropCollection: ar.stockc.stockProp.Name(),
+			bindStockTypeCollection: ar.stockc.stockType.Name(),
+			bindStockTermCollection: ar.stockc.stockTerm.Name(),
 		}, addableStrainBindParams(ns.Data.Attributes)),
 	})
 }
@@ -38,9 +38,9 @@ func (ar *arangorepository) updateStrainOntologyTerm(stockID, term string) error
 	_, err := ar.database.DoRun(
 		statement.StrainTermUpd,
 		map[string]any{
-			"@stock_term_collection": ar.stockc.stockTerm.Name(),
-			"from": fmt.Sprintf("%s/%s", ar.stockc.stock.Name(), stockID),
-			"to":   tid,
+			bindStockTermCollection: ar.stockc.stockTerm.Name(),
+			"from":                  fmt.Sprintf("%s/%s", ar.stockc.stock.Name(), stockID),
+			"to":                    tid,
 		},
 	)
 	if err != nil {
@@ -61,10 +61,10 @@ func (ar *arangorepository) buildEditStrainBindVars(
 	bindStVars := getUpdatableStrainPropBindParams(us.Data.Attributes)
 	return mergeBindParams(
 		map[string]any{
-			"@stock_properties_collection": ar.stockc.stockProp.Name(),
-			"@stock_collection":            ar.stockc.stock.Name(),
-			"key":                          us.Data.Id,
-			"propkey":                      propKey,
+			bindStockPropCollection: ar.stockc.stockProp.Name(),
+			bindStockCollection:     ar.stockc.stock.Name(),
+			paramKey:                us.Data.Id,
+			"propkey":               propKey,
 		},
 		bindVars, bindStVars,
 	)
@@ -125,11 +125,11 @@ func (ar *arangorepository) LoadStrain(
 		statement:       statement.StockStrainLoad,
 		parentStatement: statement.StockStrainWithParentLoad,
 		bindVars: mergeBindParams(map[string]any{
-			"stock_id":                     id,
-			"@stock_collection":            ar.stockc.stock.Name(),
-			"@stock_properties_collection": ar.stockc.stockProp.Name(),
-			"@stock_type_collection":       ar.stockc.stockType.Name(),
-			"@stock_term_collection":       ar.stockc.stockTerm.Name(),
+			paramStockID:            id,
+			bindStockCollection:     ar.stockc.stock.Name(),
+			bindStockPropCollection: ar.stockc.stockProp.Name(),
+			bindStockTypeCollection: ar.stockc.stockType.Name(),
+			bindStockTermCollection: ar.stockc.stockTerm.Name(),
 		}, existingStrainBindParams(es.Data.Attributes)),
 	})
 }
@@ -138,20 +138,20 @@ func existingStrainBindParams(
 	attr *stock.ExistingStrainAttributes,
 ) map[string]any {
 	return map[string]any{
-		"summary":          normalizeStrBindParam(attr.Summary),
-		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
-		"genes":            normalizeSliceBindParam(attr.Genes),
-		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
-		"publications":     normalizeSliceBindParam(attr.Publications),
-		"plasmid":          normalizeStrBindParam(attr.Plasmid),
-		"names":            normalizeSliceBindParam(attr.Names),
-		"created_at":       attr.CreatedAt.AsTime().UnixMilli(),
-		"updated_at":       attr.UpdatedAt.AsTime().UnixMilli(),
-		"depositor":        attr.Depositor,
-		"label":            attr.Label,
-		"species":          attr.Species,
-		"created_by":       attr.CreatedBy,
-		"updated_by":       attr.UpdatedBy,
+		fieldSummary:         normalizeStrBindParam(attr.Summary),
+		fieldEditableSummary: normalizeStrBindParam(attr.EditableSummary),
+		fieldGenes:           normalizeSliceBindParam(attr.Genes),
+		fieldDbxrefs:         normalizeSliceBindParam(attr.Dbxrefs),
+		fieldPublications:    normalizeSliceBindParam(attr.Publications),
+		fieldPlasmid:         normalizeStrBindParam(attr.Plasmid),
+		"names":              normalizeSliceBindParam(attr.Names),
+		fieldCreatedAt:       attr.CreatedAt.AsTime().UnixMilli(),
+		fieldUpdatedAt:       attr.UpdatedAt.AsTime().UnixMilli(),
+		fieldDepositor:       attr.Depositor,
+		fieldLabel:           attr.Label,
+		fieldSpecies:         attr.Species,
+		fieldCreatedBy:       attr.CreatedBy,
+		fieldUpdatedBy:       attr.UpdatedBy,
 	}
 }
 
@@ -159,25 +159,25 @@ func getUpdatableStrainBindParams(
 	attr *stock.StrainUpdateAttributes,
 ) map[string]any {
 	bindVars := map[string]any{
-		"updated_by": attr.UpdatedBy,
+		fieldUpdatedBy: attr.UpdatedBy,
 	}
 	if len(attr.Summary) > 0 {
-		bindVars["summary"] = attr.Summary
+		bindVars[fieldSummary] = attr.Summary
 	}
 	if len(attr.EditableSummary) > 0 {
-		bindVars["editable_summary"] = attr.EditableSummary
+		bindVars[fieldEditableSummary] = attr.EditableSummary
 	}
 	if len(attr.Depositor) > 0 {
-		bindVars["depositor"] = attr.Depositor
+		bindVars[fieldDepositor] = attr.Depositor
 	}
 	if len(attr.Genes) > 0 {
-		bindVars["genes"] = attr.Genes
+		bindVars[fieldGenes] = attr.Genes
 	}
 	if len(attr.Dbxrefs) > 0 {
-		bindVars["dbxrefs"] = attr.Dbxrefs
+		bindVars[fieldDbxrefs] = attr.Dbxrefs
 	}
 	if len(attr.Publications) > 0 {
-		bindVars["publications"] = attr.Publications
+		bindVars[fieldPublications] = attr.Publications
 	}
 	return bindVars
 }
@@ -187,13 +187,13 @@ func getUpdatableStrainPropBindParams(
 ) map[string]any {
 	bindVars := make(map[string]any)
 	if len(attr.Label) > 0 {
-		bindVars["label"] = attr.Label
+		bindVars[fieldLabel] = attr.Label
 	}
 	if len(attr.Species) > 0 {
-		bindVars["species"] = attr.Species
+		bindVars[fieldSpecies] = attr.Species
 	}
 	if len(attr.Plasmid) > 0 {
-		bindVars["plasmid"] = attr.Plasmid
+		bindVars[fieldPlasmid] = attr.Plasmid
 	}
 	if len(attr.Names) > 0 {
 		bindVars["names"] = attr.Names
@@ -205,18 +205,18 @@ func addableStrainBindParams(
 	attr *stock.NewStrainAttributes,
 ) map[string]any {
 	return map[string]any{
-		"summary":          normalizeStrBindParam(attr.Summary),
-		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
-		"genes":            normalizeSliceBindParam(attr.Genes),
-		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
-		"publications":     normalizeSliceBindParam(attr.Publications),
-		"plasmid":          normalizeStrBindParam(attr.Plasmid),
-		"names":            normalizeSliceBindParam(attr.Names),
-		"depositor":        attr.Depositor,
-		"label":            attr.Label,
-		"species":          attr.Species,
-		"created_by":       attr.CreatedBy,
-		"updated_by":       attr.UpdatedBy,
+		fieldSummary:         normalizeStrBindParam(attr.Summary),
+		fieldEditableSummary: normalizeStrBindParam(attr.EditableSummary),
+		fieldGenes:           normalizeSliceBindParam(attr.Genes),
+		fieldDbxrefs:         normalizeSliceBindParam(attr.Dbxrefs),
+		fieldPublications:    normalizeSliceBindParam(attr.Publications),
+		fieldPlasmid:         normalizeStrBindParam(attr.Plasmid),
+		"names":              normalizeSliceBindParam(attr.Names),
+		fieldDepositor:       attr.Depositor,
+		fieldLabel:           attr.Label,
+		fieldSpecies:         attr.Species,
+		fieldCreatedBy:       attr.CreatedBy,
+		fieldUpdatedBy:       attr.UpdatedBy,
 	}
 }
 
@@ -224,8 +224,8 @@ func (ar *arangorepository) handleEditStrainWithParent(
 	parent, id string,
 ) (map[string]any, string, error) {
 	pVar := map[string]any{
-		"parent_graph": ar.stockc.strain2Parent.Name(),
-		"strain_key":   id,
+		nameParentGraph: ar.stockc.strain2Parent.Name(),
+		"strain_key":    id,
 	}
 	if err := ar.validateParent(parent); err != nil {
 		return pVar, "", err
@@ -246,8 +246,8 @@ func (ar *arangorepository) handleEditStrainWithParent(
 	}
 	stmt := statement.StrainWithNewParentUpd
 	cmBindVars := map[string]any{
-		"parent":                    parent,
-		"stock_collection":          ar.stockc.stock.Name(),
+		paramParent:                 parent,
+		nameStockCollection:         ar.stockc.stock.Name(),
 		"@parent_strain_collection": ar.stockc.parentStrain.Name(),
 	}
 	if len(pKey) > 0 {
@@ -276,7 +276,7 @@ func (ar *arangorepository) handleAddStrainWithParent(
 	parent string,
 ) (map[string]any, error) {
 	qVar := map[string]any{
-		"@stock_collection": ar.stockc.stock.Name(),
+		bindStockCollection: ar.stockc.stock.Name(),
 		"id":                parent,
 	}
 	r, err := ar.database.GetRow(statement.StockFindQ, qVar)

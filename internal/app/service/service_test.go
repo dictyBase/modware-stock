@@ -165,7 +165,7 @@ func testRemoveNonExistentStock(
 ) {
 	t.Helper()
 
-	_, err := client.RemoveStock(ctx, &stock.StockId{Id: "DBS9999999"})
+	_, err := client.RemoveStock(ctx, &stock.StockId{Id: testMissingStrainID})
 	assert.Error(err)
 	grpcErr, ok := status.FromError(err)
 	assert.True(ok)
@@ -196,7 +196,7 @@ func testRemoveStockWithInvalidID(
 ) {
 	t.Helper()
 
-	_, err := client.RemoveStock(ctx, &stock.StockId{Id: "invalid-id-format"})
+	_, err := client.RemoveStock(ctx, &stock.StockId{Id: testInvalidIDFormat})
 	assert.Error(err)
 	grpcErr, ok := status.FromError(err)
 	assert.True(ok)

@@ -90,26 +90,26 @@ func (ar *arangorepository) selectPlasmidStatement(
 // Base bind parameters (common to all queries)
 func (ar *arangorepository) baseBindParams() map[string]any {
 	return map[string]any{
-		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
-		"ontology":           ar.plasmidOnto,
-		"@cv_collection":     ar.ontoc.Cv.Name(),
+		nameStockCvtermGraph: ar.stockc.stockOnto.Name(),
+		paramOntology:        ar.plasmidOnto,
+		bindCVCollection:     ar.ontoc.Cv.Name(),
 	}
 }
 
 // Stock-first bind parameters (no filter queries)
 func (ar *arangorepository) stockFirstBindParams() map[string]any {
 	return map[string]any{
-		"@stock_collection": ar.stockc.stock.Name(),
-		"stock_prop_graph":  ar.stockc.stockPropType.Name(),
+		bindStockCollection: ar.stockc.stock.Name(),
+		nameStockPropGraph:  ar.stockc.stockPropType.Name(),
 	}
 }
 
 // Ontology-first bind parameters (filtered queries)
 func (ar *arangorepository) ontologyFirstBindParams() map[string]any {
 	return map[string]any{
-		"@cvterm_collection": ar.ontoc.Term.Name(),
-		"@cv_collection":     ar.ontoc.Cv.Name(),
-		"stock_prop_graph":   ar.stockc.stockPropType.Name(),
+		bindCvtermCollection: ar.ontoc.Term.Name(),
+		bindCVCollection:     ar.ontoc.Cv.Name(),
+		nameStockPropGraph:   ar.stockc.stockPropType.Name(),
 	}
 }
 
@@ -131,7 +131,7 @@ var addLimitParam = F.Curry2(
 		return F.Pipe1(
 			params,
 			R.Union[string, any](lastWins)(
-				map[string]any{"limit": limit},
+				map[string]any{paramLimit: limit},
 			),
 		)
 	},
@@ -210,11 +210,11 @@ func (ar *arangorepository) buildPlasmidQueryParams(
 ) map[string]any {
 	return map[string]any{
 		"id":                 plasmidID,
-		"@stock_collection":  ar.stockc.stock.Name(),
-		"stock_prop_graph":   ar.stockc.stockPropType.Name(),
-		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
-		"ontology":           ar.plasmidOnto,
-		"@cv_collection":     ar.ontoc.Cv.Name(),
+		bindStockCollection:  ar.stockc.stock.Name(),
+		nameStockPropGraph:   ar.stockc.stockPropType.Name(),
+		nameStockCvtermGraph: ar.stockc.stockOnto.Name(),
+		paramOntology:        ar.plasmidOnto,
+		bindCVCollection:     ar.ontoc.Cv.Name(),
 	}
 }
 

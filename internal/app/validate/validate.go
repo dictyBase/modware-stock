@@ -10,11 +10,11 @@ import (
 // ServerArgs validates required CLI arguments for the stock server.
 func ServerArgs(c *cli.Context) error {
 	for _, p := range []string{
-		"arangodb-pass",
-		"arangodb-database",
-		"arangodb-user",
-		"nats-host",
-		"nats-port",
+		flagArangodbPass,
+		flagArangodbDatabase,
+		flagArangodbUser,
+		flagNatsHost,
+		flagNatsPort,
 	} {
 		if len(c.String(p)) == 0 {
 			return cli.NewExitError(

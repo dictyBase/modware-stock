@@ -67,11 +67,11 @@ func createTestConn(t *testing.T, connStr string) *gnats.Conn {
 func createTestStrain() *stock.Strain {
 	return &stock.Strain{
 		Data: &stock.Strain_Data{
-			Type: "strain",
-			Id:   "DBS0000001",
+			Type: testStrainType,
+			Id:   testStrainID,
 			Attributes: &stock.StrainAttributes{
-				CreatedBy:       "test@example.com",
-				UpdatedBy:       "test@example.com",
+				CreatedBy:       testCreatorEmail,
+				UpdatedBy:       testCreatorEmail,
 				Depositor:       "depositor@example.com",
 				Summary:         "Test strain for NATS publishing",
 				EditableSummary: "Test strain for NATS publishing",
@@ -90,11 +90,11 @@ func createTestStrain() *stock.Strain {
 func createTestPlasmid() *stock.Plasmid {
 	return &stock.Plasmid{
 		Data: &stock.Plasmid_Data{
-			Type: "plasmid",
-			Id:   "DBP0000001",
+			Type: testPlasmidType,
+			Id:   testPlasmidID,
 			Attributes: &stock.PlasmidAttributes{
-				CreatedBy:       "test@example.com",
-				UpdatedBy:       "test@example.com",
+				CreatedBy:       testCreatorEmail,
+				UpdatedBy:       testCreatorEmail,
 				Depositor:       "depositor@example.com",
 				Summary:         "Test plasmid for NATS publishing",
 				EditableSummary: "Test plasmid for NATS publishing",
@@ -271,7 +271,7 @@ func TestPublishWithDifferentSubjects(t *testing.T) {
 
 	// Create test strains
 	strain1 := createTestStrain()
-	strain1.Data.Id = "DBS0000001"
+	strain1.Data.Id = testStrainID
 	strain2 := createTestStrain()
 	strain2.Data.Id = "DBS0000002"
 

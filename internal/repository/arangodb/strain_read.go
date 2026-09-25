@@ -16,13 +16,13 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 		statement.StockGetStrain,
 		map[string]any{
 			"id":                 id,
-			"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
-			"ontology":           ar.strainOnto,
-			"stock_collection":   ar.stockc.stock.Name(),
-			"parent_graph":       ar.stockc.strain2Parent.Name(),
-			"stock_prop_graph":   ar.stockc.stockPropType.Name(),
-			"@stock_collection":  ar.stockc.stock.Name(),
-			"@cv_collection":     ar.ontoc.Cv.Name(),
+			nameStockCvtermGraph: ar.stockc.stockOnto.Name(),
+			paramOntology:        ar.strainOnto,
+			nameStockCollection:  ar.stockc.stock.Name(),
+			nameParentGraph:      ar.stockc.strain2Parent.Name(),
+			nameStockPropGraph:   ar.stockc.stockPropType.Name(),
+			bindStockCollection:  ar.stockc.stock.Name(),
+			bindCVCollection:     ar.ontoc.Cv.Name(),
 		})
 	if err != nil {
 		return m, errors.Errorf("error in finding strain id %s %s", id, err)
@@ -69,14 +69,14 @@ func (ar *arangorepository) ListStrainsByIDs(
 		statement.StrainListFromIDs,
 		map[string]any{
 			"ids":                p.Id,
-			"limit":              len(p.Id),
-			"ontology":           ar.strainOnto,
-			"stock_collection":   ar.stockc.stock.Name(),
-			"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
-			"stock_prop_graph":   ar.stockc.stockPropType.Name(),
-			"parent_graph":       ar.stockc.strain2Parent.Name(),
-			"@stock_collection":  ar.stockc.stock.Name(),
-			"@cv_collection":     ar.ontoc.Cv.Name(),
+			paramLimit:           len(p.Id),
+			paramOntology:        ar.strainOnto,
+			nameStockCollection:  ar.stockc.stock.Name(),
+			nameStockCvtermGraph: ar.stockc.stockOnto.Name(),
+			nameStockPropGraph:   ar.stockc.stockPropType.Name(),
+			nameParentGraph:      ar.stockc.strain2Parent.Name(),
+			bindStockCollection:  ar.stockc.stock.Name(),
+			bindCVCollection:     ar.ontoc.Cv.Name(),
 		})
 	if err != nil {
 		return ms, err
@@ -98,11 +98,11 @@ func (ar *arangorepository) strainStmtWithFilter(
 	param *stock.StockParameters,
 ) (string, map[string]any) {
 	stmtMap := map[string]any{
-		"@cvterm_collection": ar.ontoc.Term.Name(),
-		"@cv_collection":     ar.ontoc.Cv.Name(),
-		"stock_cvterm_graph": ar.stockc.stockOnto.Name(),
-		"stock_prop_graph":   ar.stockc.stockPropType.Name(),
-		"limit":              param.Limit + 1,
+		bindCvtermCollection: ar.ontoc.Term.Name(),
+		bindCVCollection:     ar.ontoc.Cv.Name(),
+		nameStockCvtermGraph: ar.stockc.stockOnto.Name(),
+		nameStockPropGraph:   ar.stockc.stockPropType.Name(),
+		paramLimit:           param.Limit + 1,
 	}
 	if param.Cursor != 0 { // no cursor so return first set of results with filter
 		stmt := fmt.Sprintf(statement.StrainListFilterWithCursor, param.Filter)
@@ -118,9 +118,9 @@ func (ar *arangorepository) strainStmtNoFilter(
 ) (string, map[string]any) {
 	stmt := statement.StrainList
 	stmtMap := map[string]any{
-		"@stock_collection": ar.stockc.stock.Name(),
-		"stock_prop_graph":  ar.stockc.stockPropType.Name(),
-		"limit":             param.Limit + 1,
+		bindStockCollection: ar.stockc.stock.Name(),
+		nameStockPropGraph:  ar.stockc.stockPropType.Name(),
+		paramLimit:          param.Limit + 1,
 	}
 	if param.Cursor != 0 {
 		stmt = statement.StrainListWithCursor

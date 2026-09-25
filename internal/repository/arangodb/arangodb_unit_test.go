@@ -86,8 +86,8 @@ func TestMergeBindParams(t *testing.T) {
 
 	t.Run("merge single map", func(t *testing.T) {
 		params := map[string]any{
-			"key1": "value1",
-			"key2": 42,
+			testStringKey1: "value1",
+			testStringKey2: 42,
 		}
 		result := mergeBindParams(params)
 		require.Equal(t, params, result, "Merging single map should return the same map")
@@ -95,8 +95,8 @@ func TestMergeBindParams(t *testing.T) {
 
 	t.Run("merge two maps without conflicts", func(t *testing.T) {
 		params1 := map[string]any{
-			"key1": "value1",
-			"key2": 42,
+			testStringKey1: "value1",
+			testStringKey2: 42,
 		}
 		params2 := map[string]any{
 			"key3": "value3",
@@ -104,25 +104,25 @@ func TestMergeBindParams(t *testing.T) {
 		}
 		result := mergeBindParams(params1, params2)
 		require.Len(t, result, 4, "Result should have all keys from both maps")
-		require.Equal(t, "value1", result["key1"])
-		require.Equal(t, 42, result["key2"])
+		require.Equal(t, "value1", result[testStringKey1])
+		require.Equal(t, 42, result[testStringKey2])
 		require.Equal(t, "value3", result["key3"])
 		require.Equal(t, true, result["key4"])
 	})
 
 	t.Run("merge maps with conflicting keys - last wins", func(t *testing.T) {
 		params1 := map[string]any{
-			"key1": "original",
-			"key2": 42,
+			testStringKey1: "original",
+			testStringKey2: 42,
 		}
 		params2 := map[string]any{
-			"key1": "overridden",
-			"key3": true,
+			testStringKey1: "overridden",
+			"key3":         true,
 		}
 		result := mergeBindParams(params1, params2)
 		require.Len(t, result, 3, "Result should have 3 unique keys")
-		require.Equal(t, "overridden", result["key1"], "Last value should win for conflicting keys")
-		require.Equal(t, 42, result["key2"])
+		require.Equal(t, "overridden", result[testStringKey1], "Last value should win for conflicting keys")
+		require.Equal(t, 42, result[testStringKey2])
 		require.Equal(t, true, result["key3"])
 	})
 
@@ -172,7 +172,7 @@ func TestGenAQLDocExpression(t *testing.T) {
 
 	t.Run("single bind variable", func(t *testing.T) {
 		bindVars := map[string]any{
-			"name": "test",
+			paramName: testString,
 		}
 		result := genAQLDocExpression(bindVars)
 		require.Equal(t, "name: @name", result)
@@ -180,9 +180,9 @@ func TestGenAQLDocExpression(t *testing.T) {
 
 	t.Run("multiple bind variables", func(t *testing.T) {
 		bindVars := map[string]any{
-			"name":  "test",
-			"email": "test@example.com",
-			"age":   30,
+			paramName: testString,
+			"email":   "test@example.com",
+			"age":     30,
 		}
 		result := genAQLDocExpression(bindVars)
 		// Result should contain all bindings separated by commas
@@ -206,7 +206,7 @@ func TestGenAQLDocExpression(t *testing.T) {
 // TestFormatAQLBinding tests the formatAQLBinding function
 func TestFormatAQLBinding(t *testing.T) {
 	t.Run("format simple key", func(t *testing.T) {
-		result := formatAQLBinding("name")
+		result := formatAQLBinding(paramName)
 		require.Equal(t, "name: @name", result)
 	})
 
@@ -261,8 +261,8 @@ func TestNormalizeStrBindParam(t *testing.T) {
 	})
 
 	t.Run("normalize non-empty string", func(t *testing.T) {
-		result := normalizeStrBindParam("test")
-		require.Equal(t, "test", result, "Should return same string")
+		result := normalizeStrBindParam(testString)
+		require.Equal(t, testString, result, "Should return same string")
 	})
 
 	t.Run("normalize whitespace string", func(t *testing.T) {
@@ -293,7 +293,7 @@ func TestTermID(t *testing.T) {
 		ar := repo.(*arangorepository)
 
 		// Try to find a term that should exist (from dicty_strain_property.json)
-		termID, err := ar.termID("general strain", "dicty_strain_property")
+		termID, err := ar.termID(testStrainSummary, "dicty_strain_property")
 		require.NoError(t, err, "Should find existing term")
 		require.NotEmpty(t, termID, "Term ID should not be empty")
 	})
@@ -339,7 +339,7 @@ func TestTermID(t *testing.T) {
 		ar := repo.(*arangorepository)
 
 		// Try to find a term in a non-existent ontology
-		_, err = ar.termID("general strain", "nonexistent_ontology")
+		_, err = ar.termID(testStrainSummary, "nonexistent_ontology")
 		require.Error(t, err, "Should return error for non-existent ontology")
 		require.Contains(t, err.Error(), "does not exist", "Error should mention ontology does not exist")
 	})
@@ -384,7 +384,7 @@ func TestTermID(t *testing.T) {
 		ar := repo.(*arangorepository)
 
 		// Try to find a term with empty ontology
-		_, err = ar.termID("general strain", "")
+		_, err = ar.termID(testStrainSummary, "")
 		require.Error(t, err, "Should return error for empty ontology name")
 	})
 }
@@ -492,8 +492,8 @@ func TestNewStockRepo_ValidationErrors(t *testing.T) {
 func TestConcatOptionalParams(t *testing.T) {
 	t.Run("concat with empty optional params", func(t *testing.T) {
 		baseParams := map[string]any{
-			"id":   123,
-			"name": "test",
+			"id":      123,
+			paramName: testString,
 		}
 		optionalParams := []map[string]any{}
 
@@ -506,13 +506,13 @@ func TestConcatOptionalParams(t *testing.T) {
 			"id": 123,
 		}
 		optionalParams := []map[string]any{
-			{"name": "test"},
+			{paramName: testString},
 		}
 
 		result := concatOptionalParams(baseParams)(optionalParams)
 		require.Len(t, result, 2, "Result should have both base and optional params")
 		require.Equal(t, 123, result["id"])
-		require.Equal(t, "test", result["name"])
+		require.Equal(t, testString, result[paramName])
 	})
 
 	t.Run("concat with multiple optional params", func(t *testing.T) {
@@ -520,7 +520,7 @@ func TestConcatOptionalParams(t *testing.T) {
 			"id": 123,
 		}
 		optionalParams := []map[string]any{
-			{"name": "test"},
+			{paramName: testString},
 			{"email": "test@example.com"},
 			{"age": 30},
 		}
@@ -528,22 +528,22 @@ func TestConcatOptionalParams(t *testing.T) {
 		result := concatOptionalParams(baseParams)(optionalParams)
 		require.Len(t, result, 4, "Result should have all params")
 		require.Equal(t, 123, result["id"])
-		require.Equal(t, "test", result["name"])
+		require.Equal(t, testString, result[paramName])
 		require.Equal(t, "test@example.com", result["email"])
 		require.Equal(t, 30, result["age"])
 	})
 
 	t.Run("concat with overlapping keys - last wins", func(t *testing.T) {
 		baseParams := map[string]any{
-			"id":   123,
-			"name": "original",
+			"id":      123,
+			paramName: "original",
 		}
 		optionalParams := []map[string]any{
-			{"name": "updated"},
-			{"name": "final"},
+			{paramName: "updated"},
+			{paramName: "final"},
 		}
 
 		result := concatOptionalParams(baseParams)(optionalParams)
-		require.Equal(t, "final", result["name"], "Last value should win for overlapping keys")
+		require.Equal(t, "final", result[paramName], "Last value should win for overlapping keys")
 	})
 }

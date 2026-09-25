@@ -64,9 +64,9 @@ func (ar *arangorepository) checkStock(id string) (string, error) {
 	r, err := ar.database.GetRow(
 		statement.StockFindIDQ,
 		map[string]any{
-			"stock_collection": ar.stockc.stock.Name(),
-			"stock_prop_graph": ar.stockc.stockPropType.Name(),
-			"stock_id":         id,
+			nameStockCollection: ar.stockc.stock.Name(),
+			nameStockPropGraph:  ar.stockc.stockPropType.Name(),
+			paramStockID:        id,
 		})
 	if err != nil {
 		return id,
@@ -151,9 +151,9 @@ func (ar *arangorepository) termID(term, onto string) (string, error) {
 	r, err := ar.database.GetRow(
 		statement.StrainExistTermQ,
 		map[string]any{
-			"@cv_collection":     ar.ontoc.Cv.Name(),
-			"@cvterm_collection": ar.ontoc.Term.Name(),
-			"ontology":           onto,
+			bindCVCollection:     ar.ontoc.Cv.Name(),
+			bindCvtermCollection: ar.ontoc.Term.Name(),
+			paramOntology:        onto,
 			"term":               term,
 		})
 	if err != nil {

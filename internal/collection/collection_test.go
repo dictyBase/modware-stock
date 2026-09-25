@@ -211,13 +211,13 @@ func TestMap_ComplexTransformations(t *testing.T) {
 		input := []bool{true, false, true, false}
 		result := Map(input, func(b bool) string {
 			if b {
-				return "yes"
+				return testYes
 			}
-			return "no"
+			return testNo
 		})
 
 		require.Len(t, result, 4)
-		require.Equal(t, []string{"yes", "no", "yes", "no"}, result)
+		require.Equal(t, []string{testYes, testNo, testYes, testNo}, result)
 	})
 
 	t.Run("complex number transformation", func(t *testing.T) {
@@ -266,9 +266,9 @@ func TestFilterFlags_EmptyAndAll(t *testing.T) {
 		t.Parallel()
 
 		input := []cli.Flag{
-			cli.StringFlag{Name: "flag1"},
-			cli.StringFlag{Name: "flag2"},
-			cli.StringFlag{Name: "flag3"},
+			cli.StringFlag{Name: testFlag1},
+			cli.StringFlag{Name: testFlag2},
+			cli.StringFlag{Name: testFlag3},
 		}
 
 		result := FilterFlags(input, func(_ cli.Flag) bool {
@@ -283,9 +283,9 @@ func TestFilterFlags_EmptyAndAll(t *testing.T) {
 		t.Parallel()
 
 		input := []cli.Flag{
-			cli.StringFlag{Name: "flag1"},
-			cli.StringFlag{Name: "flag2"},
-			cli.StringFlag{Name: "flag3"},
+			cli.StringFlag{Name: testFlag1},
+			cli.StringFlag{Name: testFlag2},
+			cli.StringFlag{Name: testFlag3},
 		}
 
 		result := FilterFlags(input, func(_ cli.Flag) bool {
@@ -323,10 +323,10 @@ func TestFilterFlags_Partial(t *testing.T) {
 		t.Parallel()
 
 		input := []cli.Flag{
-			cli.StringFlag{Name: "flag1"},
-			cli.StringFlag{Name: "flag2"},
+			cli.StringFlag{Name: testFlag1},
+			cli.StringFlag{Name: testFlag2},
 			cli.StringFlag{Name: "target"},
-			cli.StringFlag{Name: "flag3"},
+			cli.StringFlag{Name: testFlag3},
 		}
 
 		result := FilterFlags(input, func(flag cli.Flag) bool {
@@ -361,10 +361,10 @@ func TestFilterFlags_ByType(t *testing.T) {
 		t.Parallel()
 
 		input := []cli.Flag{
-			cli.StringFlag{Name: "string1"},
-			cli.BoolFlag{Name: "bool1"},
+			cli.StringFlag{Name: testString1},
+			cli.BoolFlag{Name: testBool1},
 			cli.StringFlag{Name: "string2"},
-			cli.IntFlag{Name: "int1"},
+			cli.IntFlag{Name: testInt1},
 			cli.StringFlag{Name: "string3"},
 		}
 
@@ -381,10 +381,10 @@ func TestFilterFlags_ByType(t *testing.T) {
 		t.Parallel()
 
 		input := []cli.Flag{
-			cli.StringFlag{Name: "string1"},
-			cli.BoolFlag{Name: "bool1"},
+			cli.StringFlag{Name: testString1},
+			cli.BoolFlag{Name: testBool1},
 			cli.BoolFlag{Name: "bool2"},
-			cli.IntFlag{Name: "int1"},
+			cli.IntFlag{Name: testInt1},
 		}
 
 		result := FilterFlags(input, func(flag cli.Flag) bool {
@@ -392,16 +392,16 @@ func TestFilterFlags_ByType(t *testing.T) {
 			return ok
 		})
 
-		assertFlagNames(t, result, "bool1", "bool2")
+		assertFlagNames(t, result, testBool1, "bool2")
 	})
 
 	t.Run("filter by flag type - IntFlag only", func(t *testing.T) {
 		t.Parallel()
 
 		input := []cli.Flag{
-			cli.StringFlag{Name: "string1"},
-			cli.IntFlag{Name: "int1"},
-			cli.BoolFlag{Name: "bool1"},
+			cli.StringFlag{Name: testString1},
+			cli.IntFlag{Name: testInt1},
+			cli.BoolFlag{Name: testBool1},
 			cli.IntFlag{Name: "int2"},
 			cli.IntFlag{Name: "int3"},
 		}
@@ -411,7 +411,7 @@ func TestFilterFlags_ByType(t *testing.T) {
 			return ok
 		})
 
-		assertFlagNames(t, result, "int1", "int2", "int3")
+		assertFlagNames(t, result, testInt1, "int2", "int3")
 	})
 }
 
@@ -498,9 +498,9 @@ func TestFilterFlags_ComplexPredicates(t *testing.T) {
 		t.Parallel()
 
 		input := []cli.Flag{
-			cli.StringFlag{Name: "flag1", EnvVar: "ENV1"},
-			cli.StringFlag{Name: "flag2", EnvVar: "ENV2"},
-			cli.StringFlag{Name: "flag3"},
+			cli.StringFlag{Name: testFlag1, EnvVar: "ENV1"},
+			cli.StringFlag{Name: testFlag2, EnvVar: "ENV2"},
+			cli.StringFlag{Name: testFlag3},
 		}
 
 		result := FilterFlags(input, func(flag cli.Flag) bool {
@@ -510,16 +510,16 @@ func TestFilterFlags_ComplexPredicates(t *testing.T) {
 			return false
 		})
 
-		assertFlagNames(t, result, "flag1", "flag2")
+		assertFlagNames(t, result, testFlag1, testFlag2)
 	})
 
 	t.Run("filter flags with usage text", func(t *testing.T) {
 		t.Parallel()
 
 		input := []cli.Flag{
-			cli.StringFlag{Name: "flag1", Usage: "Important flag"},
-			cli.StringFlag{Name: "flag2", Usage: ""},
-			cli.StringFlag{Name: "flag3", Usage: "Important setting"},
+			cli.StringFlag{Name: testFlag1, Usage: "Important flag"},
+			cli.StringFlag{Name: testFlag2, Usage: ""},
+			cli.StringFlag{Name: testFlag3, Usage: "Important setting"},
 		}
 
 		result := FilterFlags(input, func(flag cli.Flag) bool {
@@ -529,7 +529,7 @@ func TestFilterFlags_ComplexPredicates(t *testing.T) {
 			return false
 		})
 
-		assertFlagNames(t, result, "flag1", "flag3")
+		assertFlagNames(t, result, testFlag1, testFlag3)
 	})
 }
 
@@ -575,7 +575,7 @@ func TestFilterFlags_Behavior(t *testing.T) {
 		t.Parallel()
 
 		input := []cli.Flag{
-			cli.StringFlag{Name: "flag1"},
+			cli.StringFlag{Name: testFlag1},
 		}
 
 		result := FilterFlags(input, func(_ cli.Flag) bool {
@@ -589,15 +589,15 @@ func TestFilterFlags_Behavior(t *testing.T) {
 		t.Parallel()
 
 		input := []cli.Flag{
-			cli.StringFlag{Name: "flag1"},
-			cli.StringFlag{Name: "flag2"},
-			cli.StringFlag{Name: "flag3"},
+			cli.StringFlag{Name: testFlag1},
+			cli.StringFlag{Name: testFlag2},
+			cli.StringFlag{Name: testFlag3},
 		}
 
 		originalLen, originalNames := captureOriginalFlagData(input)
 
 		FilterFlags(input, func(flag cli.Flag) bool {
-			return flag.GetName() == "flag1"
+			return flag.GetName() == testFlag1
 		})
 
 		assertOriginalSliceUnchanged(t, input, originalLen, originalNames)

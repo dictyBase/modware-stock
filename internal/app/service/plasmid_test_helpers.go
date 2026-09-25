@@ -14,10 +14,10 @@ const (
 func newTestPlasmid() *stock.NewPlasmid {
 	return &stock.NewPlasmid{
 		Data: &stock.NewPlasmid_Data{
-			Type: "plasmid",
+			Type: stockTypePlasmid,
 			Attributes: &stock.NewPlasmidAttributes{
-				CreatedBy:       "testuser@dictybase.org",
-				UpdatedBy:       "testuser@dictybase.org",
+				CreatedBy:       testUserEmail,
+				UpdatedBy:       testUserEmail,
 				Summary:         "Test summary for plasmid",
 				EditableSummary: "Editable summary",
 				Depositor:       "John Doe",
@@ -36,11 +36,11 @@ func newTestPlasmid() *stock.NewPlasmid {
 func newExistingPlasmid() *stock.ExistingPlasmid {
 	return &stock.ExistingPlasmid{
 		Data: &stock.ExistingPlasmid_Data{
-			Type: "plasmid",
+			Type: stockTypePlasmid,
 			Id:   "DBP0000001",
 			Attributes: &stock.ExistingPlasmidAttributes{
-				CreatedBy:       "loaduser@dictybase.org",
-				UpdatedBy:       "loaduser@dictybase.org",
+				CreatedBy:       testLoadUserEmail,
+				UpdatedBy:       testLoadUserEmail,
 				CreatedAt:       timestamppb.Now(),
 				UpdatedAt:       timestamppb.Now(),
 				Summary:         "Loaded plasmid summary",
@@ -61,11 +61,11 @@ func newExistingPlasmid() *stock.ExistingPlasmid {
 func newPlasmidUpdate(plasmidID string) *stock.PlasmidUpdate {
 	return &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
-			Type: "plasmid",
+			Type: stockTypePlasmid,
 			Id:   plasmidID,
 			Attributes: &stock.PlasmidUpdateAttributes{
-				UpdatedBy:       "updateuser@dictybase.org",
-				Summary:         "Updated summary",
+				UpdatedBy:       testUpdateUserEmail,
+				Summary:         testUpdatedSummary,
 				EditableSummary: "Updated editable summary",
 				Genes:           []string{"geneX", "geneY"},
 				Dbxrefs:         []string{"dbxrefX"},

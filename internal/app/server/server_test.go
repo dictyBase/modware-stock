@@ -292,8 +292,8 @@ func testPlasmidTypeWithEmptyString(t *testing.T) {
 func testGetLoggerWithTextFormat(t *testing.T) {
 	t.Helper()
 	ctx := createTestContext(map[string]string{
-		"log-format": "text",
-		"log-level":  "error",
+		flagLogFormat: logFormatText,
+		flagLogLevel:  logLevelError,
 	})
 
 	logger := getLogger(ctx)
@@ -307,8 +307,8 @@ func testGetLoggerWithTextFormat(t *testing.T) {
 func testGetLoggerWithJSONFormat(t *testing.T) {
 	t.Helper()
 	ctx := createTestContext(map[string]string{
-		"log-format": "json",
-		"log-level":  "error",
+		flagLogFormat: logFormatJSON,
+		flagLogLevel:  logLevelError,
 	})
 
 	logger := getLogger(ctx)
@@ -322,8 +322,8 @@ func testGetLoggerWithJSONFormat(t *testing.T) {
 func testGetLoggerWithDebugLevel(t *testing.T) {
 	t.Helper()
 	ctx := createTestContext(map[string]string{
-		"log-format": "text",
-		"log-level":  "debug",
+		flagLogFormat: logFormatText,
+		flagLogLevel:  "debug",
 	})
 
 	logger := getLogger(ctx)
@@ -335,8 +335,8 @@ func testGetLoggerWithDebugLevel(t *testing.T) {
 func testGetLoggerWithWarnLevel(t *testing.T) {
 	t.Helper()
 	ctx := createTestContext(map[string]string{
-		"log-format": "text",
-		"log-level":  "warn",
+		flagLogFormat: logFormatText,
+		flagLogLevel:  "warn",
 	})
 
 	logger := getLogger(ctx)
@@ -348,8 +348,8 @@ func testGetLoggerWithWarnLevel(t *testing.T) {
 func testGetLoggerWithErrorLevel(t *testing.T) {
 	t.Helper()
 	ctx := createTestContext(map[string]string{
-		"log-format": "text",
-		"log-level":  "error",
+		flagLogFormat: logFormatText,
+		flagLogLevel:  logLevelError,
 	})
 
 	logger := getLogger(ctx)
@@ -361,8 +361,8 @@ func testGetLoggerWithErrorLevel(t *testing.T) {
 func testGetLoggerWithFatalLevel(t *testing.T) {
 	t.Helper()
 	ctx := createTestContext(map[string]string{
-		"log-format": "text",
-		"log-level":  "fatal",
+		flagLogFormat: logFormatText,
+		flagLogLevel:  "fatal",
 	})
 
 	logger := getLogger(ctx)
@@ -374,8 +374,8 @@ func testGetLoggerWithFatalLevel(t *testing.T) {
 func testGetLoggerWithPanicLevel(t *testing.T) {
 	t.Helper()
 	ctx := createTestContext(map[string]string{
-		"log-format": "text",
-		"log-level":  "panic",
+		flagLogFormat: logFormatText,
+		flagLogLevel:  "panic",
 	})
 
 	logger := getLogger(ctx)
@@ -387,8 +387,8 @@ func testGetLoggerWithPanicLevel(t *testing.T) {
 func testGetLoggerWithDefaultLevel(t *testing.T) {
 	t.Helper()
 	ctx := createTestContext(map[string]string{
-		"log-format": "text",
-		"log-level":  "info",
+		flagLogFormat: logFormatText,
+		flagLogLevel:  "info",
 	})
 
 	logger := getLogger(ctx)
@@ -401,8 +401,8 @@ func testGetLoggerWithDefaultLevel(t *testing.T) {
 func testGetLoggerOutputIsStderr(t *testing.T) {
 	t.Helper()
 	ctx := createTestContext(map[string]string{
-		"log-format": "text",
-		"log-level":  "error",
+		flagLogFormat: logFormatText,
+		flagLogLevel:  logLevelError,
 	})
 
 	logger := getLogger(ctx)
@@ -414,8 +414,8 @@ func testGetLoggerOutputIsStderr(t *testing.T) {
 func testGetLoggerTextFormatterTimestamp(t *testing.T) {
 	t.Helper()
 	ctx := createTestContext(map[string]string{
-		"log-format": "text",
-		"log-level":  "error",
+		flagLogFormat: logFormatText,
+		flagLogLevel:  logLevelError,
 	})
 
 	logger := getLogger(ctx)
@@ -429,8 +429,8 @@ func testGetLoggerTextFormatterTimestamp(t *testing.T) {
 func testGetLoggerJSONFormatterTimestamp(t *testing.T) {
 	t.Helper()
 	ctx := createTestContext(map[string]string{
-		"log-format": "json",
-		"log-level":  "error",
+		flagLogFormat: logFormatJSON,
+		flagLogLevel:  logLevelError,
 	})
 
 	logger := getLogger(ctx)
@@ -450,8 +450,8 @@ func testAllParamsConnectParams(t *testing.T) {
 		"arangodb-pass":     "testpass",
 		"arangodb-database": "testdb",
 		"arangodb-host":     "localhost",
-		"arangodb-port":     "8529",
-		"is-secure":         true,
+		flagArangodbPort:    "8529",
+		flagIsSecure:        true,
 	})
 
 	connP, _, _ := allParams(ctx)
@@ -520,8 +520,8 @@ func testAllParamsOboGraphCollectionParams(t *testing.T) {
 func testAllParamsIntegerConversion(t *testing.T) {
 	t.Helper()
 	ctx := createTestContextWithFlags(map[string]any{
-		"arangodb-port": "9999",
-		"keyoffset":     500000,
+		flagArangodbPort: "9999",
+		"keyoffset":      500000,
 	})
 
 	connP, collP, _ := allParams(ctx)
@@ -535,7 +535,7 @@ func testAllParamsIntegerConversion(t *testing.T) {
 func testAllParamsBooleanValues(t *testing.T) {
 	t.Helper()
 	ctx := createTestContextWithFlags(map[string]any{
-		"is-secure": false,
+		flagIsSecure: false,
 	})
 
 	connP, _, _ := allParams(ctx)
@@ -551,8 +551,8 @@ func testAllParamsReturnsAllStructs(t *testing.T) {
 		"arangodb-pass":     "pass",
 		"arangodb-database": "db",
 		"arangodb-host":     "host",
-		"arangodb-port":     "8529",
-		"is-secure":         true,
+		flagArangodbPort:    "8529",
+		flagIsSecure:        true,
 		"stock-collection":  "stock",
 	})
 
