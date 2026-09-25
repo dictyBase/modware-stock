@@ -47,27 +47,27 @@ func (ar *arangorepository) buildAddPlasmidParams(
 ) map[string]any {
 	attr := params.plasmid.Data.Attributes
 	return map[string]any{
-		"@stock_collection":            ar.stockc.stock.Name(),
-		"@stock_key_generator":         ar.stockc.stockKey.Name(),
-		"@stock_type_collection":       ar.stockc.stockType.Name(),
-		"@stock_properties_collection": ar.stockc.stockProp.Name(),
-		"to":                           params.termID,
-		"@stock_term_collection":       ar.stockc.stockTerm.Name(),
-		"depositor":                    attr.Depositor,
-		"created_by":                   attr.CreatedBy,
-		"updated_by":                   attr.UpdatedBy,
-		"summary":                      normalizeStrBindParam(attr.Summary),
-		"editable_summary": normalizeStrBindParam(
+		bindStockCollection:     ar.stockc.stock.Name(),
+		"@stock_key_generator":  ar.stockc.stockKey.Name(),
+		bindStockTypeCollection: ar.stockc.stockType.Name(),
+		bindStockPropCollection: ar.stockc.stockProp.Name(),
+		"to":                    params.termID,
+		bindStockTermCollection: ar.stockc.stockTerm.Name(),
+		fieldDepositor:          attr.Depositor,
+		fieldCreatedBy:          attr.CreatedBy,
+		fieldUpdatedBy:          attr.UpdatedBy,
+		fieldSummary:            normalizeStrBindParam(attr.Summary),
+		fieldEditableSummary: normalizeStrBindParam(
 			attr.EditableSummary,
 		),
-		"genes":   normalizeSliceBindParam(attr.Genes),
-		"dbxrefs": normalizeSliceBindParam(attr.Dbxrefs),
-		"publications": normalizeSliceBindParam(
+		fieldGenes:   normalizeSliceBindParam(attr.Genes),
+		fieldDbxrefs: normalizeSliceBindParam(attr.Dbxrefs),
+		fieldPublications: normalizeSliceBindParam(
 			attr.Publications,
 		),
 		"image_map": normalizeStrBindParam(attr.ImageMap),
 		"sequence":  normalizeStrBindParam(attr.Sequence),
-		"name":      attr.Name,
+		paramName:   attr.Name,
 	}
 }
 
@@ -152,10 +152,10 @@ func (ar *arangorepository) updatePlasmidOntologyTerm(
 			_, err = ar.database.DoRun(
 				statement.PlasmidTermUpd,
 				map[string]any{
-					"@stock_term_collection": ar.stockc.stockTerm.Name(),
-					"stock_collection":       ar.stockc.stock.Name(),
-					"key":                    params.update.Data.Id,
-					"to":                     tid,
+					bindStockTermCollection: ar.stockc.stockTerm.Name(),
+					nameStockCollection:     ar.stockc.stock.Name(),
+					paramKey:                params.update.Data.Id,
+					"to":                    tid,
 				},
 			)
 			if err != nil {
@@ -194,10 +194,10 @@ func (ar *arangorepository) buildEditPlasmidParams(
 		),
 		bindParams: mergeBindParams(
 			map[string]any{
-				"@stock_properties_collection": ar.stockc.stockProp.Name(),
-				"@stock_collection":            ar.stockc.stock.Name(),
-				"key":                          params.update.Data.Id,
-				"propkey":                      params.propKey,
+				bindStockPropCollection: ar.stockc.stockProp.Name(),
+				bindStockCollection:     ar.stockc.stock.Name(),
+				paramKey:                params.update.Data.Id,
+				"propkey":               params.propKey,
 			},
 			bindVars,
 			bindPlVars,
@@ -273,12 +273,12 @@ func (ar *arangorepository) buildLoadPlasmidParams(
 ) map[string]any {
 	return mergeBindParams(
 		map[string]any{
-			"stock_id":                     params.id,
-			"@stock_collection":            ar.stockc.stock.Name(),
-			"@stock_type_collection":       ar.stockc.stockType.Name(),
-			"@stock_properties_collection": ar.stockc.stockProp.Name(),
-			"@stock_term_collection":       ar.stockc.stockTerm.Name(),
-			"to":                           params.termID,
+			paramStockID:            params.id,
+			bindStockCollection:     ar.stockc.stock.Name(),
+			bindStockTypeCollection: ar.stockc.stockType.Name(),
+			bindStockPropCollection: ar.stockc.stockProp.Name(),
+			bindStockTermCollection: ar.stockc.stockTerm.Name(),
+			"to":                    params.termID,
 		},
 		existingPlasmidBindParams(params.plasmid.Data.Attributes),
 	)
@@ -314,19 +314,19 @@ func existingPlasmidBindParams(
 	attr *stock.ExistingPlasmidAttributes,
 ) map[string]any {
 	return map[string]any{
-		"created_at":       attr.CreatedAt.AsTime().UnixMilli(),
-		"updated_at":       attr.UpdatedAt.AsTime().UnixMilli(),
-		"depositor":        attr.Depositor,
-		"created_by":       attr.CreatedBy,
-		"updated_by":       attr.UpdatedBy,
-		"summary":          normalizeStrBindParam(attr.Summary),
-		"editable_summary": normalizeStrBindParam(attr.EditableSummary),
-		"genes":            normalizeSliceBindParam(attr.Genes),
-		"dbxrefs":          normalizeSliceBindParam(attr.Dbxrefs),
-		"publications":     normalizeSliceBindParam(attr.Publications),
-		"image_map":        normalizeStrBindParam(attr.ImageMap),
-		"sequence":         normalizeStrBindParam(attr.Sequence),
-		"name":             attr.Name,
+		fieldCreatedAt:       attr.CreatedAt.AsTime().UnixMilli(),
+		fieldUpdatedAt:       attr.UpdatedAt.AsTime().UnixMilli(),
+		fieldDepositor:       attr.Depositor,
+		fieldCreatedBy:       attr.CreatedBy,
+		fieldUpdatedBy:       attr.UpdatedBy,
+		fieldSummary:         normalizeStrBindParam(attr.Summary),
+		fieldEditableSummary: normalizeStrBindParam(attr.EditableSummary),
+		fieldGenes:           normalizeSliceBindParam(attr.Genes),
+		fieldDbxrefs:         normalizeSliceBindParam(attr.Dbxrefs),
+		fieldPublications:    normalizeSliceBindParam(attr.Publications),
+		"image_map":          normalizeStrBindParam(attr.ImageMap),
+		"sequence":           normalizeStrBindParam(attr.Sequence),
+		paramName:            attr.Name,
 	}
 }
 
@@ -356,14 +356,14 @@ func getUpdatablePlasmidBindParams(
 	attr *stock.PlasmidUpdateAttributes,
 ) map[string]any {
 	return concatOptionalParams(
-		map[string]any{"updated_by": attr.UpdatedBy},
+		map[string]any{fieldUpdatedBy: attr.UpdatedBy},
 	)([]map[string]any{
-		optionalStrParam("summary", attr.Summary),
-		optionalStrParam("editable_summary", attr.EditableSummary),
-		optionalStrParam("depositor", attr.Depositor),
-		optionalSliceParam("genes", attr.Genes),
-		optionalSliceParam("dbxrefs", attr.Dbxrefs),
-		optionalSliceParam("publications", attr.Publications),
+		optionalStrParam(fieldSummary, attr.Summary),
+		optionalStrParam(fieldEditableSummary, attr.EditableSummary),
+		optionalStrParam(fieldDepositor, attr.Depositor),
+		optionalSliceParam(fieldGenes, attr.Genes),
+		optionalSliceParam(fieldDbxrefs, attr.Dbxrefs),
+		optionalSliceParam(fieldPublications, attr.Publications),
 	})
 }
 
@@ -379,6 +379,6 @@ func getUpdatablePlasmidPropBindParams(
 	)([]map[string]any{
 		optionalStrParam("image_map", attr.ImageMap),
 		optionalStrParam("sequence", attr.Sequence),
-		optionalStrParam("name", attr.Name),
+		optionalStrParam(paramName, attr.Name),
 	})
 }

@@ -138,18 +138,18 @@ func createTestExistingPlasmid() *stock.ExistingPlasmid {
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
 	return &stock.ExistingPlasmid{
 		Data: &stock.ExistingPlasmid_Data{
-			Type: "plasmid",
+			Type: fieldPlasmid,
 			Id:   "DBP0000098",
 			Attributes: &stock.ExistingPlasmidAttributes{
 				CreatedAt:            aphgrpc.TimestampProto(tm),
 				UpdatedAt:            aphgrpc.TimestampProto(tm),
-				CreatedBy:            "george@costanza.com",
-				UpdatedBy:            "george@costanza.com",
-				Depositor:            "george@costanza.com",
-				Summary:              "this is a test plasmid",
-				EditableSummary:      "this is a test plasmid",
+				CreatedBy:            testEmailCostanza,
+				UpdatedBy:            testEmailCostanza,
+				Depositor:            testEmailCostanza,
+				Summary:              testPlasmidSummary,
+				EditableSummary:      testPlasmidSummary,
 				Publications:         []string{"1348970"},
-				ImageMap:             "http://dictybase.org/data/plasmid/images/87.jpg",
+				ImageMap:             testURL,
 				Sequence:             "tttttyyyyjkausadaaaavvvvvv",
 				Name:                 "p9999",
 				DictyPlasmidProperty: OntologyTermCloningVector,
@@ -263,7 +263,7 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(sf, 10, "should list ten plasmids")
 	for _, um := range sf {
-		assert.Equal(um.Summary, "this is a test plasmid", "should match summary")
+		assert.Equal(um.Summary, testPlasmidSummary, "should match summary")
 		assert.Equal(um.PlasmidProperties.Name, "p123456", "should match name")
 	}
 
@@ -299,7 +299,7 @@ func TestListPlasmids(t *testing.T) {
 	for _, stock := range ls {
 		assert.Equal(
 			stock.Depositor,
-			"george@costanza.com",
+			testEmailCostanza,
 			"should match the depositor",
 		)
 		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
@@ -414,7 +414,7 @@ func assertPlasmidTimestamps(
 func TestGetPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	ns := newTestPlasmid("george@costanza.com")
+	ns := newTestPlasmid(testEmailCostanza)
 	result13 := F.Pipe2(repo.AddPlasmid(ns), ToEither, toStockDocResult)
 
 	um, err := result13.F1, result13.F2
@@ -487,7 +487,7 @@ func TestEditPlasmid(t *testing.T) {
 				EditableSummary: "updated plasmid",
 				Publications:    []string{"8394839", "583989343", "853983948"},
 				Genes:           []string{"DDB_G0270724", "DDB_G027489343"},
-				ImageMap:        "http://dictybase.org/data/plasmid/images/87.jpg",
+				ImageMap:        testURL,
 			},
 		},
 	}
@@ -636,7 +636,7 @@ func assertAddedPlasmidFields(
 func TestAddPlasmid(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	ns := newTestPlasmid("george@costanza.com")
+	ns := newTestPlasmid(testEmailCostanza)
 	result21 := F.Pipe2(repo.AddPlasmid(ns), ToEither, toStockDocResult)
 
 	um, err := result21.F1, result21.F2
@@ -718,7 +718,7 @@ func TestEditPlasmidOntologyUpdate(t *testing.T) {
 			Type: ns.Data.Type,
 			Id:   m.StockID,
 			Attributes: &stock.PlasmidUpdateAttributes{
-				UpdatedBy:            "peterman@jpeterman.com",
+				UpdatedBy:            testEmailPeterman,
 				DictyPlasmidProperty: OntologyTermDoxONVector,
 			},
 		},

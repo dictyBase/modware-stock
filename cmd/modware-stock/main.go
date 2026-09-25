@@ -26,20 +26,20 @@ func main() {
 	app.Version = appVersion
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "log-format",
-			Usage: "format of the logging out, either of json or text.",
-			Value: "json",
+			Name:  flagLogFormat,
+			Usage: usageLogFormat,
+			Value: logFormatJSON,
 		},
 		cli.StringFlag{
-			Name:  "log-level",
-			Usage: "log level for the application",
-			Value: "error",
+			Name:  flagLogLevel,
+			Usage: usageLogLevel,
+			Value: logLevelError,
 		},
 	}
 	app.Commands = []cli.Command{
 		{
-			Name:   "start-server",
-			Usage:  "starts the modware-stock microservice with grpc backends",
+			Name:   flagStartServer,
+			Usage:  usageStartServer,
 			Action: server.RunServer,
 			Before: validate.ServerArgs,
 			Flags:  allFlags(),
@@ -61,7 +61,7 @@ func allFlags() []cli.Flag {
 			Name:   "arangodb-database, db",
 			EnvVar: "ARANGODB_DATABASE",
 			Usage:  "arangodb database name",
-			Value:  "stock",
+			Value:  defaultDatabase,
 		},
 	}...)
 	f = append(f, oboflag.OntologyFlagsOnly()...)
@@ -110,47 +110,47 @@ func serverFlags() []cli.Flag {
 func dbCollectionFlags() []cli.Flag {
 	return []cli.Flag{
 		cli.StringFlag{
-			Name:  "stock-collection",
+			Name:  collectionStock,
 			Usage: "arangodb collection for storing biological stocks",
-			Value: "stock",
+			Value: defaultStockCollection,
 		},
 		cli.StringFlag{
-			Name:  "stockprop-collection",
+			Name:  collectionStockProp,
 			Usage: "arangodb collection for storing stock properties",
 			Value: "stockprop",
 		},
 		cli.StringFlag{
-			Name:  "stock-key-generator-collection",
+			Name:  collectionStockKeyGenerator,
 			Usage: "arangodb collection for generating unique IDs",
 			Value: "stock_key_generator",
 		},
 		cli.StringFlag{
-			Name:  "stock-type-edge",
+			Name:  collectionStockTypeEdge,
 			Usage: "arangodb edge collection for connecting stocks to their types (strain or plasmid)",
 			Value: "stock_type",
 		},
 		cli.StringFlag{
-			Name:  "parent-strain-edge",
+			Name:  collectionParentStrainEdge,
 			Usage: "arangodb edge collection for connecting strains to their parent",
 			Value: "parent_strain",
 		},
 		cli.StringFlag{
-			Name:  "stock-term-edge",
+			Name:  collectionStockTermEdge,
 			Usage: "arangodb edge collection for connecting stock to ontology term",
 			Value: "stock_term",
 		},
 		cli.StringFlag{
-			Name:  "stockproptype-graph",
+			Name:  graphStockPropType,
 			Usage: "arangodb named graph for managing relations between stocks and their properties",
 			Value: "stockprop_type",
 		},
 		cli.StringFlag{
-			Name:  "strain2parent-graph",
+			Name:  graphStrain2Parent,
 			Usage: "arangodb named graph for managing relations between strains and their parents",
 			Value: "strain2parent",
 		},
 		cli.StringFlag{
-			Name:  "stockonto-graph",
+			Name:  graphStockOnto,
 			Usage: "arangodb named graph for managing stock and ontology",
 			Value: "stockonto",
 		},

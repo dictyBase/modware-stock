@@ -679,7 +679,7 @@ func verifyStockIDIndexCreated(t *testing.T, repo *arangorepository) {
 	for _, index := range indices {
 		if index.Type() == driver.PersistentIndex {
 			fields := index.Fields()
-			if len(fields) > 0 && fields[0] == "stock_id" {
+			if len(fields) > 0 && fields[0] == paramStockID {
 				foundStockIDIndex = true
 				break
 			}

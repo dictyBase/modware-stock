@@ -273,10 +273,10 @@ func setup(t *testing.T) (stock.StockServiceClient, *require.Assertions) {
 func newTestStrain() *stock.NewStrain {
 	return &stock.NewStrain{
 		Data: &stock.NewStrain_Data{
-			Type: "strain",
+			Type: stockTypeStrain,
 			Attributes: &stock.NewStrainAttributes{
-				CreatedBy:       "testuser@dictybase.org",
-				UpdatedBy:       "testuser@dictybase.org",
+				CreatedBy:       testUserEmail,
+				UpdatedBy:       testUserEmail,
 				Summary:         "Test summary for strain",
 				EditableSummary: "Editable summary",
 				Depositor:       "John Doe",
@@ -284,7 +284,7 @@ func newTestStrain() *stock.NewStrain {
 				Dbxrefs:         []string{"dbxref1", "dbxref2"},
 				Publications:    []string{"pub1", "pub2"},
 				Label:           "DBS0123456",
-				Species:         "Dictyostelium discoideum",
+				Species:         testSpecies,
 				Plasmid:         "plasmid1",
 				Names:           []string{"name1", "name2"},
 			},
@@ -326,7 +326,7 @@ func testCreateValidStrain(params *testParams) {
 	params.assert.NoError(err, "should create strain without error")
 	params.assert.NotNil(resp, "response should not be nil")
 	params.assert.NotEmpty(resp.Data.Id, "strain ID should be generated")
-	params.assert.Equal("strain", resp.Data.Type, "type should be strain")
+	params.assert.Equal(stockTypeStrain, resp.Data.Type, "type should be strain")
 	params.assert.Equal(
 		req.Data.Attributes.CreatedBy,
 		resp.Data.Attributes.CreatedBy,
@@ -383,14 +383,14 @@ func testCreateStrainWithDefaultProperty(params *testParams) {
 func testCreateStrainWithCustomProperty(params *testParams) {
 	params.t.Helper()
 	req := newTestStrain()
-	req.Data.Attributes.DictyStrainProperty = "REMI-seq"
+	req.Data.Attributes.DictyStrainProperty = testRemiSeqProperty
 
 	resp, err := params.client.CreateStrain(params.ctx, req)
 
 	params.assert.NoError(err, "should create strain without error")
 	params.assert.NotNil(resp, "response should not be nil")
 	params.assert.Equal(
-		"REMI-seq",
+		testRemiSeqProperty,
 		resp.Data.Attributes.DictyStrainProperty,
 		"should preserve custom strain property",
 	)
@@ -401,13 +401,13 @@ func testCreateStrainMinimalFields(params *testParams) {
 	params.t.Helper()
 	req := &stock.NewStrain{
 		Data: &stock.NewStrain_Data{
-			Type: "strain",
+			Type: stockTypeStrain,
 			Attributes: &stock.NewStrainAttributes{
-				CreatedBy: "testuser@dictybase.org",
-				UpdatedBy: "testuser@dictybase.org",
-				Depositor: "testuser@dictybase.org",
+				CreatedBy: testUserEmail,
+				UpdatedBy: testUserEmail,
+				Depositor: testUserEmail,
 				Label:     "DBS0999999",
-				Species:   "Dictyostelium discoideum",
+				Species:   testSpecies,
 			},
 		},
 	}
@@ -434,7 +434,7 @@ func testCreateStrainMissingRequiredFields(params *testParams) {
 	params.t.Helper()
 	req := &stock.NewStrain{
 		Data: &stock.NewStrain_Data{
-			Type: "strain",
+			Type: stockTypeStrain,
 			Attributes: &stock.NewStrainAttributes{
 				// Missing CreatedBy and UpdatedBy
 				Summary: "Test summary",
@@ -458,13 +458,13 @@ func testCreateStrainMissingRequiredFields(params *testParams) {
 func testCreateStrainInvalidType(params *testParams) {
 	params.t.Helper()
 	req := newTestStrain()
-	req.Data.Type = "strain" // Use valid type since there's no strict validation
+	req.Data.Type = stockTypeStrain // Use valid type since there's no strict validation
 
 	resp, err := params.client.CreateStrain(params.ctx, req)
 
 	params.assert.NoError(err, "should create strain even with different type")
 	params.assert.NotNil(resp, "response should not be nil")
-	params.assert.Equal("strain", resp.Data.Type, "type should match")
+	params.assert.Equal(stockTypeStrain, resp.Data.Type, "type should match")
 }
 
 // testCreateStrainPublisherError tests that strain creation succeeds in repository
@@ -529,7 +529,7 @@ func testGetExistingStrain(params *testParams) {
 		resp.Data.Id,
 		"strain ID should match",
 	)
-	params.assert.Equal("strain", resp.Data.Type, "type should be strain")
+	params.assert.Equal(stockTypeStrain, resp.Data.Type, "type should be strain")
 	params.assert.Equal(
 		createReq.Data.Attributes.Label,
 		resp.Data.Attributes.Label,
@@ -550,7 +550,7 @@ func testGetExistingStrain(params *testParams) {
 // testGetNonExistentStrain tests retrieving a strain that doesn't exist.
 func testGetNonExistentStrain(params *testParams) {
 	params.t.Helper()
-	req := &stock.StockId{Id: "DBS9999999"}
+	req := &stock.StockId{Id: testMissingStrainID}
 
 	_, err := params.client.GetStrain(params.ctx, req)
 
@@ -573,14 +573,14 @@ func testGetStrainWithEmptyID(params *testParams) {
 		assert:               params.assert,
 		err:                  err,
 		expectedCode:         codes.InvalidArgument,
-		expectedMsgSubstring: "invalid",
+		expectedMsgSubstring: testInvalidSubstring,
 	})
 }
 
 // testGetStrainWithInvalidID tests retrieving a strain with invalid ID format.
 func testGetStrainWithInvalidID(params *testParams) {
 	params.t.Helper()
-	req := &stock.StockId{Id: "invalid-id-format"}
+	req := &stock.StockId{Id: testInvalidIDFormat}
 
 	_, err := params.client.GetStrain(params.ctx, req)
 
@@ -595,11 +595,11 @@ func testGetStrainWithInvalidID(params *testParams) {
 func newExistingStrain() *stock.ExistingStrain {
 	return &stock.ExistingStrain{
 		Data: &stock.ExistingStrain_Data{
-			Type: "strain",
+			Type: stockTypeStrain,
 			Id:   "DBS0350000",
 			Attributes: &stock.ExistingStrainAttributes{
-				CreatedBy:       "loaduser@dictybase.org",
-				UpdatedBy:       "loaduser@dictybase.org",
+				CreatedBy:       testLoadUserEmail,
+				UpdatedBy:       testLoadUserEmail,
 				CreatedAt:       timestamppb.Now(),
 				UpdatedAt:       timestamppb.Now(),
 				Summary:         "Loaded strain summary",
@@ -609,7 +609,7 @@ func newExistingStrain() *stock.ExistingStrain {
 				Dbxrefs:         []string{"dbxrefA"},
 				Publications:    []string{"pubA"},
 				Label:           "DBS0350000",
-				Species:         "Dictyostelium discoideum",
+				Species:         testSpecies,
 				Plasmid:         "plasmidX",
 				Names:           []string{"loadName1", "loadName2"},
 			},
@@ -627,7 +627,7 @@ func testLoadValidStrain(params *testParams) {
 	params.assert.NoError(err, "should load strain without error")
 	params.assert.NotNil(resp, "response should not be nil")
 	params.assert.Equal(req.Data.Id, resp.Data.Id, "strain ID should match")
-	params.assert.Equal("strain", resp.Data.Type, "type should be strain")
+	params.assert.Equal(stockTypeStrain, resp.Data.Type, "type should be strain")
 	params.assert.Equal(
 		req.Data.Attributes.CreatedBy,
 		resp.Data.Attributes.CreatedBy,
@@ -671,14 +671,14 @@ func testLoadStrainWithCustomProperty(params *testParams) {
 	req.Data.Id = "DBS0350002"
 	req.Data.Attributes.CreatedAt = timestamppb.Now()
 	req.Data.Attributes.UpdatedAt = timestamppb.Now()
-	req.Data.Attributes.DictyStrainProperty = "REMI-seq"
+	req.Data.Attributes.DictyStrainProperty = testRemiSeqProperty
 
 	resp, err := params.client.LoadStrain(params.ctx, req)
 
 	params.assert.NoError(err, "should load strain without error")
 	params.assert.NotNil(resp, "response should not be nil")
 	params.assert.Equal(
-		"REMI-seq",
+		testRemiSeqProperty,
 		resp.Data.Attributes.DictyStrainProperty,
 		"should preserve custom strain property",
 	)
@@ -689,7 +689,7 @@ func testLoadStrainMissingRequiredFields(params *testParams) {
 	params.t.Helper()
 	req := &stock.ExistingStrain{
 		Data: &stock.ExistingStrain_Data{
-			Type: "strain",
+			Type: stockTypeStrain,
 			Id:   "DBS0350003",
 			Attributes: &stock.ExistingStrainAttributes{
 				// Missing CreatedBy and UpdatedBy
@@ -704,7 +704,7 @@ func testLoadStrainMissingRequiredFields(params *testParams) {
 		assert:               params.assert,
 		err:                  err,
 		expectedCode:         codes.InvalidArgument,
-		expectedMsgSubstring: "invalid",
+		expectedMsgSubstring: testInvalidSubstring,
 	})
 }
 
@@ -714,11 +714,11 @@ func testLoadStrainMissingRequiredFields(params *testParams) {
 func newStrainUpdate(strainID string) *stock.StrainUpdate {
 	return &stock.StrainUpdate{
 		Data: &stock.StrainUpdate_Data{
-			Type: "strain",
+			Type: stockTypeStrain,
 			Id:   strainID,
 			Attributes: &stock.StrainUpdateAttributes{
-				UpdatedBy:       "updateuser@dictybase.org",
-				Summary:         "Updated summary",
+				UpdatedBy:       testUpdateUserEmail,
+				Summary:         testUpdatedSummary,
 				EditableSummary: "Updated editable summary",
 				Genes:           []string{"geneX", "geneY"},
 				Dbxrefs:         []string{"dbxrefX"},
@@ -771,7 +771,7 @@ func testUpdateExistingStrain(params *testParams) {
 // testUpdateNonExistentStrain tests updating a strain that doesn't exist.
 func testUpdateNonExistentStrain(params *testParams) {
 	params.t.Helper()
-	req := newStrainUpdate("DBS9999999")
+	req := newStrainUpdate(testMissingStrainID)
 
 	_, err := params.client.UpdateStrain(params.ctx, req)
 
@@ -789,11 +789,11 @@ func testUpdateStrainWithEmptyID(params *testParams) {
 	params.t.Helper()
 	req := &stock.StrainUpdate{
 		Data: &stock.StrainUpdate_Data{
-			Type: "strain",
+			Type: stockTypeStrain,
 			Id:   "",
 			Attributes: &stock.StrainUpdateAttributes{
-				UpdatedBy: "updateuser@dictybase.org",
-				Summary:   "Updated summary",
+				UpdatedBy: testUpdateUserEmail,
+				Summary:   testUpdatedSummary,
 			},
 		},
 	}
@@ -804,7 +804,7 @@ func testUpdateStrainWithEmptyID(params *testParams) {
 		assert:               params.assert,
 		err:                  err,
 		expectedCode:         codes.InvalidArgument,
-		expectedMsgSubstring: "invalid",
+		expectedMsgSubstring: testInvalidSubstring,
 	})
 }
 
@@ -819,10 +819,10 @@ func testUpdateStrainPartialUpdate(params *testParams) {
 	// Update only summary
 	updateReq := &stock.StrainUpdate{
 		Data: &stock.StrainUpdate_Data{
-			Type: "strain",
+			Type: stockTypeStrain,
 			Id:   createResp.Data.Id,
 			Attributes: &stock.StrainUpdateAttributes{
-				UpdatedBy: "updateuser@dictybase.org",
+				UpdatedBy: testUpdateUserEmail,
 				Summary:   "Only summary updated",
 			},
 		},
@@ -883,7 +883,7 @@ func testListStrainsByIDsWithExisting(params *testParams) {
 func testListStrainsByIDsNonExistent(params *testParams) {
 	params.t.Helper()
 	req := &stock.StockIdList{
-		Id: []string{"DBS9999997", "DBS9999998", "DBS9999999"},
+		Id: []string{"DBS9999997", "DBS9999998", testMissingStrainID},
 	}
 
 	_, err := params.client.ListStrainsByIds(params.ctx, req)
@@ -923,7 +923,7 @@ func testListStrainsByIDsMixed(params *testParams) {
 	// Mix existing and non-existing IDs
 	req := &stock.StockIdList{Id: []string{
 		createResp.Data.Id,
-		"DBS9999999",
+		testMissingStrainID,
 	}}
 	resp, err := params.client.ListStrainsByIds(params.ctx, req)
 
@@ -952,7 +952,7 @@ func testListStrainsDefault(params *testParams) {
 
 	// List with a basic filter using proper format: field===value
 	// Use 'depositor' field which is in the filter map
-	req := &stock.StockParameters{Filter: "depositor===John Doe"}
+	req := &stock.StockParameters{Filter: testDepositorFilter}
 	resp, err := params.client.ListStrains(params.ctx, req)
 
 	params.assert.NoError(err, "should list strains without error")
@@ -977,7 +977,7 @@ func testListStrainsWithLimit(params *testParams) {
 	}
 
 	// List with limit
-	req := &stock.StockParameters{Limit: 3, Filter: "depositor===John Doe"}
+	req := &stock.StockParameters{Limit: 3, Filter: testDepositorFilter}
 	resp, err := params.client.ListStrains(params.ctx, req)
 
 	params.assert.NoError(err, "should list strains without error")
@@ -1005,7 +1005,7 @@ func testListStrainsWithCursor(params *testParams) {
 	}
 
 	// First page
-	req := &stock.StockParameters{Limit: 5, Filter: "depositor===John Doe"}
+	req := &stock.StockParameters{Limit: 5, Filter: testDepositorFilter}
 	resp, err := params.client.ListStrains(params.ctx, req)
 	params.assert.NoError(err, "should list strains without error")
 	params.assert.NotNil(resp, "response should not be nil")
@@ -1015,7 +1015,7 @@ func testListStrainsWithCursor(params *testParams) {
 		req2 := &stock.StockParameters{
 			Limit:  5,
 			Cursor: resp.Meta.NextCursor,
-			Filter: "depositor===John Doe",
+			Filter: testDepositorFilter,
 		}
 		resp2, err := params.client.ListStrains(params.ctx, req2)
 		params.assert.NoError(err, "should list second page without error")
@@ -1071,7 +1071,7 @@ func testUpdateStrainOntologyUpdate(params *testParams) {
 	// Update ontology term to "bacterial strain"
 	updateReq := &stock.StrainUpdate{
 		Data: &stock.StrainUpdate_Data{
-			Type: "strain",
+			Type: stockTypeStrain,
 			Id:   createResp.Data.Id,
 			Attributes: &stock.StrainUpdateAttributes{
 				UpdatedBy:           "ontology-updater@dictybase.org",
@@ -1118,11 +1118,11 @@ func testUpdateStrainOntologyWithOtherFields(params *testParams) {
 	// Update ontology term AND other fields simultaneously
 	updateReq := &stock.StrainUpdate{
 		Data: &stock.StrainUpdate_Data{
-			Type: "strain",
+			Type: stockTypeStrain,
 			Id:   createResp.Data.Id,
 			Attributes: &stock.StrainUpdateAttributes{
 				UpdatedBy:           "multi-updater@dictybase.org",
-				DictyStrainProperty: "REMI-seq",
+				DictyStrainProperty: testRemiSeqProperty,
 				Summary:             "Updated summary with ontology",
 				Label:               "updated-label",
 				Species:             "Updated species",
@@ -1135,7 +1135,7 @@ func testUpdateStrainOntologyWithOtherFields(params *testParams) {
 
 	// Verify ontology term updated
 	params.assert.Equal(
-		"REMI-seq",
+		testRemiSeqProperty,
 		resp.Data.Attributes.DictyStrainProperty,
 		"should update ontology term to REMI-seq",
 	)
@@ -1170,7 +1170,7 @@ func testUpdateStrainInvalidOntology(params *testParams) {
 	// Try to update with invalid ontology term
 	updateReq := &stock.StrainUpdate{
 		Data: &stock.StrainUpdate_Data{
-			Type: "strain",
+			Type: stockTypeStrain,
 			Id:   createResp.Data.Id,
 			Attributes: &stock.StrainUpdateAttributes{
 				UpdatedBy:           "bad-updater@dictybase.org",
@@ -1204,7 +1204,7 @@ func testUpdateStrainOntologyPreservation(params *testParams) {
 	// Update other fields WITHOUT specifying DictyStrainProperty
 	updateReq := &stock.StrainUpdate{
 		Data: &stock.StrainUpdate_Data{
-			Type: "strain",
+			Type: stockTypeStrain,
 			Id:   createResp.Data.Id,
 			Attributes: &stock.StrainUpdateAttributes{
 				UpdatedBy: "preserve-updater@dictybase.org",

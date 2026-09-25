@@ -159,20 +159,20 @@ func TestLoadStrainWithID(t *testing.T) {
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
 	nsp := &stock.ExistingStrain{
 		Data: &stock.ExistingStrain_Data{
-			Type: "strain",
+			Type: testStrainName,
 			Attributes: &stock.ExistingStrainAttributes{
 				CreatedAt:           aphgrpc.TimestampProto(tm),
 				UpdatedAt:           aphgrpc.TimestampProto(tm),
-				CreatedBy:           "wizard_of_loneliness@testemail.org",
-				UpdatedBy:           "wizard_of_loneliness@testemail.org",
-				Depositor:           "wizard_of_loneliness@testemail.org",
-				Summary:             "Remi-mutant strain",
-				EditableSummary:     "Remi-mutant strain.",
-				Dbxrefs:             []string{"5466867", "4536935", "d2578"},
-				Label:               "egeB/DDB_G0270724_ps-REMI",
-				Species:             "Dictyostelium discoideum",
-				Names:               []string{"gammaS13", "BCN149086"},
-				DictyStrainProperty: "general strain",
+				CreatedBy:           testEmailWizard,
+				UpdatedBy:           testEmailWizard,
+				Depositor:           testEmailWizard,
+				Summary:             testRemiSummary,
+				EditableSummary:     testRemiEditableSum,
+				Dbxrefs:             []string{"5466867", "4536935", testIDPrefix},
+				Label:               testNameREMISeq,
+				Species:             testSpecies,
+				Names:               []string{testNameGammaS13, testGeneName},
+				DictyStrainProperty: testStrainSummary,
 			},
 		},
 	}
@@ -195,20 +195,20 @@ func setUpTestData(
 	tm, _ := time.Parse("2006-01-02 15:04:05", "2010-03-30 14:40:58")
 	est := &stock.ExistingStrain{
 		Data: &stock.ExistingStrain_Data{
-			Type: "strain",
+			Type: testStrainName,
 			Attributes: &stock.ExistingStrainAttributes{
 				CreatedAt:           aphgrpc.TimestampProto(tm),
 				UpdatedAt:           aphgrpc.TimestampProto(tm),
-				CreatedBy:           "wizard_of_loneliness@testemail.org",
-				UpdatedBy:           "wizard_of_loneliness@testemail.org",
-				Depositor:           "wizard_of_loneliness@testemail.org",
-				Summary:             "Remi-mutant strain",
-				EditableSummary:     "Remi-mutant strain.",
-				Dbxrefs:             []string{"5466867", "4536935", "d2578"},
-				Label:               "egeB/DDB_G0270724_ps-REMI",
-				Species:             "Dictyostelium discoideum",
-				Names:               []string{"gammaS13", "BCN149086"},
-				DictyStrainProperty: "general strain",
+				CreatedBy:           testEmailWizard,
+				UpdatedBy:           testEmailWizard,
+				Depositor:           testEmailWizard,
+				Summary:             testRemiSummary,
+				EditableSummary:     testRemiEditableSum,
+				Dbxrefs:             []string{"5466867", "4536935", testIDPrefix},
+				Label:               testNameREMISeq,
+				Species:             testSpecies,
+				Names:               []string{testNameGammaS13, testGeneName},
+				DictyStrainProperty: testStrainSummary,
 			},
 		},
 	}
@@ -216,20 +216,20 @@ func setUpTestData(
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	ns := &stock.ExistingStrain{
 		Data: &stock.ExistingStrain_Data{
-			Type: "strain",
+			Type: testStrainName,
 			Attributes: &stock.ExistingStrainAttributes{
 				CreatedAt:           aphgrpc.TimestampProto(tm),
 				UpdatedAt:           aphgrpc.TimestampProto(tm),
-				CreatedBy:           "wizard_of_loneliness@testemail.org",
-				UpdatedBy:           "wizard_of_loneliness@testemail.org",
-				Depositor:           "wizard_of_loneliness@testemail.org",
-				Summary:             "Remi-mutant strain",
-				EditableSummary:     "Remi-mutant strain.",
-				Dbxrefs:             []string{"5466867", "4536935", "d2578"},
-				Label:               "egeB/DDB_G0270724_ps-REMI",
-				Species:             "Dictyostelium discoideum",
-				Names:               []string{"gammaS13", "BCN149086"},
-				DictyStrainProperty: "general strain",
+				CreatedBy:           testEmailWizard,
+				UpdatedBy:           testEmailWizard,
+				Depositor:           testEmailWizard,
+				Summary:             testRemiSummary,
+				EditableSummary:     testRemiEditableSum,
+				Dbxrefs:             []string{"5466867", "4536935", testIDPrefix},
+				Label:               testNameREMISeq,
+				Species:             testSpecies,
+				Names:               []string{testNameGammaS13, testGeneName},
+				DictyStrainProperty: testStrainSummary,
 				Parent:              pst.StockID,
 			},
 		},
@@ -447,7 +447,7 @@ func TestListStrainsWithFilter(t *testing.T) {
 	assert.NoError(err, "expect no error in getting list of strains")
 	assert.Len(sf, 10, "should list ten strains")
 	for _, m := range sf {
-		assert.Equal(m.Summary, "Radiation-sensitive mutant.", "should match summary")
+		assert.Equal(m.Summary, testRadiationSummary, "should match summary")
 		assert.Equal(m.StrainProperties.Label, "yS13", "should match label")
 	}
 
@@ -468,7 +468,7 @@ func TestListStrains(t *testing.T) {
 	for _, stock := range ls {
 		assert.Equal(
 			stock.Depositor,
-			"george@costanza.com",
+			testEmailCostanza,
 			"should match the depositor",
 		)
 		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
@@ -532,7 +532,7 @@ func assertStrainListItems(
 	expectedProperty string,
 ) {
 	for _, stock := range strains {
-		assert.Equal(stock.Depositor, "george@costanza.com", "should match the depositor")
+		assert.Equal(stock.Depositor, testEmailCostanza, "should match the depositor")
 		assert.Equal(stock.Key, stock.StockID, "stock key and ID should match")
 		assert.Regexp(
 			regexp.MustCompile(`^DBS0\d{6,}$`),
@@ -563,7 +563,7 @@ func TestListStrainsByIDs(t *testing.T) {
 	ls, err := repo.ListStrainsByIDs(&stock.StockIdList{Id: ids})
 	assert.NoError(err, "expect no error in getting strains")
 	assert.Len(ls, 30, "should match the provided limit number")
-	assertStrainListItems(assert, ls, "", "general strain")
+	assertStrainListItems(assert, ls, "", testStrainSummary)
 
 	pm, err := repo.AddStrain(newTestParentStrain("j@peterman.org"))
 	assert.NoErrorf(
@@ -576,7 +576,7 @@ func TestListStrainsByIDs(t *testing.T) {
 	pls, err := repo.ListStrainsByIDs(&stock.StockIdList{Id: pids})
 	assert.NoError(err, "expect no error in getting 30 stocks with parents")
 	assert.Len(pls, 30, "should match the provided limit number")
-	assertStrainListItems(assert, pls, pm.StockID, "general strain")
+	assertStrainListItems(assert, pls, pm.StockID, testStrainSummary)
 
 	els, err := repo.ListStrainsByIDs(
 		&stock.StockIdList{Id: []string{"DBN589343", "DBN48473232"}},
@@ -593,7 +593,7 @@ func TestGetStrain(t *testing.T) {
 	t.Parallel()
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	ns := newTestStrain("george@costanza.com", General)
+	ns := newTestStrain(testEmailCostanza, General)
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	g, err := repo.GetStrain(m.StockID)
@@ -653,7 +653,7 @@ func assertNewStrainPropertiesFields(
 	assert.Equal(doc.StrainProperties.Plasmid, attrs.Plasmid, "should match plasmid")
 	assert.Equal(
 		doc.StrainProperties.DictyStrainProperty,
-		"general strain",
+		testStrainSummary,
 		"should match ontology strain property",
 	)
 }
@@ -801,7 +801,7 @@ func strainUpdateInstance(
 				Dbxrefs: []string{
 					"FGBD9493483",
 					"4536935",
-					"d2578",
+					testIDPrefix,
 					"d0319",
 				},
 				Label:   "Ax3-pspD/lacZ",
@@ -887,7 +887,7 @@ func TestListStrainsWithGeneFilter(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 	// Create test strain with specific gene
-	ns := newTestStrain("george@costanza.com", General)
+	ns := newTestStrain(testEmailCostanza, General)
 	ns.Data.Attributes.Genes = []string{"DDB_G0287317", "DDB_G0287318"}
 	_, err := repo.AddStrain(ns)
 	assert.NoError(err, "expect no error from creating strain with genes")
@@ -982,8 +982,8 @@ func TestEditStrainWithParent(t *testing.T) {
 			Type: ns.Data.Type,
 			Id:   ust.StockID,
 			Attributes: &stock.StrainUpdateAttributes{
-				UpdatedBy: "mario@snes.org",
-				Depositor: "mario@snes.org",
+				UpdatedBy: testEmailSnes,
+				Depositor: testEmailSnes,
 				Parent:    pm.StockID,
 				Species:   "updated species",
 			},
@@ -1024,7 +1024,7 @@ func testMoreEditWithParent(
 			Type: ns.Data.Type,
 			Id:   ust.StockID,
 			Attributes: &stock.StrainUpdateAttributes{
-				UpdatedBy: "mario@snes.org",
+				UpdatedBy: testEmailSnes,
 				Parent:    pu.StockID,
 			},
 		},
@@ -1053,12 +1053,12 @@ func TestEditStrainOntologyUpdate(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 
-	// Create and add initial strain with "general strain" property
+	// Create and add initial strain with testStrainSummary property
 	ns := newUpdatableTestStrain("art@vandelay.org", General)
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
-		"general strain",
+		testStrainSummary,
 		m.StrainProperties.DictyStrainProperty,
 		"initial strain should have general strain property",
 	)
@@ -1069,8 +1069,8 @@ func TestEditStrainOntologyUpdate(t *testing.T) {
 			Type: ns.Data.Type,
 			Id:   m.StockID,
 			Attributes: &stock.StrainUpdateAttributes{
-				UpdatedBy:           "peterman@jpeterman.com",
-				DictyStrainProperty: "bacterial strain",
+				UpdatedBy:           testEmailPeterman,
+				DictyStrainProperty: testBacterialStrain,
 			},
 		},
 	}
@@ -1082,12 +1082,12 @@ func TestEditStrainOntologyUpdate(t *testing.T) {
 	gm, err := repo.GetStrain(m.StockID)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
-		"bacterial strain",
+		testBacterialStrain,
 		gm.StrainProperties.DictyStrainProperty,
 		"should update ontology term to bacterial strain",
 	)
 	assert.Equal(
-		"peterman@jpeterman.com",
+		testEmailPeterman,
 		gm.UpdatedBy,
 		"should update updatedby field",
 	)
@@ -1098,7 +1098,7 @@ func TestEditStrainOntologyUpdateToGwdi(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
 
-	// Create and add initial strain with "general strain" property
+	// Create and add initial strain with testStrainSummary property
 	ns := newUpdatableTestStrain("art@vandelay.org", General)
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
@@ -1109,7 +1109,7 @@ func TestEditStrainOntologyUpdateToGwdi(t *testing.T) {
 			Type: ns.Data.Type,
 			Id:   m.StockID,
 			Attributes: &stock.StrainUpdateAttributes{
-				UpdatedBy:           "peterman@jpeterman.com",
+				UpdatedBy:           testEmailPeterman,
 				DictyStrainProperty: "REMI-seq",
 			},
 		},
@@ -1144,7 +1144,7 @@ func TestEditStrainInvalidOntologyTerm(t *testing.T) {
 			Type: ns.Data.Type,
 			Id:   m.StockID,
 			Attributes: &stock.StrainUpdateAttributes{
-				UpdatedBy:           "peterman@jpeterman.com",
+				UpdatedBy:           testEmailPeterman,
 				DictyStrainProperty: "invalid ontology term",
 			},
 		},
@@ -1175,8 +1175,8 @@ func TestEditStrainOntologyUpdateWithOtherFields(t *testing.T) {
 			Type: ns.Data.Type,
 			Id:   m.StockID,
 			Attributes: &stock.StrainUpdateAttributes{
-				UpdatedBy:           "peterman@jpeterman.com",
-				DictyStrainProperty: "bacterial strain",
+				UpdatedBy:           testEmailPeterman,
+				DictyStrainProperty: testBacterialStrain,
 				Summary:             "updated summary with ontology",
 				Label:               "updated-label",
 				Species:             "updated species",
@@ -1191,7 +1191,7 @@ func TestEditStrainOntologyUpdateWithOtherFields(t *testing.T) {
 	gm, err := repo.GetStrain(m.StockID)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
-		"bacterial strain",
+		testBacterialStrain,
 		gm.StrainProperties.DictyStrainProperty,
 		"should update ontology term",
 	)
@@ -1222,7 +1222,7 @@ func TestEditStrainWithoutOntologyUpdate(t *testing.T) {
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
-		"bacterial strain",
+		testBacterialStrain,
 		m.StrainProperties.DictyStrainProperty,
 		"initial strain should have bacterial strain property",
 	)
@@ -1233,7 +1233,7 @@ func TestEditStrainWithoutOntologyUpdate(t *testing.T) {
 			Type: ns.Data.Type,
 			Id:   m.StockID,
 			Attributes: &stock.StrainUpdateAttributes{
-				UpdatedBy: "peterman@jpeterman.com",
+				UpdatedBy: testEmailPeterman,
 				Summary:   "updated summary only",
 			},
 		},
@@ -1246,7 +1246,7 @@ func TestEditStrainWithoutOntologyUpdate(t *testing.T) {
 	gm, err := repo.GetStrain(m.StockID)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Equal(
-		"bacterial strain",
+		testBacterialStrain,
 		gm.StrainProperties.DictyStrainProperty,
 		"ontology term should remain unchanged when not specified",
 	)

@@ -22,7 +22,7 @@ import (
 var (
 	// -- Ord instances for numeric comparisons --
 
-	intOrd       = ORD.FromStrictCompare[int]()
+	intOrd        = ORD.FromStrictCompare[int]()
 	isPositiveInt = ORD.Gt(intOrd)(int(0))
 
 	// -- Shared Predicates & Helpers --
@@ -34,9 +34,9 @@ var (
 
 	// -- Field extractors for predicate lifting --
 
-	cursorVal       = func(ctx withNextCursor) int64 { return ctx.nextCursor }
-	cursorLen       = func(ctx withNextCursor) int { return len(ctx.collectionData) }
-	collectionLen   = func(lctx withPlasmidCollectionData) int { return len(lctx.collectionData) }
+	cursorVal        = func(ctx withNextCursor) int64 { return ctx.nextCursor }
+	cursorLen        = func(ctx withNextCursor) int { return len(ctx.collectionData) }
+	collectionLen    = func(lctx withPlasmidCollectionData) int { return len(lctx.collectionData) }
 	collectionExcess = func(lctx withPlasmidCollectionData) int {
 		return len(lctx.collectionData) - int(lctx.limit)
 	}

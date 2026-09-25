@@ -12,7 +12,7 @@ import (
 // makePlasmidData transforms a stock document model into plasmid data
 func makePlasmidData(m *model.StockDoc) *stock.Plasmid_Data {
 	return &stock.Plasmid_Data{
-		Type:       "plasmid",
+		Type:       stockTypePlasmid,
 		Id:         m.Key,
 		Attributes: makePlasmidAttr(m),
 	}
@@ -26,7 +26,7 @@ func plasmidModelToCollectionSlice(
 		mc,
 		func(m *model.StockDoc) *stock.PlasmidCollection_Data {
 			return &stock.PlasmidCollection_Data{
-				Type:       "plasmid",
+				Type:       stockTypePlasmid,
 				Id:         m.Key,
 				Attributes: makePlasmidAttr(m),
 			}

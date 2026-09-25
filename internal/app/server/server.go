@@ -111,23 +111,23 @@ func plasmidType(term string) aphgrpc.Option {
 func getLogger(c *cli.Context) *logrus.Entry {
 	log := logrus.New()
 	log.Out = os.Stderr
-	switch c.GlobalString("log-format") {
-	case "text":
+	switch c.GlobalString(flagLogFormat) {
+	case logFormatText:
 		log.Formatter = &logrus.TextFormatter{
 			TimestampFormat: "02/Jan/2006:15:04:05",
 		}
-	case "json":
+	case logFormatJSON:
 		log.Formatter = &logrus.JSONFormatter{
 			TimestampFormat: "02/Jan/2006:15:04:05",
 		}
 	}
-	l := c.GlobalString("log-level")
+	l := c.GlobalString(flagLogLevel)
 	switch l {
 	case "debug":
 		log.Level = logrus.DebugLevel
 	case "warn":
 		log.Level = logrus.WarnLevel
-	case "error":
+	case logLevelError:
 		log.Level = logrus.ErrorLevel
 	case "fatal":
 		log.Level = logrus.FatalLevel
@@ -140,13 +140,13 @@ func getLogger(c *cli.Context) *logrus.Entry {
 func allParams(
 	c *cli.Context,
 ) (*manager.ConnectParams, *arangodb.CollectionParams, *ontoarango.CollectionParams) {
-	arPort, _ := strconv.Atoi(c.String("arangodb-port"))
+	arPort, _ := strconv.Atoi(c.String(flagArangodbPort))
 	connP := &manager.ConnectParams{
 		User:     c.String("arangodb-user"),
 		Pass:     c.String("arangodb-pass"),
 		Database: c.String("arangodb-database"),
 		Host:     c.String("arangodb-host"),
-		Istls:    c.Bool("is-secure"),
+		Istls:    c.Bool(flagIsSecure),
 		Port:     arPort,
 	}
 	collP := &arangodb.CollectionParams{

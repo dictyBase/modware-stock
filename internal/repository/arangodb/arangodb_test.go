@@ -34,13 +34,13 @@ const (
 func (stype StrainType) String() string {
 	switch stype {
 	case Bacterial:
-		return "bacterial strain"
+		return testBacterialStrain
 	case Gwdi:
 		return "REMI-seq"
 	case General:
-		return "general strain"
+		return testStrainSummary
 	}
-	return "general strain"
+	return testStrainSummary
 }
 
 func getOntoParams() *ontoarango.CollectionParams {
@@ -86,13 +86,13 @@ func newUpdatableTestStrain(
 ) *stock.NewStrain {
 	return &stock.NewStrain{
 		Data: &stock.NewStrain_Data{
-			Type: "strain",
+			Type: testStrainName,
 			Attributes: &stock.NewStrainAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
 				Depositor:       createdby,
-				Summary:         "Radiation-sensitive mutant.",
-				EditableSummary: "Radiation-sensitive mutant.",
+				Summary:         testRadiationSummary,
+				EditableSummary: testRadiationSummary,
 				Genes:           []string{"DDB_G0348394", "DDB_G098058933"},
 				Publications: []string{
 					"48428304983",
@@ -100,7 +100,7 @@ func newUpdatableTestStrain(
 					"839434936743",
 				},
 				Label:               "yS13",
-				Species:             "Dictyostelium discoideum",
+				Species:             testSpecies,
 				DictyStrainProperty: stype.String(),
 			},
 		},
@@ -110,17 +110,17 @@ func newUpdatableTestStrain(
 func newTestStrain(createdby string, stype StrainType) *stock.NewStrain {
 	return &stock.NewStrain{
 		Data: &stock.NewStrain_Data{
-			Type: "strain",
+			Type: testStrainName,
 			Attributes: &stock.NewStrainAttributes{
 				CreatedBy:       createdby,
 				UpdatedBy:       createdby,
-				Depositor:       "george@costanza.com",
-				Summary:         "Radiation-sensitive mutant.",
-				EditableSummary: "Radiation-sensitive mutant.",
+				Depositor:       testEmailCostanza,
+				Summary:         testRadiationSummary,
+				EditableSummary: testRadiationSummary,
 				Dbxrefs: []string{
 					"5466867",
 					"4536935",
-					"d2578",
+					testIDPrefix,
 					"d0319",
 					"d2020/1033268",
 					"d2580",
@@ -128,9 +128,9 @@ func newTestStrain(createdby string, stype StrainType) *stock.NewStrain {
 				Genes:               []string{"DDB_G0348394", "DDB_G098058933"},
 				Publications:        []string{"4849343943", "48394394"},
 				Label:               "yS13",
-				Species:             "Dictyostelium discoideum",
+				Species:             testSpecies,
 				Plasmid:             "DBP0000027",
-				Names:               []string{"gammaS13", "gammaS-13", "γS-13"},
+				Names:               []string{testNameGammaS13, "gammaS-13", "γS-13"},
 				DictyStrainProperty: stype.String(),
 			},
 		},
@@ -140,18 +140,18 @@ func newTestStrain(createdby string, stype StrainType) *stock.NewStrain {
 func newTestParentStrain(createdby string) *stock.NewStrain {
 	return &stock.NewStrain{
 		Data: &stock.NewStrain_Data{
-			Type: "strain",
+			Type: testStrainName,
 			Attributes: &stock.NewStrainAttributes{
 				CreatedBy:           createdby,
 				UpdatedBy:           createdby,
 				Depositor:           createdby,
-				Summary:             "Remi-mutant strain",
-				EditableSummary:     "Remi-mutant strain.",
-				Dbxrefs:             []string{"5466867", "4536935", "d2578"},
-				Label:               "egeB/DDB_G0270724_ps-REMI",
-				Species:             "Dictyostelium discoideum",
-				Names:               []string{"gammaS13", "BCN149086"},
-				DictyStrainProperty: "general strain",
+				Summary:             testRemiSummary,
+				EditableSummary:     testRemiEditableSum,
+				Dbxrefs:             []string{"5466867", "4536935", testIDPrefix},
+				Label:               testNameREMISeq,
+				Species:             testSpecies,
+				Names:               []string{testNameGammaS13, testGeneName},
+				DictyStrainProperty: testStrainSummary,
 			},
 		},
 	}
@@ -160,7 +160,7 @@ func newTestParentStrain(createdby string) *stock.NewStrain {
 func newUpdatableTestPlasmid(createdby string) *stock.NewPlasmid {
 	return &stock.NewPlasmid{
 		Data: &stock.NewPlasmid_Data{
-			Type: "plasmid",
+			Type: fieldPlasmid,
 			Attributes: &stock.NewPlasmidAttributes{
 				CreatedBy:            createdby,
 				UpdatedBy:            createdby,
@@ -168,7 +168,7 @@ func newUpdatableTestPlasmid(createdby string) *stock.NewPlasmid {
 				Summary:              "update this plasmid",
 				EditableSummary:      "update this plasmid",
 				Publications:         []string{"1348970", "48493483"},
-				Dbxrefs:              []string{"5466867", "4536935", "d2578"},
+				Dbxrefs:              []string{"5466867", "4536935", testIDPrefix},
 				DictyPlasmidProperty: "cloning vector",
 			},
 		},
@@ -178,15 +178,15 @@ func newUpdatableTestPlasmid(createdby string) *stock.NewPlasmid {
 func newTestPlasmid(createdby string) *stock.NewPlasmid {
 	return &stock.NewPlasmid{
 		Data: &stock.NewPlasmid_Data{
-			Type: "plasmid",
+			Type: fieldPlasmid,
 			Attributes: &stock.NewPlasmidAttributes{
 				CreatedBy:            createdby,
 				UpdatedBy:            createdby,
-				Depositor:            "george@costanza.com",
-				Summary:              "this is a test plasmid",
-				EditableSummary:      "this is a test plasmid",
+				Depositor:            testEmailCostanza,
+				Summary:              testPlasmidSummary,
+				EditableSummary:      testPlasmidSummary,
 				Publications:         []string{"1348970"},
-				ImageMap:             "http://dictybase.org/data/plasmid/images/87.jpg",
+				ImageMap:             testURL,
 				Sequence:             "tttttyyyyjkausadaaaavvvvvv",
 				Name:                 "p123456",
 				DictyPlasmidProperty: "cloning vector",
@@ -316,7 +316,7 @@ func TestLoadOboJson(t *testing.T) {
 func TestRemoveStock(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	ns := newTestStrain("george@costanza.com", General)
+	ns := newTestStrain(testEmailCostanza, General)
 	m, err := repo.AddStrain(ns)
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	err = repo.RemoveStock(m.Key)

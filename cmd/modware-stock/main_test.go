@@ -389,25 +389,25 @@ func testDbCollectionFlagsCount(t *testing.T) {
 func testDbStockCollectionFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
-	stockFlag := findFlagByName(flags, "stock-collection")
+	stockFlag := findFlagByName(flags, collectionStock)
 	require.NotNil(t, stockFlag, "stock-collection flag should exist")
 
 	strFlag, ok := stockFlag.(cli.StringFlag)
 	require.True(t, ok, "stock-collection flag should be a StringFlag")
-	require.Equal(t, "stock-collection", strFlag.Name)
-	require.Equal(t, "stock", strFlag.Value)
+	require.Equal(t, collectionStock, strFlag.Name)
+	require.Equal(t, defaultStockCollection, strFlag.Value)
 	require.Equal(t, "arangodb collection for storing biological stocks", strFlag.Usage)
 }
 
 func testDbStockPropCollectionFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
-	stockPropFlag := findFlagByName(flags, "stockprop-collection")
+	stockPropFlag := findFlagByName(flags, collectionStockProp)
 	require.NotNil(t, stockPropFlag, "stockprop-collection flag should exist")
 
 	strFlag, ok := stockPropFlag.(cli.StringFlag)
 	require.True(t, ok, "stockprop-collection flag should be a StringFlag")
-	require.Equal(t, "stockprop-collection", strFlag.Name)
+	require.Equal(t, collectionStockProp, strFlag.Name)
 	require.Equal(t, "stockprop", strFlag.Value)
 	require.Equal(t, "arangodb collection for storing stock properties", strFlag.Usage)
 }
@@ -415,12 +415,12 @@ func testDbStockPropCollectionFlag(t *testing.T) {
 func testDbStockKeyGeneratorFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
-	keyGenFlag := findFlagByName(flags, "stock-key-generator-collection")
+	keyGenFlag := findFlagByName(flags, collectionStockKeyGenerator)
 	require.NotNil(t, keyGenFlag, "stock-key-generator-collection flag should exist")
 
 	strFlag, ok := keyGenFlag.(cli.StringFlag)
 	require.True(t, ok, "stock-key-generator-collection flag should be a StringFlag")
-	require.Equal(t, "stock-key-generator-collection", strFlag.Name)
+	require.Equal(t, collectionStockKeyGenerator, strFlag.Name)
 	require.Equal(t, "stock_key_generator", strFlag.Value)
 	require.Equal(t, "arangodb collection for generating unique IDs", strFlag.Usage)
 }
@@ -428,12 +428,12 @@ func testDbStockKeyGeneratorFlag(t *testing.T) {
 func testDbStockTypeEdgeFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
-	stockTypeFlag := findFlagByName(flags, "stock-type-edge")
+	stockTypeFlag := findFlagByName(flags, collectionStockTypeEdge)
 	require.NotNil(t, stockTypeFlag, "stock-type-edge flag should exist")
 
 	strFlag, ok := stockTypeFlag.(cli.StringFlag)
 	require.True(t, ok, "stock-type-edge flag should be a StringFlag")
-	require.Equal(t, "stock-type-edge", strFlag.Name)
+	require.Equal(t, collectionStockTypeEdge, strFlag.Name)
 	require.Equal(t, "stock_type", strFlag.Value)
 	require.Equal(t,
 		"arangodb edge collection for connecting stocks to their types (strain or plasmid)",
@@ -443,12 +443,12 @@ func testDbStockTypeEdgeFlag(t *testing.T) {
 func testDbParentStrainEdgeFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
-	parentFlag := findFlagByName(flags, "parent-strain-edge")
+	parentFlag := findFlagByName(flags, collectionParentStrainEdge)
 	require.NotNil(t, parentFlag, "parent-strain-edge flag should exist")
 
 	strFlag, ok := parentFlag.(cli.StringFlag)
 	require.True(t, ok, "parent-strain-edge flag should be a StringFlag")
-	require.Equal(t, "parent-strain-edge", strFlag.Name)
+	require.Equal(t, collectionParentStrainEdge, strFlag.Name)
 	require.Equal(t, "parent_strain", strFlag.Value)
 	require.Equal(t,
 		"arangodb edge collection for connecting strains to their parent",
@@ -458,12 +458,12 @@ func testDbParentStrainEdgeFlag(t *testing.T) {
 func testDbStockTermEdgeFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
-	termFlag := findFlagByName(flags, "stock-term-edge")
+	termFlag := findFlagByName(flags, collectionStockTermEdge)
 	require.NotNil(t, termFlag, "stock-term-edge flag should exist")
 
 	strFlag, ok := termFlag.(cli.StringFlag)
 	require.True(t, ok, "stock-term-edge flag should be a StringFlag")
-	require.Equal(t, "stock-term-edge", strFlag.Name)
+	require.Equal(t, collectionStockTermEdge, strFlag.Name)
 	require.Equal(t, "stock_term", strFlag.Value)
 	require.Equal(t,
 		"arangodb edge collection for connecting stock to ontology term",
@@ -473,12 +473,12 @@ func testDbStockTermEdgeFlag(t *testing.T) {
 func testDbStockPropTypeGraphFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
-	graphFlag := findFlagByName(flags, "stockproptype-graph")
+	graphFlag := findFlagByName(flags, graphStockPropType)
 	require.NotNil(t, graphFlag, "stockproptype-graph flag should exist")
 
 	strFlag, ok := graphFlag.(cli.StringFlag)
 	require.True(t, ok, "stockproptype-graph flag should be a StringFlag")
-	require.Equal(t, "stockproptype-graph", strFlag.Name)
+	require.Equal(t, graphStockPropType, strFlag.Name)
 	require.Equal(t, "stockprop_type", strFlag.Value)
 	require.Equal(t,
 		"arangodb named graph for managing relations between stocks and their properties",
@@ -488,12 +488,12 @@ func testDbStockPropTypeGraphFlag(t *testing.T) {
 func testDbStrain2ParentGraphFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
-	graphFlag := findFlagByName(flags, "strain2parent-graph")
+	graphFlag := findFlagByName(flags, graphStrain2Parent)
 	require.NotNil(t, graphFlag, "strain2parent-graph flag should exist")
 
 	strFlag, ok := graphFlag.(cli.StringFlag)
 	require.True(t, ok, "strain2parent-graph flag should be a StringFlag")
-	require.Equal(t, "strain2parent-graph", strFlag.Name)
+	require.Equal(t, graphStrain2Parent, strFlag.Name)
 	require.Equal(t, "strain2parent", strFlag.Value)
 	require.Equal(t,
 		"arangodb named graph for managing relations between strains and their parents",
@@ -503,12 +503,12 @@ func testDbStrain2ParentGraphFlag(t *testing.T) {
 func testDbStockOntoGraphFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
-	graphFlag := findFlagByName(flags, "stockonto-graph")
+	graphFlag := findFlagByName(flags, graphStockOnto)
 	require.NotNil(t, graphFlag, "stockonto-graph flag should exist")
 
 	strFlag, ok := graphFlag.(cli.StringFlag)
 	require.True(t, ok, "stockonto-graph flag should be a StringFlag")
-	require.Equal(t, "stockonto-graph", strFlag.Name)
+	require.Equal(t, graphStockOnto, strFlag.Name)
 	require.Equal(t, "stockonto", strFlag.Value)
 	require.Equal(t,
 		"arangodb named graph for managing stock and ontology",
@@ -530,15 +530,15 @@ func testDbCollectionFlagsHaveDefaults(t *testing.T) {
 	flags := dbCollectionFlags()
 
 	expectedDefaults := map[string]string{
-		"stock-collection":               "stock",
-		"stockprop-collection":           "stockprop",
-		"stock-key-generator-collection": "stock_key_generator",
-		"stock-type-edge":                "stock_type",
-		"parent-strain-edge":             "parent_strain",
-		"stock-term-edge":                "stock_term",
-		"stockproptype-graph":            "stockprop_type",
-		"strain2parent-graph":            "strain2parent",
-		"stockonto-graph":                "stockonto",
+		collectionStock:             defaultStockCollection,
+		collectionStockProp:         "stockprop",
+		collectionStockKeyGenerator: "stock_key_generator",
+		collectionStockTypeEdge:     "stock_type",
+		collectionParentStrainEdge:  "parent_strain",
+		collectionStockTermEdge:     "stock_term",
+		graphStockPropType:          "stockprop_type",
+		graphStrain2Parent:          "strain2parent",
+		graphStockOnto:              "stockonto",
 	}
 
 	for expectedName, expectedDefault := range expectedDefaults {
@@ -556,15 +556,15 @@ func testDbCollectionFlagsUsage(t *testing.T) {
 	flags := dbCollectionFlags()
 
 	expectedUsages := map[string]string{
-		"stock-collection":               "arangodb collection for storing biological stocks",
-		"stockprop-collection":           "arangodb collection for storing stock properties",
-		"stock-key-generator-collection": "arangodb collection for generating unique IDs",
-		"stock-type-edge":                "arangodb edge collection for connecting stocks to their types (strain or plasmid)",
-		"parent-strain-edge":             "arangodb edge collection for connecting strains to their parent",
-		"stock-term-edge":                "arangodb edge collection for connecting stock to ontology term",
-		"stockproptype-graph":            "arangodb named graph for managing relations between stocks and their properties",
-		"strain2parent-graph":            "arangodb named graph for managing relations between strains and their parents",
-		"stockonto-graph":                "arangodb named graph for managing stock and ontology",
+		collectionStock:             "arangodb collection for storing biological stocks",
+		collectionStockProp:         "arangodb collection for storing stock properties",
+		collectionStockKeyGenerator: "arangodb collection for generating unique IDs",
+		collectionStockTypeEdge:     "arangodb edge collection for connecting stocks to their types (strain or plasmid)",
+		collectionParentStrainEdge:  "arangodb edge collection for connecting strains to their parent",
+		collectionStockTermEdge:     "arangodb edge collection for connecting stock to ontology term",
+		graphStockPropType:          "arangodb named graph for managing relations between stocks and their properties",
+		graphStrain2Parent:          "arangodb named graph for managing relations between strains and their parents",
+		graphStockOnto:              "arangodb named graph for managing stock and ontology",
 	}
 
 	for expectedName, expectedUsage := range expectedUsages {
@@ -609,10 +609,10 @@ func testAllFlagsIncludesServer(t *testing.T) {
 func testAllFlagsIncludesDb(t *testing.T) {
 	t.Helper()
 	flags := allFlags()
-	stockFlag := findFlagByName(flags, "stock-collection")
+	stockFlag := findFlagByName(flags, collectionStock)
 	require.NotNil(t, stockFlag, "should include stock-collection flag from dbCollectionFlags")
 
-	stockPropFlag := findFlagByName(flags, "stockprop-collection")
+	stockPropFlag := findFlagByName(flags, collectionStockProp)
 	require.NotNil(t, stockPropFlag, "should include stockprop-collection from dbCollectionFlags")
 }
 
@@ -627,7 +627,7 @@ func testAllFlagsIncludesArangoDb(t *testing.T) {
 	require.Contains(t, strFlag.Name, "arangodb-database")
 	require.Contains(t, strFlag.Name, "db")
 	require.Equal(t, "ARANGODB_DATABASE", strFlag.EnvVar)
-	require.Equal(t, "stock", strFlag.Value)
+	require.Equal(t, defaultDatabase, strFlag.Value)
 	require.Equal(t, "arangodb database name", strFlag.Usage)
 }
 
@@ -676,30 +676,30 @@ func testAppGlobalFlags(t *testing.T) {
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "log-format",
-			Usage: "format of the logging out, either of json or text.",
-			Value: "json",
+			Name:  flagLogFormat,
+			Usage: usageLogFormat,
+			Value: logFormatJSON,
 		},
 		cli.StringFlag{
-			Name:  "log-level",
-			Usage: "log level for the application",
-			Value: "error",
+			Name:  flagLogLevel,
+			Usage: usageLogLevel,
+			Value: logLevelError,
 		},
 	}
 
 	require.Len(t, app.Flags, 2)
 
-	logFormatFlag := findFlagByName(app.Flags, "log-format")
+	logFormatFlag := findFlagByName(app.Flags, flagLogFormat)
 	require.NotNil(t, logFormatFlag)
 	strFlag, ok := logFormatFlag.(cli.StringFlag)
 	require.True(t, ok)
-	require.Equal(t, "json", strFlag.Value)
+	require.Equal(t, logFormatJSON, strFlag.Value)
 
-	logLevelFlag := findFlagByName(app.Flags, "log-level")
+	logLevelFlag := findFlagByName(app.Flags, flagLogLevel)
 	require.NotNil(t, logLevelFlag)
 	strFlag, ok = logLevelFlag.(cli.StringFlag)
 	require.True(t, ok)
-	require.Equal(t, "error", strFlag.Value)
+	require.Equal(t, logLevelError, strFlag.Value)
 }
 
 func testAppStartServerCommand(t *testing.T) {
@@ -707,16 +707,16 @@ func testAppStartServerCommand(t *testing.T) {
 	app := cli.NewApp()
 	app.Commands = []cli.Command{
 		{
-			Name:  "start-server",
-			Usage: "starts the modware-stock microservice with grpc backends",
+			Name:  flagStartServer,
+			Usage: usageStartServer,
 			Flags: allFlags(),
 		},
 	}
 
 	require.Len(t, app.Commands, 1)
-	require.Equal(t, "start-server", app.Commands[0].Name)
+	require.Equal(t, flagStartServer, app.Commands[0].Name)
 	require.Equal(t,
-		"starts the modware-stock microservice with grpc backends",
+		usageStartServer,
 		app.Commands[0].Usage)
 	require.NotEmpty(t, app.Commands[0].Flags)
 }
@@ -726,8 +726,8 @@ func testStartServerCommandFlags(t *testing.T) {
 	app := cli.NewApp()
 	app.Commands = []cli.Command{
 		{
-			Name:  "start-server",
-			Usage: "starts the modware-stock microservice with grpc backends",
+			Name:  flagStartServer,
+			Usage: usageStartServer,
 			Flags: allFlags(),
 		},
 	}
@@ -741,7 +741,7 @@ func testStartServerCommandFlags(t *testing.T) {
 	dbFlag := findFlagByName(cmd.Flags, "arangodb-database")
 	require.NotNil(t, dbFlag, "start-server should have arangodb-database flag")
 
-	stockFlag := findFlagByName(cmd.Flags, "stock-collection")
+	stockFlag := findFlagByName(cmd.Flags, collectionStock)
 	require.NotNil(t, stockFlag, "start-server should have stock-collection flag")
 }
 
@@ -776,14 +776,14 @@ func testAppRunsWithHelpFlag(t *testing.T) {
 	app.Version = appVersion
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "log-format",
-			Usage: "format of the logging out, either of json or text.",
-			Value: "json",
+			Name:  flagLogFormat,
+			Usage: usageLogFormat,
+			Value: logFormatJSON,
 		},
 		cli.StringFlag{
-			Name:  "log-level",
-			Usage: "log level for the application",
-			Value: "error",
+			Name:  flagLogLevel,
+			Usage: usageLogLevel,
+			Value: logLevelError,
 		},
 	}
 
@@ -816,20 +816,20 @@ func testMainFunctionStructure(t *testing.T) {
 	app.Version = appVersion
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "log-format",
-			Usage: "format of the logging out, either of json or text.",
-			Value: "json",
+			Name:  flagLogFormat,
+			Usage: usageLogFormat,
+			Value: logFormatJSON,
 		},
 		cli.StringFlag{
-			Name:  "log-level",
-			Usage: "log level for the application",
-			Value: "error",
+			Name:  flagLogLevel,
+			Usage: usageLogLevel,
+			Value: logLevelError,
 		},
 	}
 	app.Commands = []cli.Command{
 		{
-			Name:  "start-server",
-			Usage: "starts the modware-stock microservice with grpc backends",
+			Name:  flagStartServer,
+			Usage: usageStartServer,
 			Flags: allFlags(),
 		},
 	}
@@ -840,8 +840,8 @@ func testMainFunctionStructure(t *testing.T) {
 	require.Equal(t, "1.0.0", app.Version)
 	require.Len(t, app.Flags, 2)
 	require.Len(t, app.Commands, 1)
-	require.Equal(t, "start-server", app.Commands[0].Name)
-	require.Equal(t, "starts the modware-stock microservice with grpc backends", app.Commands[0].Usage)
+	require.Equal(t, flagStartServer, app.Commands[0].Name)
+	require.Equal(t, usageStartServer, app.Commands[0].Usage)
 
 	// Verify the command has all flags from allFlags()
 	require.NotEmpty(t, app.Commands[0].Flags)
@@ -864,20 +864,20 @@ func testCompleteApplicationLifecycle(t *testing.T) {
 	app.Version = appVersion
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "log-format",
-			Usage: "format of the logging out, either of json or text.",
-			Value: "json",
+			Name:  flagLogFormat,
+			Usage: usageLogFormat,
+			Value: logFormatJSON,
 		},
 		cli.StringFlag{
-			Name:  "log-level",
-			Usage: "log level for the application",
-			Value: "error",
+			Name:  flagLogLevel,
+			Usage: usageLogLevel,
+			Value: logLevelError,
 		},
 	}
 	app.Commands = []cli.Command{
 		{
-			Name:  "start-server",
-			Usage: "starts the modware-stock microservice with grpc backends",
+			Name:  flagStartServer,
+			Usage: usageStartServer,
 			Flags: allFlags(),
 		},
 	}
@@ -940,14 +940,14 @@ func testGlobalFlagsCliParsing(t *testing.T) {
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "log-format",
-			Usage: "format of the logging out, either of json or text.",
-			Value: "json",
+			Name:  flagLogFormat,
+			Usage: usageLogFormat,
+			Value: logFormatJSON,
 		},
 		cli.StringFlag{
-			Name:  "log-level",
-			Usage: "log level for the application",
-			Value: "error",
+			Name:  flagLogLevel,
+			Usage: usageLogLevel,
+			Value: logLevelError,
 		},
 	}
 
@@ -1050,14 +1050,14 @@ func testMainFunctionConfiguration(t *testing.T) {
 	app.Version = appVersion
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "log-format",
-			Usage: "format of the logging out, either of json or text.",
-			Value: "json",
+			Name:  flagLogFormat,
+			Usage: usageLogFormat,
+			Value: logFormatJSON,
 		},
 		cli.StringFlag{
-			Name:  "log-level",
-			Usage: "log level for the application",
-			Value: "error",
+			Name:  flagLogLevel,
+			Usage: usageLogLevel,
+			Value: logLevelError,
 		},
 	}
 
@@ -1068,9 +1068,9 @@ func testMainFunctionConfiguration(t *testing.T) {
 
 	// Verify global flags
 	require.Len(t, app.Flags, 2)
-	logFormatFlag := findFlagByName(app.Flags, "log-format")
+	logFormatFlag := findFlagByName(app.Flags, flagLogFormat)
 	require.NotNil(t, logFormatFlag)
-	logLevelFlag := findFlagByName(app.Flags, "log-level")
+	logLevelFlag := findFlagByName(app.Flags, flagLogLevel)
 	require.NotNil(t, logLevelFlag)
 }
 
@@ -1084,20 +1084,20 @@ func testMainFunctionComponents(t *testing.T) {
 	app.Version = appVersion
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "log-format",
-			Usage: "format of the logging out, either of json or text.",
-			Value: "json",
+			Name:  flagLogFormat,
+			Usage: usageLogFormat,
+			Value: logFormatJSON,
 		},
 		cli.StringFlag{
-			Name:  "log-level",
-			Usage: "log level for the application",
-			Value: "error",
+			Name:  flagLogLevel,
+			Usage: usageLogLevel,
+			Value: logLevelError,
 		},
 	}
 	app.Commands = []cli.Command{
 		{
-			Name:  "start-server",
-			Usage: "starts the modware-stock microservice with grpc backends",
+			Name:  flagStartServer,
+			Usage: usageStartServer,
 			Flags: allFlags(),
 		},
 	}
@@ -1112,8 +1112,8 @@ func testMainFunctionComponents(t *testing.T) {
 	// Verify the start-server command exists
 	require.Len(t, app.Commands, 1)
 	startServerCmd := app.Commands[0]
-	require.Equal(t, "start-server", startServerCmd.Name)
-	require.Equal(t, "starts the modware-stock microservice with grpc backends", startServerCmd.Usage)
+	require.Equal(t, flagStartServer, startServerCmd.Name)
+	require.Equal(t, usageStartServer, startServerCmd.Usage)
 
 	// Verify start-server command has flags
 	require.NotEmpty(t, startServerCmd.Flags)
@@ -1125,7 +1125,7 @@ func testMainFunctionComponents(t *testing.T) {
 	dbFlag := findFlagByName(startServerCmd.Flags, "arangodb-database")
 	require.NotNil(t, dbFlag, "start-server must have arangodb-database flag")
 
-	stockCollectionFlag := findFlagByName(startServerCmd.Flags, "stock-collection")
+	stockCollectionFlag := findFlagByName(startServerCmd.Flags, collectionStock)
 	require.NotNil(t, stockCollectionFlag, "start-server must have stock-collection flag")
 
 	keyOffsetFlag := findFlagByName(startServerCmd.Flags, "keyoffset")

@@ -20,7 +20,7 @@ func testCreateValidPlasmid(params *testParams) {
 	params.assert.NoError(err, "should create plasmid without error")
 	params.assert.NotNil(resp, "response should not be nil")
 	params.assert.NotEmpty(resp.Data.Id, "plasmid ID should be generated")
-	params.assert.Equal("plasmid", resp.Data.Type, "type should be plasmid")
+	params.assert.Equal(stockTypePlasmid, resp.Data.Type, "type should be plasmid")
 	params.assert.Equal(
 		req.Data.Attributes.CreatedBy,
 		resp.Data.Attributes.CreatedBy,
@@ -92,11 +92,11 @@ func testCreatePlasmidMinimalFields(params *testParams) {
 	params.t.Helper()
 	req := &stock.NewPlasmid{
 		Data: &stock.NewPlasmid_Data{
-			Type: "plasmid",
+			Type: stockTypePlasmid,
 			Attributes: &stock.NewPlasmidAttributes{
-				CreatedBy: "testuser@dictybase.org",
-				UpdatedBy: "testuser@dictybase.org",
-				Depositor: "testuser@dictybase.org",
+				CreatedBy: testUserEmail,
+				UpdatedBy: testUserEmail,
+				Depositor: testUserEmail,
 				Name:      "pMinimal",
 			},
 		},
@@ -124,7 +124,7 @@ func testCreatePlasmidMissingRequiredFields(params *testParams) {
 	params.t.Helper()
 	req := &stock.NewPlasmid{
 		Data: &stock.NewPlasmid_Data{
-			Type: "plasmid",
+			Type: stockTypePlasmid,
 			Attributes: &stock.NewPlasmidAttributes{
 				// Missing CreatedBy and UpdatedBy
 				Summary: "Test summary",
@@ -147,13 +147,13 @@ func testCreatePlasmidMissingRequiredFields(params *testParams) {
 func testCreatePlasmidInvalidType(params *testParams) {
 	params.t.Helper()
 	req := newTestPlasmid()
-	req.Data.Type = "plasmid" // Use valid type since there's no strict validation
+	req.Data.Type = stockTypePlasmid // Use valid type since there's no strict validation
 
 	resp, err := params.client.CreatePlasmid(params.ctx, req)
 
 	params.assert.NoError(err, "should create plasmid even with different type")
 	params.assert.NotNil(resp, "response should not be nil")
-	params.assert.Equal("plasmid", resp.Data.Type, "type should match")
+	params.assert.Equal(stockTypePlasmid, resp.Data.Type, "type should match")
 }
 
 // testCreatePlasmidPublisherSuccess tests that plasmid creation succeeds with publisher.
@@ -217,7 +217,7 @@ func testGetExistingPlasmid(params *testParams) {
 		resp.Data.Id,
 		"plasmid ID should match",
 	)
-	params.assert.Equal("plasmid", resp.Data.Type, "type should be plasmid")
+	params.assert.Equal(stockTypePlasmid, resp.Data.Type, "type should be plasmid")
 	params.assert.Equal(
 		createReq.Data.Attributes.Name,
 		resp.Data.Attributes.Name,
@@ -270,7 +270,7 @@ func testGetPlasmidWithEmptyID(params *testParams) {
 // testGetPlasmidWithInvalidID tests retrieving a plasmid with invalid ID format.
 func testGetPlasmidWithInvalidID(params *testParams) {
 	params.t.Helper()
-	req := &stock.StockId{Id: "invalid-id-format"}
+	req := &stock.StockId{Id: testInvalidIDFormat}
 
 	_, err := params.client.GetPlasmid(params.ctx, req)
 
@@ -293,7 +293,7 @@ func testLoadValidPlasmid(params *testParams) {
 	params.assert.NoError(err, "should load plasmid without error")
 	params.assert.NotNil(resp, "response should not be nil")
 	params.assert.Equal(req.Data.Id, resp.Data.Id, "plasmid ID should match")
-	params.assert.Equal("plasmid", resp.Data.Type, "type should be plasmid")
+	params.assert.Equal(stockTypePlasmid, resp.Data.Type, "type should be plasmid")
 	params.assert.Equal(
 		req.Data.Attributes.CreatedBy,
 		resp.Data.Attributes.CreatedBy,
@@ -348,7 +348,7 @@ func testLoadPlasmidMissingRequiredFields(params *testParams) {
 	params.t.Helper()
 	req := &stock.ExistingPlasmid{
 		Data: &stock.ExistingPlasmid_Data{
-			Type: "plasmid",
+			Type: stockTypePlasmid,
 			Id:   "DBP0000004",
 			Attributes: &stock.ExistingPlasmidAttributes{
 				// Missing CreatedBy and UpdatedBy
@@ -451,11 +451,11 @@ func testUpdatePlasmidWithEmptyID(params *testParams) {
 	params.t.Helper()
 	req := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
-			Type: "plasmid",
+			Type: stockTypePlasmid,
 			Id:   "",
 			Attributes: &stock.PlasmidUpdateAttributes{
-				UpdatedBy: "updateuser@dictybase.org",
-				Summary:   "Updated summary",
+				UpdatedBy: testUpdateUserEmail,
+				Summary:   testUpdatedSummary,
 			},
 		},
 	}
@@ -482,10 +482,10 @@ func testUpdatePlasmidPartialUpdate(params *testParams) {
 	// Update only summary
 	updateReq := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
-			Type: "plasmid",
+			Type: stockTypePlasmid,
 			Id:   createResp.Data.Id,
 			Attributes: &stock.PlasmidUpdateAttributes{
-				UpdatedBy: "updateuser@dictybase.org",
+				UpdatedBy: testUpdateUserEmail,
 				Summary:   "Only summary updated",
 			},
 		},
@@ -518,7 +518,7 @@ func testUpdatePlasmidOntologyUpdate(params *testParams) {
 	// Update ontology term to testGatewayVector
 	updateReq := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
-			Type: "plasmid",
+			Type: stockTypePlasmid,
 			Id:   createResp.Data.Id,
 			Attributes: &stock.PlasmidUpdateAttributes{
 				UpdatedBy:            "ontology-updater@dictybase.org",
@@ -550,7 +550,7 @@ func testUpdatePlasmidOntologyWithOtherFields(params *testParams) {
 	// Update ontology term AND other fields simultaneously
 	updateReq := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
-			Type: "plasmid",
+			Type: stockTypePlasmid,
 			Id:   createResp.Data.Id,
 			Attributes: &stock.PlasmidUpdateAttributes{
 				UpdatedBy:            "multi-updater@dictybase.org",
@@ -602,7 +602,7 @@ func testUpdatePlasmidInvalidOntology(params *testParams) {
 	// Try to update with invalid ontology term
 	updateReq := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
-			Type: "plasmid",
+			Type: stockTypePlasmid,
 			Id:   createResp.Data.Id,
 			Attributes: &stock.PlasmidUpdateAttributes{
 				UpdatedBy:            "bad-updater@dictybase.org",
@@ -636,7 +636,7 @@ func testUpdatePlasmidOntologyPreservation(params *testParams) {
 	// Update other fields WITHOUT specifying DictyPlasmidProperty
 	updateReq := &stock.PlasmidUpdate{
 		Data: &stock.PlasmidUpdate_Data{
-			Type: "plasmid",
+			Type: stockTypePlasmid,
 			Id:   createResp.Data.Id,
 			Attributes: &stock.PlasmidUpdateAttributes{
 				UpdatedBy: "preserve-updater@dictybase.org",
@@ -676,7 +676,7 @@ func testListPlasmidsDefault(params *testParams) {
 
 	// List with a basic filter using proper format: field===value
 	// Use 'depositor' field which is in the filter map
-	req := &stock.StockParameters{Filter: "depositor===John Doe"}
+	req := &stock.StockParameters{Filter: testDepositorFilter}
 	resp, err := params.client.ListPlasmids(params.ctx, req)
 
 	params.assert.NoError(err, "should list plasmids without error")
@@ -701,7 +701,7 @@ func testListPlasmidsWithLimit(params *testParams) {
 	}
 
 	// List with limit
-	req := &stock.StockParameters{Limit: 3, Filter: "depositor===John Doe"}
+	req := &stock.StockParameters{Limit: 3, Filter: testDepositorFilter}
 	resp, err := params.client.ListPlasmids(params.ctx, req)
 
 	params.assert.NoError(err, "should list plasmids without error")
@@ -758,7 +758,7 @@ func testListPlasmidsWithCursor(params *testParams) {
 	}
 
 	// First page
-	req := &stock.StockParameters{Limit: 5, Filter: "depositor===John Doe"}
+	req := &stock.StockParameters{Limit: 5, Filter: testDepositorFilter}
 	resp, err := params.client.ListPlasmids(params.ctx, req)
 	params.assert.NoError(err, "should list plasmids without error")
 	params.assert.NotNil(resp, "response should not be nil")
@@ -768,7 +768,7 @@ func testListPlasmidsWithCursor(params *testParams) {
 		req2 := &stock.StockParameters{
 			Limit:  5,
 			Cursor: resp.Meta.NextCursor,
-			Filter: "depositor===John Doe",
+			Filter: testDepositorFilter,
 		}
 		resp2, err := params.client.ListPlasmids(params.ctx, req2)
 		params.assert.NoError(err, "should list second page without error")
@@ -844,7 +844,7 @@ func testListPlasmidsByTagExact(params *testParams) {
 
 	// Filter by exact tag match
 	listReq := &stock.StockParameters{
-		Filter: "tag===Gateway vector",
+		Filter: testTagFilter,
 		Limit:  10,
 	}
 	resp, err := params.client.ListPlasmids(params.ctx, listReq)
@@ -909,7 +909,7 @@ func testListPlasmidsByTagWithLimit(params *testParams) {
 	}
 
 	listReq := &stock.StockParameters{
-		Filter: "tag===Gateway vector",
+		Filter: testTagFilter,
 		Limit:  5,
 	}
 	resp, err := params.client.ListPlasmids(params.ctx, listReq)
@@ -932,7 +932,7 @@ func testListPlasmidsByTagWithCursor(params *testParams) {
 
 	// First page
 	req := &stock.StockParameters{
-		Filter: "tag===Gateway vector",
+		Filter: testTagFilter,
 		Limit:  5,
 	}
 	resp, err := params.client.ListPlasmids(params.ctx, req)
@@ -941,7 +941,7 @@ func testListPlasmidsByTagWithCursor(params *testParams) {
 	// Second page
 	if resp.Meta.NextCursor != 0 {
 		req2 := &stock.StockParameters{
-			Filter: "tag===Gateway vector",
+			Filter: testTagFilter,
 			Limit:  5,
 			Cursor: resp.Meta.NextCursor,
 		}

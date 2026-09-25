@@ -21,10 +21,10 @@ func TestPublishStrain_MarshalError(t *testing.T) {
 		// Create a test strain
 		testStrain := &stock.Strain{
 			Data: &stock.Strain_Data{
-				Type: "strain",
-				Id:   "DBS0000001",
+				Type: testStrainType,
+				Id:   testStrainID,
 				Attributes: &stock.StrainAttributes{
-					CreatedBy: "test@example.com",
+					CreatedBy: testCreatorEmail,
 					Label:     "testStrain",
 					CreatedAt: timestamppb.Now(),
 					UpdatedAt: timestamppb.Now(),
@@ -70,10 +70,10 @@ func TestPublishPlasmid_MarshalError(t *testing.T) {
 		// Create a test plasmid
 		testPlasmid := &stock.Plasmid{
 			Data: &stock.Plasmid_Data{
-				Type: "plasmid",
-				Id:   "DBP0000001",
+				Type: testPlasmidType,
+				Id:   testPlasmidID,
 				Attributes: &stock.PlasmidAttributes{
-					CreatedBy: "test@example.com",
+					CreatedBy: testCreatorEmail,
 					Name:      "pTestPlasmid",
 					CreatedAt: timestamppb.Now(),
 					UpdatedAt: timestamppb.Now(),
@@ -188,8 +188,8 @@ func TestPublishStrain_EmptySubject(t *testing.T) {
 
 		testStrain := &stock.Strain{
 			Data: &stock.Strain_Data{
-				Type: "strain",
-				Id:   "DBS0000001",
+				Type: testStrainType,
+				Id:   testStrainID,
 			},
 		}
 
@@ -209,8 +209,8 @@ func TestPublishPlasmid_EmptySubject(t *testing.T) {
 
 		testPlasmid := &stock.Plasmid{
 			Data: &stock.Plasmid_Data{
-				Type: "plasmid",
-				Id:   "DBP0000001",
+				Type: testPlasmidType,
+				Id:   testPlasmidID,
 			},
 		}
 
@@ -231,11 +231,11 @@ func TestPublishStrain_LargePayload(t *testing.T) {
 
 		testStrain := &stock.Strain{
 			Data: &stock.Strain_Data{
-				Type: "strain",
-				Id:   "DBS0000001",
+				Type: testStrainType,
+				Id:   testStrainID,
 				Attributes: &stock.StrainAttributes{
 					Genes:     genes,
-					CreatedBy: "test@example.com",
+					CreatedBy: testCreatorEmail,
 					Label:     "largeStrain",
 				},
 			},
@@ -257,11 +257,11 @@ func TestPublishStrain_LargePayload(t *testing.T) {
 
 		testStrain := &stock.Strain{
 			Data: &stock.Strain_Data{
-				Type: "strain",
-				Id:   "DBS0000001",
+				Type: testStrainType,
+				Id:   testStrainID,
 				Attributes: &stock.StrainAttributes{
 					Publications: publications,
-					CreatedBy:    "test@example.com",
+					CreatedBy:    testCreatorEmail,
 					Label:        "largeStrain",
 				},
 			},
@@ -285,11 +285,11 @@ func TestPublishPlasmid_LargePayload(t *testing.T) {
 
 		testPlasmid := &stock.Plasmid{
 			Data: &stock.Plasmid_Data{
-				Type: "plasmid",
-				Id:   "DBP0000001",
+				Type: testPlasmidType,
+				Id:   testPlasmidID,
 				Attributes: &stock.PlasmidAttributes{
 					Sequence:  string(largeSequence),
-					CreatedBy: "test@example.com",
+					CreatedBy: testCreatorEmail,
 					Name:      "largePlasmid",
 				},
 			},
@@ -319,8 +319,8 @@ func TestMarshalErrorForwarding(t *testing.T) {
 		publisher := &natsPublisher{conn: &gnats.Conn{}}
 		testStrain := &stock.Strain{
 			Data: &stock.Strain_Data{
-				Type: "strain",
-				Id:   "DBS0000001",
+				Type: testStrainType,
+				Id:   testStrainID,
 			},
 		}
 
@@ -340,8 +340,8 @@ func TestMarshalErrorForwarding(t *testing.T) {
 		publisher := &natsPublisher{conn: &gnats.Conn{}}
 		testPlasmid := &stock.Plasmid{
 			Data: &stock.Plasmid_Data{
-				Type: "plasmid",
-				Id:   "DBP0000001",
+				Type: testPlasmidType,
+				Id:   testPlasmidID,
 			},
 		}
 
@@ -404,10 +404,10 @@ func TestPublishWithInvalidData(t *testing.T) {
 	t.Run("publish strain with empty ID", func(t *testing.T) {
 		testStrain := &stock.Strain{
 			Data: &stock.Strain_Data{
-				Type: "strain",
+				Type: testStrainType,
 				Id:   "", // Empty ID
 				Attributes: &stock.StrainAttributes{
-					CreatedBy: "test@example.com",
+					CreatedBy: testCreatorEmail,
 				},
 			},
 		}
@@ -421,10 +421,10 @@ func TestPublishWithInvalidData(t *testing.T) {
 	t.Run("publish plasmid with empty ID", func(t *testing.T) {
 		testPlasmid := &stock.Plasmid{
 			Data: &stock.Plasmid_Data{
-				Type: "plasmid",
+				Type: testPlasmidType,
 				Id:   "", // Empty ID
 				Attributes: &stock.PlasmidAttributes{
-					CreatedBy: "test@example.com",
+					CreatedBy: testCreatorEmail,
 				},
 			},
 		}
@@ -438,8 +438,8 @@ func TestPublishWithInvalidData(t *testing.T) {
 	t.Run("publish strain with minimal attributes", func(t *testing.T) {
 		testStrain := &stock.Strain{
 			Data: &stock.Strain_Data{
-				Type:       "strain",
-				Id:         "DBS0000001",
+				Type:       testStrainType,
+				Id:         testStrainID,
 				Attributes: &stock.StrainAttributes{}, // Minimal attributes
 			},
 		}
@@ -453,8 +453,8 @@ func TestPublishWithInvalidData(t *testing.T) {
 	t.Run("publish plasmid with minimal attributes", func(t *testing.T) {
 		testPlasmid := &stock.Plasmid{
 			Data: &stock.Plasmid_Data{
-				Type:       "plasmid",
-				Id:         "DBP0000001",
+				Type:       testPlasmidType,
+				Id:         testPlasmidID,
 				Attributes: &stock.PlasmidAttributes{}, // Minimal attributes
 			},
 		}
