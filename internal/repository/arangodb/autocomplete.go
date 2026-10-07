@@ -2,11 +2,18 @@ package arangodb
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"strings"
+	"unicode"
 
+	A "github.com/IBM/fp-go/array"
+	F "github.com/IBM/fp-go/function"
 	driver "github.com/arangodb/go-driver"
 	"github.com/cockroachdb/errors"
 	"github.com/dictyBase/modware-stock/internal/repository"
+	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
+	"golang.org/x/text/unicode/norm"
 )
 
 // Search asset names owned by the autocomplete feature. Every name
@@ -23,6 +30,28 @@ const (
 	// autocompleteNgramAnalyzer chains norm and ngram. It serves the
 	// fuzzy branches.
 	autocompleteNgramAnalyzer = "stock_autocomplete_ngram"
+	// autocompleteNgramThreshold is the minimum n-gram similarity of a
+	// fuzzy match. Task 1 calibration on ArangoDB 3.11 confirmed 0.30:
+	// 0.45 misses one-character typos in 4-character values (ys14 vs
+	// yS13) and in 10-character identifiers (dbs0236127 vs
+	// DBS0236126), while 0.30 still admits no junk.
+	autocompleteNgramThreshold = 0.3
+	// defaultAutocompleteLimit is the list length for a non-positive
+	// limit.
+	defaultAutocompleteLimit = 5
+	// maxAutocompleteLimit is the hard cap of the list length.
+	maxAutocompleteLimit = 50
+)
+
+// Score expressions of the two branch stages.
+const (
+	// autocompletePrefixScore is the score bonus of a prefix branch. A
+	// prefix match always ranks above a fuzzy match, and the BM25 of a
+	// pure STARTS_WITH match can be 0, so the deterministic tiebreak on
+	// the stock key is required.
+	autocompletePrefixScore = "1000 + BM25(d)"
+	// autocompleteFuzzyScore is the score of a fuzzy branch.
+	autocompleteFuzzyScore = "BM25(d)"
 )
 
 // autocompleteStockFields lists the 8 indexed fields in the order of the
@@ -247,14 +276,200 @@ func sameFieldShape(got, want driver.ArangoSearchFields) bool {
 	return true
 }
 
-// AutocompleteStock returns suggestions for a partial stock identifier,
-// name or attribute value. The full query builder lands with the
-// autocomplete search implementation.
+// AutocompleteStock returns suggestions for a partial stock
+// identifier, name or attribute value. The repository normalizes the
+// query, clamps the limit, and validates the entity filter before any
+// AQL runs.
 func (ar *arangorepository) AutocompleteStock(
 	params *repository.AutocompleteQuery,
 ) ([]*repository.Suggestion, error) {
 	if params == nil {
 		return nil, errors.New("expect a non-nil autocomplete query")
 	}
-	return nil, errors.New("autocomplete search is not implemented yet")
+	query := normalizeAutocompleteQuery(params.Query)
+	if query == "" {
+		return nil, errors.New("expect a non-empty autocomplete query")
+	}
+	limit := autocompleteLimit(params.Limit)
+	entity, err := autocompleteEntity(params.Entity)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := ar.database.SearchRows(autocompleteQuery, map[string]any{
+		"q":                query,
+		"th":               autocompleteNgramThreshold,
+		"limit":            limit,
+		"entity":           string(entity),
+		nameStockPropGraph: ar.stockc.stockPropType.Name(),
+	})
+	if err != nil {
+		return nil, errors.Errorf("error in running autocomplete query %s", err)
+	}
+	defer func() { _ = rows.Close() }()
+	matches := make([]suggestionRow, 0, limit)
+	for rows.Scan() {
+		var row suggestionRow
+		if err := rows.Read(&row); err != nil {
+			return nil, errors.Errorf("error in reading autocomplete row %s", err)
+		}
+		matches = append(matches, row)
+	}
+	return F.Pipe1(
+		matches,
+		A.Map(suggestionRow.suggestion),
+	), nil
+}
+
+// suggestionRow mirrors one object row of the autocomplete projection.
+// go-driver v1 cannot decode an array row, so the projection returns
+// one object per row.
+type suggestionRow struct {
+	Key    string  `json:"k"`
+	ID     string  `json:"id"`
+	Entity string  `json:"entity"`
+	Field  string  `json:"f"`
+	Value  string  `json:"v"`
+	Score  float64 `json:"s"`
+}
+
+// suggestion converts one query row into a repository suggestion.
+func (r suggestionRow) suggestion() *repository.Suggestion {
+	return &repository.Suggestion{
+		ID:          r.ID,
+		Field:       r.Field,
+		DisplayText: r.Value,
+		Entity:      repository.StockEntityFilter(r.Entity),
+		Score:       r.Score,
+	}
+}
+
+// normalizeAutocompleteQuery trims, lowercases and strips combining
+// diacritical marks from the query. The calibration probe 10 decided
+// this Go-side form: a punctuation-only query keeps its tokens safe,
+// where an AQL TOKENS normalization would produce an empty token list
+// and a null prefix argument.
+func normalizeAutocompleteQuery(q string) string {
+	done := F.Pipe1(
+		q,
+		F.Flow3(strings.TrimSpace, strings.ToLower, norm.NFD.String),
+	)
+	var b strings.Builder
+	b.Grow(len(done))
+	for _, r := range done {
+		if unicode.Is(unicode.Mn, r) {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
+// autocompleteLimit clamps the requested limit: at or below 0 becomes
+// the default, above 50 the hard cap.
+func autocompleteLimit(limit int) int {
+	if limit <= 0 {
+		return defaultAutocompleteLimit
+	}
+	if limit > maxAutocompleteLimit {
+		return maxAutocompleteLimit
+	}
+	return limit
+}
+
+// autocompleteEntity validates the entity filter against the three
+// repository constants.
+func autocompleteEntity(entity repository.StockEntityFilter) (repository.StockEntityFilter, error) {
+	switch entity {
+	case repository.EntityBoth, repository.EntityStrain, repository.EntityPlasmid:
+		return entity, nil
+	default:
+		return "", errors.Errorf(
+			"expect a valid stock entity, received %s",
+			entity,
+		)
+	}
+}
+
+// autocompleteQuery is the full 16-branch statement, built once per
+// process.
+var autocompleteQuery = buildAutocompleteQuery()
+
+// buildAutocompleteQuery assembles the statement from the two branch
+// templates and the merge template. It emits a prefix branch and a
+// fuzzy branch per field of the branch matrix, and appends the merge.
+func buildAutocompleteQuery() string {
+	branches := make([]string, 0, len(autocompleteStockFields)*2)
+	names := make([]string, 0, len(autocompleteStockFields)*2)
+	for i, f := range autocompleteStockFields {
+		prefixName := fmt.Sprintf("p%d", i)
+		fuzzyName := fmt.Sprintf("n%d", i)
+		tpl := statement.AutocompleteStockBranch
+		if f.coll == autocompleteCollProp {
+			tpl = statement.AutocompletePropBranch
+		}
+		display := autocompleteDisplayExpr(f)
+		branches = append(branches,
+			fmt.Sprintf(
+				tpl,
+				prefixName,
+				autocompletePrefixExpr(f.label),
+				f.label,
+				display,
+				autocompletePrefixScore,
+			),
+			fmt.Sprintf(
+				tpl,
+				fuzzyName,
+				autocompleteFuzzyExpr(f.label),
+				f.label,
+				display,
+				autocompleteFuzzyScore,
+			),
+		)
+		names = append(names, prefixName, fuzzyName)
+	}
+	return fmt.Sprintf(
+		"%s\n%s",
+		strings.Join(branches, "\n"),
+		fmt.Sprintf(statement.AutocompleteMerge, strings.Join(names, ", ")),
+	)
+}
+
+// autocompletePrefixExpr is the SEARCH expression of a prefix branch.
+// STARTS_WITH inside SEARCH needs the ANALYZER wrapper: without it the
+// comparison uses the identity analyzer and matches nothing.
+func autocompletePrefixExpr(field string) string {
+	return fmt.Sprintf(
+		"ANALYZER(STARTS_WITH(d.%s, @q), %q)",
+		field,
+		autocompleteNormAnalyzer,
+	)
+}
+
+// autocompleteFuzzyExpr is the SEARCH expression of a fuzzy branch.
+// NGRAM_MATCH takes the analyzer as its fourth argument.
+func autocompleteFuzzyExpr(field string) string {
+	return fmt.Sprintf(
+		"NGRAM_MATCH(d.%s, @q, @th, %q)",
+		field,
+		autocompleteNgramAnalyzer,
+	)
+}
+
+// autocompleteDisplayExpr returns the display expression of a field.
+// A scalar field returns its value; an array field returns the first
+// element that contains the query, or the joined list as a fallback.
+// The expressions run only on the rows that survive the branch LIMIT,
+// never inside the index.
+func autocompleteDisplayExpr(f autocompleteField) string {
+	if f.display == autocompleteScalar {
+		return fmt.Sprintf(`NOT_NULL(d.%s, "")`, f.label)
+	}
+	return fmt.Sprintf(
+		`NOT_NULL(FIRST(FOR item IN NOT_NULL(d.%s, []) `+
+			`FILTER CONTAINS(LOWER(item), @q) RETURN item), `+
+			`CONCAT_SEPARATOR(", ", NOT_NULL(d.%s, [])))`,
+		f.label,
+		f.label,
+	)
 }
