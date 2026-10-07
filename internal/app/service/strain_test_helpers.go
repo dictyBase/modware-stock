@@ -205,7 +205,7 @@ func setupTestRepository(t *testing.T, assert *require.Assertions) repository.St
 func setupTestService(repo repository.StockRepository) *StockService {
 	svc := NewStockService(repo, &MockPublisher{})
 	svc.Params = map[string]string{
-		"strain_term":  "general strain",
+		"strain_term":  testStrainTag,
 		"plasmid_term": "vector",
 	}
 	svc.Topics = map[string]string{
@@ -373,7 +373,7 @@ func testCreateStrainWithDefaultProperty(params *testParams) {
 	params.assert.NoError(err, "should create strain without error")
 	params.assert.NotNil(resp, "response should not be nil")
 	params.assert.Equal(
-		"general strain",
+		testStrainTag,
 		resp.Data.Attributes.DictyStrainProperty,
 		"should set default strain property",
 	)
@@ -658,7 +658,7 @@ func testLoadStrainWithDefaultProperty(params *testParams) {
 	params.assert.NoError(err, "should load strain without error")
 	params.assert.NotNil(resp, "response should not be nil")
 	params.assert.Equal(
-		"general strain",
+		testStrainTag,
 		resp.Data.Attributes.DictyStrainProperty,
 		"should set default strain property",
 	)
@@ -1058,12 +1058,12 @@ func testListStrainsEmpty(params *testParams) {
 func testUpdateStrainOntologyUpdate(params *testParams) {
 	params.t.Helper()
 
-	// Create a strain with default "general strain" property
+	// Create a strain with default testStrainTag property
 	createReq := newTestStrain()
 	createResp, err := params.client.CreateStrain(params.ctx, createReq)
 	params.assert.NoError(err, "should create strain without error")
 	params.assert.Equal(
-		"general strain",
+		testStrainTag,
 		createResp.Data.Attributes.DictyStrainProperty,
 		"should have default general strain property",
 	)
@@ -1195,7 +1195,7 @@ func testUpdateStrainInvalidOntology(params *testParams) {
 func testUpdateStrainOntologyPreservation(params *testParams) {
 	params.t.Helper()
 
-	// Create a strain (will have default "general strain")
+	// Create a strain (will have default testStrainTag)
 	createReq := newTestStrain()
 	createResp, err := params.client.CreateStrain(params.ctx, createReq)
 	params.assert.NoError(err, "should create strain without error")

@@ -9,6 +9,11 @@ const (
 
 // Test fixture field values shared by the service test helpers.
 const (
+	testStrainLabel = "yS13"
+	testStrainTag   = "general strain"
+)
+
+const (
 	testUpdatedSummary   = "Updated summary"
 	testDepositorFilter  = "depositor===John Doe"
 	testTagFilter        = "tag===Gateway vector"
