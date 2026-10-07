@@ -1,6 +1,8 @@
 package arangodb
 
 import (
+	"context"
+
 	driver "github.com/arangodb/go-driver"
 	"github.com/cockroachdb/errors"
 )
@@ -49,14 +51,17 @@ type persistStrainParams struct {
 	bindVars                   map[string]any
 }
 
-func createDbStruct(ar *arangorepository, collP *CollectionParams) error {
+func createDBStruct(ar *arangorepository, collP *CollectionParams) error {
 	if err := docCollections(ar, collP); err != nil {
 		return err
 	}
 	if err := graphAndEdgeCollections(ar, collP); err != nil {
 		return err
 	}
-	return createIndex(ar)
+	if err := createIndex(ar); err != nil {
+		return err
+	}
+	return ar.ensureAutocompleteSearch(context.Background())
 }
 
 func docCollections(ar *arangorepository, collP *CollectionParams) error {

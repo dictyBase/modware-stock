@@ -56,7 +56,7 @@ func NewStockRepo(connP *manager.ConnectParams,
 	ar.ontoc = oc
 	ar.sess = sess
 	ar.database = db
-	err = createDbStruct(ar, collP)
+	err = createDBStruct(ar, collP)
 	return ar, err
 }
 

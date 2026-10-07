@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,12 +18,8 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
-	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -205,7 +200,7 @@ func setupTestRepository(t *testing.T, assert *require.Assertions) repository.St
 func setupTestService(repo repository.StockRepository) *StockService {
 	svc := NewStockService(repo, &MockPublisher{})
 	svc.Params = map[string]string{
-		"strain_term":  "general strain",
+		"strain_term":  testStrainTag,
 		"plasmid_term": "vector",
 	}
 	svc.Topics = map[string]string{
@@ -215,37 +210,6 @@ func setupTestService(repo repository.StockRepository) *StockService {
 	return svc
 }
 
-func setupGrpcServer(t *testing.T, svc *StockService) (*grpc.Server, *bufconn.Listener) {
-	t.Helper()
-	server := grpc.NewServer()
-	stock.RegisterStockServiceServer(server, svc)
-	lis := bufconn.Listen(1024 * 1024)
-	go func() {
-		if err := server.Serve(lis); err != nil {
-			t.Logf("Server exited with error: %v", err)
-			os.Exit(1)
-		}
-	}()
-	return server, lis
-}
-
-func setupGrpcClient(t *testing.T, assert *require.Assertions, lis *bufconn.Listener) *grpc.ClientConn {
-	t.Helper()
-	dialer := func(context.Context, string) (net.Conn, error) {
-		conn, errd := lis.Dial()
-		assert.NoError(errd, "expect no error from creating listener")
-		return conn, nil
-	}
-	resolver.SetDefaultScheme("passthrough")
-	conn, err := grpc.NewClient(
-		"bufnet",
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithContextDialer(dialer),
-	)
-	assert.NoError(err)
-	return conn
-}
-
 // setup initializes the test environment with a test database, repository, and gRPC server/client.
 func setup(t *testing.T) (stock.StockServiceClient, *require.Assertions) {
 	t.Helper()
@@ -253,20 +217,8 @@ func setup(t *testing.T) (stock.StockServiceClient, *require.Assertions) {
 
 	repo := setupTestRepository(t, assert)
 	svc := setupTestService(repo)
-	server, lis := setupGrpcServer(t, svc)
-	conn := setupGrpcClient(t, assert, lis)
-
-	t.Cleanup(func() {
-		if err := conn.Close(); err != nil {
-			t.Logf("failed to close connection: %v", err)
-		}
-		if err := lis.Close(); err != nil {
-			t.Logf("failed to close listener: %v", err)
-		}
-		server.Stop()
-	})
-
-	return stock.NewStockServiceClient(conn), assert
+	client := newBufconnClient(t, svc)
+	return client, assert
 }
 
 // newTestStrain provides a consistent *stock.NewStrain for testing.
@@ -373,7 +325,7 @@ func testCreateStrainWithDefaultProperty(params *testParams) {
 	params.assert.NoError(err, "should create strain without error")
 	params.assert.NotNil(resp, "response should not be nil")
 	params.assert.Equal(
-		"general strain",
+		testStrainTag,
 		resp.Data.Attributes.DictyStrainProperty,
 		"should set default strain property",
 	)
@@ -658,7 +610,7 @@ func testLoadStrainWithDefaultProperty(params *testParams) {
 	params.assert.NoError(err, "should load strain without error")
 	params.assert.NotNil(resp, "response should not be nil")
 	params.assert.Equal(
-		"general strain",
+		testStrainTag,
 		resp.Data.Attributes.DictyStrainProperty,
 		"should set default strain property",
 	)
@@ -944,7 +896,7 @@ func testListStrainsByIDsMixed(params *testParams) {
 func testListStrainsDefault(params *testParams) {
 	params.t.Helper()
 	// Create a few strains
-	for idx := 0; idx < 5; idx++ {
+	for range 5 {
 		createReq := newTestStrain()
 		_, err := params.client.CreateStrain(params.ctx, createReq)
 		params.assert.NoError(err, "should create strain without error")
@@ -970,7 +922,7 @@ func testListStrainsDefault(params *testParams) {
 func testListStrainsWithLimit(params *testParams) {
 	params.t.Helper()
 	// Create several strains
-	for idx := 0; idx < 10; idx++ {
+	for range 10 {
 		createReq := newTestStrain()
 		_, err := params.client.CreateStrain(params.ctx, createReq)
 		params.assert.NoError(err, "should create strain without error")
@@ -998,7 +950,7 @@ func testListStrainsWithLimit(params *testParams) {
 func testListStrainsWithCursor(params *testParams) {
 	params.t.Helper()
 	// Create several strains
-	for idx := 0; idx < 15; idx++ {
+	for range 15 {
 		createReq := newTestStrain()
 		_, err := params.client.CreateStrain(params.ctx, createReq)
 		params.assert.NoError(err, "should create strain without error")
@@ -1058,12 +1010,12 @@ func testListStrainsEmpty(params *testParams) {
 func testUpdateStrainOntologyUpdate(params *testParams) {
 	params.t.Helper()
 
-	// Create a strain with default "general strain" property
+	// Create a strain with default testStrainTag property
 	createReq := newTestStrain()
 	createResp, err := params.client.CreateStrain(params.ctx, createReq)
 	params.assert.NoError(err, "should create strain without error")
 	params.assert.Equal(
-		"general strain",
+		testStrainTag,
 		createResp.Data.Attributes.DictyStrainProperty,
 		"should have default general strain property",
 	)
@@ -1195,7 +1147,7 @@ func testUpdateStrainInvalidOntology(params *testParams) {
 func testUpdateStrainOntologyPreservation(params *testParams) {
 	params.t.Helper()
 
-	// Create a strain (will have default "general strain")
+	// Create a strain (will have default testStrainTag)
 	createReq := newTestStrain()
 	createResp, err := params.client.CreateStrain(params.ctx, createReq)
 	params.assert.NoError(err, "should create strain without error")

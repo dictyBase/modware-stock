@@ -45,7 +45,7 @@ type StockService struct {
 }
 
 func defaultOptions() *aphgrpc.ServiceOptions {
-	return &aphgrpc.ServiceOptions{Resource: "stock"}
+	return &aphgrpc.ServiceOptions{Resource: autocompleteStockType}
 }
 
 // NewStockService is the constructor for creating a new instance of StockService
