@@ -421,7 +421,7 @@ func TestAutocompleteStockLabelPrefix(t *testing.T) {
 	assert.Len(rows, 1, "expect only the label match")
 	sug := rows[0]
 	assert.Equal(m.Key, sug.ID, "expect the stock identifier, not the property key")
-	assert.Equal("label", sug.Field)
+	assert.Equal(fieldLabel, sug.Field)
 	assert.Equal(repository.EntityStrain, sug.Entity)
 	assert.GreaterOrEqual(sug.Score, float64(1000), "expect a prefix score")
 	assert.Equal("yS13", sug.DisplayText)
@@ -434,7 +434,7 @@ func TestAutocompleteStockPlasmidNamePrefix(t *testing.T) {
 	rows := waitAutocompleteRows(assert, repo, "p123")
 	assert.Len(rows, 1, "expect only the name match")
 	assert.Equal(m.Key, rows[0].ID)
-	assert.Equal("name", rows[0].Field)
+	assert.Equal(fieldName, rows[0].Field)
 	assert.Equal(repository.EntityPlasmid, rows[0].Entity)
 }
 
@@ -445,7 +445,7 @@ func TestAutocompleteStockGenePrefix(t *testing.T) {
 	rows := waitAutocompleteRows(assert, repo, "ddb_g03")
 	assert.Len(rows, 1, "expect only the genes match")
 	assert.Equal(m.Key, rows[0].ID)
-	assert.Equal("genes", rows[0].Field)
+	assert.Equal(fieldGenes, rows[0].Field)
 	assert.Equal("DDB_G0348394", rows[0].DisplayText)
 }
 
@@ -467,7 +467,7 @@ func TestAutocompleteStockStockIDPrefix(t *testing.T) {
 	rows := waitAutocompleteRows(assert, repo, m.Key[:6])
 	assert.Len(rows, 1, "expect the stock_id match")
 	assert.Equal(m.Key, rows[0].ID)
-	assert.Equal("stock_id", rows[0].Field)
+	assert.Equal(paramStockID, rows[0].Field)
 }
 
 func TestAutocompleteStockSpeciesPrefix(t *testing.T) {
@@ -477,7 +477,7 @@ func TestAutocompleteStockSpeciesPrefix(t *testing.T) {
 	rows := waitAutocompleteRows(assert, repo, "dictyo")
 	assert.GreaterOrEqual(len(rows), 1, "expect the species match")
 	assert.Equal(m.Key, rows[0].ID)
-	assert.Equal("species", rows[0].Field)
+	assert.Equal(fieldSpecies, rows[0].Field)
 }
 
 func TestAutocompleteStockStrainPlasmidPrefix(t *testing.T) {
@@ -487,7 +487,7 @@ func TestAutocompleteStockStrainPlasmidPrefix(t *testing.T) {
 	rows := waitAutocompleteRows(assert, repo, "dbp00")
 	assert.Len(rows, 1, "expect the plasmid attribute match")
 	assert.Equal(m.Key, rows[0].ID)
-	assert.Equal("plasmid", rows[0].Field)
+	assert.Equal(fieldPlasmid, rows[0].Field)
 	assert.Equal(repository.EntityStrain, rows[0].Entity)
 }
 
@@ -498,7 +498,7 @@ func TestAutocompleteStockNamesPrefix(t *testing.T) {
 	rows := waitAutocompleteRows(assert, repo, "gammas")
 	assert.Len(rows, 1, "expect the names match")
 	assert.Equal(m.Key, rows[0].ID)
-	assert.Equal("names", rows[0].Field)
+	assert.Equal(fieldNames, rows[0].Field)
 	assert.Equal(testNameGammaS13, rows[0].DisplayText)
 }
 
@@ -509,7 +509,7 @@ func TestAutocompleteStockTypoFuzzy(t *testing.T) {
 	rows := waitAutocompleteRows(assert, repo, "ys14")
 	assert.Len(rows, 1, "expect the fuzzy label match")
 	assert.Equal(m.Key, rows[0].ID)
-	assert.Equal("label", rows[0].Field)
+	assert.Equal(fieldLabel, rows[0].Field)
 	assert.Less(rows[0].Score, float64(1000), "expect a fuzzy score")
 }
 
@@ -553,14 +553,14 @@ func TestAutocompleteStockEntityFilterKeepsSmallGroup(t *testing.T) {
 	// prove that all five plasmids are visible.
 	assert.Eventually(func() bool {
 		rows, err := repo.AutocompleteStock(&repository.AutocompleteQuery{
-			Query:  "xylose",
+			Query:  testXyloseGene,
 			Entity: repository.EntityPlasmid,
 			Limit:  10,
 		})
 		return err == nil && len(rows) == 5
 	}, 20*time.Second, 500*time.Millisecond, "expect exactly the 5 plasmids")
 	rows := autocompleteRows(assert, repo, &repository.AutocompleteQuery{
-		Query:  "xylose",
+		Query:  testXyloseGene,
 		Entity: repository.EntityPlasmid,
 		Limit:  10,
 	})
@@ -578,16 +578,16 @@ func TestAutocompleteStockCrossCollectionMerge(t *testing.T) {
 		Depositor:           testEmailCostanza,
 		Summary:             testStrainSummary,
 		EditableSummary:     testStrainSummary,
-		Label:               "corda",
+		Label:               testCordaProbe,
 		Species:             testSpecies,
-		Genes:               []string{"cordaxin"},
+		Genes:               []string{testCordaxGene},
 		DictyStrainProperty: testStrainSummary,
 	})
-	rows := waitAutocompleteRows(assert, repo, "corda")
+	rows := waitAutocompleteRows(assert, repo, testCordaProbe)
 	assert.Len(rows, 1, "expect one merged row for one stock")
 	assert.Equal(m.Key, rows[0].ID)
 	assert.Equal(repository.EntityStrain, rows[0].Entity)
-	assert.Contains([]string{"genes", "label"}, rows[0].Field,
+	assert.Contains([]string{fieldGenes, fieldLabel}, rows[0].Field,
 		"expect the field of the higher score")
 }
 
@@ -625,12 +625,12 @@ func TestAutocompleteStockLimitCapIsFifty(t *testing.T) {
 	// Poll until the whole fixture is committed and the cap holds.
 	assert.Eventually(func() bool {
 		rows, err := repo.AutocompleteStock(
-			&repository.AutocompleteQuery{Query: "cap0", Limit: 500},
+			&repository.AutocompleteQuery{Query: testCap0Probe, Limit: 500},
 		)
 		return err == nil && len(rows) == 50
 	}, 20*time.Second, 500*time.Millisecond, "expect the hard cap of 50")
 	rows := autocompleteRows(assert, repo,
-		&repository.AutocompleteQuery{Query: "cap0", Limit: 500})
+		&repository.AutocompleteQuery{Query: testCap0Probe, Limit: 500})
 	assert.Len(rows, 50, "expect the hard cap")
 }
 
@@ -700,7 +700,7 @@ func TestAutocompleteStockArrayDisplayFallback(t *testing.T) {
 	rows := waitAutocompleteRows(assert, repo, "xgama")
 	assert.Len(rows, 1, "expect the fuzzy names match")
 	assert.Equal(m.Key, rows[0].ID)
-	assert.Equal("names", rows[0].Field)
+	assert.Equal(fieldNames, rows[0].Field)
 	assert.NotEmpty(rows[0].DisplayText, "display text must never be null")
 	assert.Equal("xgamma", rows[0].DisplayText,
 		"expect the joined-list fallback")
@@ -734,7 +734,7 @@ func TestAutocompleteStockSkipsStockWithoutEdge(t *testing.T) {
 	ctx := context.Background()
 	propc, err := repo.Dbh().Handler().Collection(ctx, testStockPropCol)
 	assert.NoErrorf(err, "expect no error opening the property collection, received %s", err)
-	_, err = propc.CreateDocument(ctx, map[string]any{"label": "orphanedge"})
+	_, err = propc.CreateDocument(ctx, map[string]any{fieldLabel: "orphanedge"})
 	assert.NoErrorf(err, "expect no error inserting the orphan property, received %s", err)
 	// Wait until the view indexes the orphan document. The poll
 	// returns the label and not a scalar: a RETURN 1 row never reaches
