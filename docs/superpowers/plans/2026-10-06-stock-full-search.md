@@ -1353,7 +1353,7 @@ Fill these during implementation. They are part of the handoff.
 - Measured `BM25` minimum and maximum: token 3.07–8.18, fuzzy 18.95–39.52, prefix 0. **The 250-point bands hold** (see probe 15).
 - Whether the `IN TOKENS` form needs the `ANALYZER()` wrapper, from probe 8: **yes** — 0 rows without it.
 - EXPLAIN node list and the baseline p95 in milliseconds: 19 `EnumerateViewNode`, 0 `EnumerateCollectionNode`; full node counts `{SingletonNode:1, SubqueryStartNode:46, EnumerateViewNode:19, TraversalNode:19, LimitNode:46, CalculationNode:116, SubqueryEndNode:46, FilterNode:25, SortNode:22, EnumerateListNode:9, CollectNode:1, ReturnNode:1}`. Latency over 20 runs on the warmed 1071-doc fixture with `forms culminants`, limit 50: **min 10 ms, median 10 ms, p95 11 ms**.
-- Task 6 measured p95, and the ratio against the baseline: (none yet)
+- Task 6 measured p95, and the ratio against the baseline: **11 ms** against the 11 ms baseline — a ratio of 1.00, at or below the 125 percent gate. The measurement used the built statement from `fullSearchQuery` (written to a file by a throwaway test), the same warmed fixture shape as Task 1 (1069 stock documents), the same query `forms culminants` and the same limit 50. EXPLAIN on the built statement: 19 `EnumerateViewNode`, 0 `EnumerateCollectionNode`; the rest of the node list matches the Task 1 hand-written statement.
 - Build break recorded in Task 2 Step 4: (none yet)
 - Pre-existing test failures on the branch before any change: **none** — `go test ./...` green on `feat/stock-full-search` (493 tests, 1 skipped integration test) before any change.
 - The gRPC code that `aphgrpc.HandleGetError` really returns: (none yet)
