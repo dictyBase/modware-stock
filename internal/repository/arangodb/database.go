@@ -51,7 +51,7 @@ type persistStrainParams struct {
 	bindVars                   map[string]any
 }
 
-func createDbStruct(ar *arangorepository, collP *CollectionParams) error {
+func createDBStruct(ar *arangorepository, collP *CollectionParams) error {
 	if err := docCollections(ar, collP); err != nil {
 		return err
 	}

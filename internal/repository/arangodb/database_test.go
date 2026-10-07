@@ -68,7 +68,7 @@ func TestCreateDbStruct(t *testing.T) {
 		repo, cleanup := setupTestRepo(t, connParams, collParams, ontoParams)
 		defer cleanup()
 
-		err = createDbStruct(repo, collParams)
+		err = createDBStruct(repo, collParams)
 		require.NoError(t, err, "Failed to create database structure")
 
 		verifyStockCollections(t, repo)
@@ -88,7 +88,7 @@ func TestCreateDbStruct(t *testing.T) {
 		invalidCollParams := copyCollectionParamsWithOverride(collParams, func(c *CollectionParams) {
 			c.Stock = ""
 		})
-		err = createDbStruct(repo, invalidCollParams)
+		err = createDBStruct(repo, invalidCollParams)
 		require.Error(t, err, "Should fail with invalid collection parameters")
 	})
 }
