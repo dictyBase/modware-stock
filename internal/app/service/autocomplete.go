@@ -87,29 +87,29 @@ func autocompleteEntityFilter(
 	}
 }
 
+// repositoryFieldMap maps the repository field label to the proto
+// search field enum. The map covers the 8 identifier labels of the
+// autocomplete feature and the 2 prose labels of the full search.
+var repositoryFieldMap = map[string]stock.StockSearchField{
+	autocompleteFieldStockID: stock.StockSearchField_STOCK_SEARCH_FIELD_STOCK_ID,
+	searchFieldGenes:         stock.StockSearchField_STOCK_SEARCH_FIELD_GENES,
+	searchFieldDbxrefs:       stock.StockSearchField_STOCK_SEARCH_FIELD_DBXREFS,
+	autocompleteFieldLabel:   stock.StockSearchField_STOCK_SEARCH_FIELD_LABEL,
+	searchFieldNames:         stock.StockSearchField_STOCK_SEARCH_FIELD_NAMES,
+	searchFieldSpecies:       stock.StockSearchField_STOCK_SEARCH_FIELD_SPECIES,
+	searchFieldPlasmid:       stock.StockSearchField_STOCK_SEARCH_FIELD_PLASMID,
+	autocompleteFieldName:    stock.StockSearchField_STOCK_SEARCH_FIELD_NAME,
+	fullSearchFieldSummary:   stock.StockSearchField_STOCK_SEARCH_FIELD_SUMMARY,
+	fullSearchFieldDepositor: stock.StockSearchField_STOCK_SEARCH_FIELD_DEPOSITOR,
+}
+
 // mapRepositoryField maps the repository field label to the proto
 // search field enum. An unknown label maps to UNSPECIFIED.
 func mapRepositoryField(field string) stock.StockSearchField {
-	switch field {
-	case autocompleteFieldStockID:
-		return stock.StockSearchField_STOCK_SEARCH_FIELD_STOCK_ID
-	case "genes":
-		return stock.StockSearchField_STOCK_SEARCH_FIELD_GENES
-	case "dbxrefs":
-		return stock.StockSearchField_STOCK_SEARCH_FIELD_DBXREFS
-	case autocompleteFieldLabel:
-		return stock.StockSearchField_STOCK_SEARCH_FIELD_LABEL
-	case "names":
-		return stock.StockSearchField_STOCK_SEARCH_FIELD_NAMES
-	case "species":
-		return stock.StockSearchField_STOCK_SEARCH_FIELD_SPECIES
-	case "plasmid":
-		return stock.StockSearchField_STOCK_SEARCH_FIELD_PLASMID
-	case autocompleteFieldName:
-		return stock.StockSearchField_STOCK_SEARCH_FIELD_NAME
-	default:
-		return stock.StockSearchField_STOCK_SEARCH_FIELD_UNSPECIFIED
+	if mapped, ok := repositoryFieldMap[field]; ok {
+		return mapped
 	}
+	return stock.StockSearchField_STOCK_SEARCH_FIELD_UNSPECIFIED
 }
 
 // mapRepositoryEntity maps the repository entity filter to the proto

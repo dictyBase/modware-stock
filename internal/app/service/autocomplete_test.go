@@ -93,14 +93,14 @@ func TestAutocompleteStockHandlerMapsSuggestions(t *testing.T) {
 	stub := &autocompleteStubRepo{
 		sugs: []*repository.Suggestion{
 			{
-				ID:          "DBS0236126",
+				ID:          testStockID,
 				Field:       autocompleteFieldLabel,
 				DisplayText: testStrainLabel,
 				Entity:      repository.EntityStrain,
 				Score:       1000.5,
 			},
 			{
-				ID:          "DBP0000027",
+				ID:          testPlasmidID,
 				Field:       autocompleteFieldName,
 				DisplayText: "pDM304",
 				Entity:      repository.EntityPlasmid,
@@ -116,7 +116,7 @@ func TestAutocompleteStockHandlerMapsSuggestions(t *testing.T) {
 	assert.NoError(err, "expect no error")
 	assert.Len(res.Data, 2, "expect two suggestions")
 	first := res.Data[0]
-	assert.Equal("DBS0236126", first.Id)
+	assert.Equal(testStockID, first.Id)
 	assert.Equal(stock.StockSearchField_STOCK_SEARCH_FIELD_LABEL, first.Field)
 	assert.Equal(stock.StockEntity_STOCK_ENTITY_STRAIN, first.Entity)
 	assert.Equal("yS13", first.DisplayText)
@@ -136,7 +136,7 @@ func TestAutocompleteStockHandlerPassesThroughQueryAndLimit(t *testing.T) {
 	stub := &autocompleteStubRepo{
 		sugs: []*repository.Suggestion{
 			{
-				ID:          "DBS0236126",
+				ID:          testStockID,
 				Field:       autocompleteFieldLabel,
 				DisplayText: testStrainLabel,
 				Entity:      repository.EntityStrain,
@@ -277,15 +277,18 @@ func TestAutocompleteStockHandlerMapsRepositoryError(t *testing.T) {
 func TestAutocompleteFieldMapping(t *testing.T) {
 	assert := require.New(t)
 	mapping := map[string]stock.StockSearchField{
-		"stock_id": stock.StockSearchField_STOCK_SEARCH_FIELD_STOCK_ID,
-		"genes":    stock.StockSearchField_STOCK_SEARCH_FIELD_GENES,
-		"dbxrefs":  stock.StockSearchField_STOCK_SEARCH_FIELD_DBXREFS,
-		"label":    stock.StockSearchField_STOCK_SEARCH_FIELD_LABEL,
-		"names":    stock.StockSearchField_STOCK_SEARCH_FIELD_NAMES,
-		"species":  stock.StockSearchField_STOCK_SEARCH_FIELD_SPECIES,
-		"plasmid":  stock.StockSearchField_STOCK_SEARCH_FIELD_PLASMID,
-		"name":     stock.StockSearchField_STOCK_SEARCH_FIELD_NAME,
-		"summary":  stock.StockSearchField_STOCK_SEARCH_FIELD_UNSPECIFIED,
+		autocompleteFieldStockID: stock.StockSearchField_STOCK_SEARCH_FIELD_STOCK_ID,
+		searchFieldGenes:         stock.StockSearchField_STOCK_SEARCH_FIELD_GENES,
+		searchFieldDbxrefs:       stock.StockSearchField_STOCK_SEARCH_FIELD_DBXREFS,
+		autocompleteFieldLabel:   stock.StockSearchField_STOCK_SEARCH_FIELD_LABEL,
+		searchFieldNames:         stock.StockSearchField_STOCK_SEARCH_FIELD_NAMES,
+		searchFieldSpecies:       stock.StockSearchField_STOCK_SEARCH_FIELD_SPECIES,
+		searchFieldPlasmid:       stock.StockSearchField_STOCK_SEARCH_FIELD_PLASMID,
+		autocompleteFieldName:    stock.StockSearchField_STOCK_SEARCH_FIELD_NAME,
+		// The full search feature extended the field map with the 2
+		// prose labels.
+		fullSearchFieldSummary:   stock.StockSearchField_STOCK_SEARCH_FIELD_SUMMARY,
+		fullSearchFieldDepositor: stock.StockSearchField_STOCK_SEARCH_FIELD_DEPOSITOR,
 	}
 	for field, want := range mapping {
 		assert.Equal(want, mapRepositoryField(field),
