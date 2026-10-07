@@ -1,6 +1,8 @@
 package arangodb
 
 import (
+	"context"
+
 	driver "github.com/arangodb/go-driver"
 	"github.com/cockroachdb/errors"
 )
@@ -56,7 +58,10 @@ func createDbStruct(ar *arangorepository, collP *CollectionParams) error {
 	if err := graphAndEdgeCollections(ar, collP); err != nil {
 		return err
 	}
-	return createIndex(ar)
+	if err := createIndex(ar); err != nil {
+		return err
+	}
+	return ar.ensureAutocompleteSearch(context.Background())
 }
 
 func docCollections(ar *arangorepository, collP *CollectionParams) error {

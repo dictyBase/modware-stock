@@ -45,4 +45,6 @@ const (
 	fieldDbxrefs         = "dbxrefs"
 	fieldPublications    = "publications"
 	fieldPlasmid         = "plasmid"
+	fieldName            = "name"
+	fieldNames           = "names"
 )
