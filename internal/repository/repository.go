@@ -52,6 +52,41 @@ type Suggestion struct {
 	Score float64
 }
 
+// FullSearchQuery holds the input of a full stock search. The repository
+// normalizes Query and clamps Limit.
+type FullSearchQuery struct {
+	// Query is the search text. The caller sends it untrimmed; the
+	// repository trims it and lowercases it.
+	Query string
+	// Entity restricts the search to one kind of stock.
+	Entity StockEntityFilter
+	// Limit is the maximum number of results. A value at or below 0
+	// becomes 50. A value above 50 becomes 50.
+	Limit int
+}
+
+// FullSearchResult is one full search match.
+type FullSearchResult struct {
+	// ID is the stock_id of the matched stock, for example DBS0236126.
+	ID string
+	// Field is the field path that matched, for example summary or label.
+	Field string
+	// DisplayText is the complete stored value of the matched field.
+	DisplayText string
+	// Summary is the complete stored summary of the stock document. It is
+	// empty when the attribute is absent.
+	Summary string
+	// StrainLabel is the strain property label shown as Descriptor in the
+	// stock center. It is empty for plasmids and missing labels.
+	StrainLabel string
+	// Entity is the kind of the matched stock. It is never EntityBoth.
+	Entity StockEntityFilter
+	// Score ranks the match. A prefix match scores above a phrase match, a
+	// phrase match above a token match, and a token match above a fuzzy
+	// match.
+	Score float64
+}
+
 // StockRepository is an interface for managing stock information
 type StockRepository interface {
 	GetStrain(id string) (*model.StockDoc, error)
@@ -66,6 +101,9 @@ type StockRepository interface {
 	LoadStrain(id string, es *stock.ExistingStrain) (*model.StockDoc, error)
 	LoadPlasmid(id string, ep *stock.ExistingPlasmid) IOE.IOEither[error, *model.StockDoc]
 	RemoveStock(id string) error
+	// SearchStock returns at most Limit ranked full search results for
+	// the normalized query of params. An empty result is not an error.
+	SearchStock(params *FullSearchQuery) ([]*FullSearchResult, error)
 	// AutocompleteStock returns at most Limit short suggestions for the
 	// normalized query of params.
 	AutocompleteStock(params *AutocompleteQuery) ([]*Suggestion, error)
