@@ -19,7 +19,7 @@ RUN go build \
     -installsuffix cgo \
     -tags netgo \
     -o /bin/app \
-    cmd/modware-stock/main.go
+    ./cmd/modware-stock
 RUN upx -q -9 /bin/app
 
 FROM gcr.io/distroless/static
