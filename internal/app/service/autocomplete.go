@@ -14,22 +14,18 @@ import (
 )
 
 // AutocompleteStock returns short suggestions for a partial stock
-// identifier, name or attribute value. The order of operations is: nil
-// guards, protovalidate validation, the trim guard, the effective
-// limit, the entity mapping and the repository call.
+// identifier, name or attribute value. The order of operations is:
+// protovalidate validation, the trim guard, the effective limit, the
+// entity mapping and the repository call.
 func (s *StockService) AutocompleteStock(
 	ctx context.Context,
 	r *stock.StockAutocompleteParameters,
 ) (*stock.StockSuggestionCollection, error) {
-	// This service has no recovery interceptor, so a nil dereference
-	// would kill the process. Guard before anything else.
-	if r.GetData() == nil || r.GetData().GetAttributes() == nil {
-		return nil, aphgrpc.HandleInvalidParamError(
-			ctx,
-			errors.New("autocomplete request needs data and attributes"),
-		)
-	}
 	// The generated Validate method is a no-op for these messages.
+	// protovalidate rejects nil data and nil attributes here, because
+	// the proto marks both required; this server has no recovery
+	// interceptor, so the boundary validation also protects the
+	// process from a nil dereference.
 	if err := protovalidate.Validate(r); err != nil {
 		return nil, aphgrpc.HandleInvalidParamError(ctx, err)
 	}

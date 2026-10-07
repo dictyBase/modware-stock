@@ -596,7 +596,7 @@ func (s *StockService) AutocompleteStock(
 
 Order of operations, exactly:
 
-1. **Nil guard.** `if r.GetData() == nil || r.GetData().GetAttributes() == nil { return nil, aphgrpc.HandleInvalidParamError(ctx, errors.New("autocomplete request needs data and attributes")) }`. This runs **before** validation, because this repository has no recovery interceptor.
+1. **Nil guard — folded into validation.** The plan first specified an explicit nil guard before validation. Empirical probe on the released stubs (2026-10-07): `protovalidate.Validate` already rejects nil `data` and nil `attributes` with `codes.InvalidArgument`, because the proto marks both required. The handler therefore relies on `protovalidate.Validate` alone; the two nil-rejection unit tests still pin the boundary.
 2. **Validation.** `if err := protovalidate.Validate(r); err != nil { return nil, aphgrpc.HandleInvalidParamError(ctx, err) }`. Do not call `r.Validate()`; it is a no-op.
 3. **Trim guard.** Trim the query. When the trimmed query is empty, return an invalid-argument error. The proto rule counts characters, so `"   "` reaches this point.
 4. **Effective limit.** `effLimit := attr.GetLimit()`; when it is 0, set it to 5. The repository clamps again, so the two values always agree.
