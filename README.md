@@ -132,7 +132,35 @@ Full protobuf definitions: [dictybaseapis/stock.proto](https://github.com/dictyB
 | `UpdatePlasmid` | `PlasmidUpdate` | `Plasmid` | Update an existing plasmid |
 | `ListPlasmids` | `StockParameters` | `PlasmidCollection` | Paginated plasmid listing with filters |
 | `RemoveStock` | `StockId` | `Empty` | Delete a stock (strain or plasmid) by ID |
+| `AutocompleteStock` | `StockAutocompleteParameters` | `StockSuggestionCollection` | Type-ahead suggestions for a partial stock identifier, name or attribute value |
 | `OboJSONFileUpload` | `stream FileUploadRequest` | `FileUploadResponse` | Stream-upload an OBO JSON ontology file to populate the ontology collections |
+
+### Stock Autocomplete
+
+The `AutocompleteStock` method returns type-ahead suggestions for a
+partial search text.
+
+- The request message is `StockAutocompleteParameters`; the response
+  message is `StockSuggestionCollection`.
+- The query must hold at least 3 characters. The server rejects a
+  shorter query, and it rejects a query that has only whitespace
+  characters.
+- The request limit can hold 0 to 50. A limit of 0 means 5 suggestions,
+  the default. The server returns at most 50 suggestions.
+- The server searches 8 fields: `stock_id`, `genes`, `dbxrefs`, `label`,
+  `names`, `species`, `plasmid` and `name`. The first three fields live
+  on the stock document; the last five on the stock property document.
+- Each suggestion names the stock ID, the kind of stock (`strain` or
+  `plasmid`), the field that matched, the display text and a score. The
+  request can filter by kind of stock. A prefix match scores at least
+  1000; a fuzzy (typo-tolerant) match scores below 1000.
+- An empty suggestion list is a valid result. It is not an error.
+- The repository constructor creates the search assets: the analyzers
+  `stock_autocomplete_norm` and `stock_autocomplete_ngram`, and the
+  arangosearch view `stock_autocomplete`. A failed creation stops the
+  start of the service, so an operator sees the problem at once.
+- The tests read 4 environment variables: `ARANGO_HOST`, `ARANGO_USER`,
+  `ARANGO_PASS`, and the optional `ARANGO_PORT` (default 8529).
 
 ### Connect with Go
 
