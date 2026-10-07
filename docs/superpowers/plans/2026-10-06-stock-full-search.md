@@ -383,8 +383,11 @@ const (
 	// this value, because the spec asks for one list of 50 items.
 	maxFullSearchLimit = 50
 	// fullSearchNgramThreshold is the minimum n-gram similarity of a
-	// fuzzy match. Task 1 of the plan confirms or corrects the value.
-	fullSearchNgramThreshold = 0.45
+	// fuzzy match. Task 1 calibration on ArangoDB 3.11.14 corrected the
+	// assumed 0.45 to 0.30: 0.45 misses the one-character typo
+	// dbs0236127 against DBS0236126 entirely, while 0.30 matches it and
+	// still admits no junk. This mirrors the autocomplete calibration.
+	fullSearchNgramThreshold = 0.3
 )
 ```
 
@@ -1315,17 +1318,46 @@ Input classes and risks that no single task fully owns. Each has a named owner t
 
 Fill these during implementation. They are part of the handoff.
 
-- ArangoDB version string from Task 1 Step 1: (none yet)
-- Probe results 1 to 26: (none yet)
-- Final n-gram threshold: (0.45 assumed; Task 1 confirms)
-- Query normalization decision, Go lowercase or `TOKENS`: (none yet)
-- `TOKENS("the and", "text_en")` output, and the chosen stopword behavior: (none yet)
-- Multi-token noise count, and the decision between any-token and all-token: (none yet)
-- Measured `BM25` minimum and maximum, and whether the 250-point bands hold: (none yet)
-- Whether the `IN TOKENS` form needs the `ANALYZER()` wrapper, from probe 8: (none yet)
-- EXPLAIN node list and the baseline p95 in milliseconds: (none yet)
+- ArangoDB version string from Task 1 Step 1: **3.11.14** (container `arango311`, host port 8530; a 3.12 server holds 8529 locally).
+- Probe results 1 to 26 (harness `scripts/full-search-calibration.js`, disposable db `stock_calib_1791402364516`, 1071 stock docs):
+  1. `TOKENS(@q, "text_en")` with bind param returns `["form", "culmin"]` — the stemmer rewrites both words; the bind-parameter form works.
+  2. Prefix `dbs023` on `stock_id`: 1 row, `s` 1000, `k` `DBS0236126`, `strain_label` `yS13`. Matches expectation.
+  3. Prefix `ys` on `label`: 1 row whose `k` is the stock key `DBS0236126`, `strain_label` `yS13`. INBOUND direction proven.
+  4. Prefix `pdm` on plasmid `name`: `k` `DBP0000027`, entity `plasmid`, `strain_label` empty. Matches expectation.
+  5. Same prefix without `ANALYZER()`: 0 rows. Wrapper required, as planned.
+  6. Fuzzy `dbs0236127` sweep: **0.2 → 15 rows of junk plus the real row; 0.3 → exactly the real row; 0.45, 0.55, 0.65, 0.8, 1.0 → 0 rows.** The assumed 0.45 fails; folded to **0.30** (see the constants block). Same conclusion as the autocomplete calibration.
+  7. `ANALYZER(d.summary IN TOKENS(@q, "text_en"), "text_en")` with `culminants`: 2 rows (the phrase strain and the far-apart strain).
+  8. Same without the wrapper: 0 rows. The `IN TOKENS` form needs the `ANALYZER()` wrapper, as planned.
+  9. `PHRASE(d.summary, @q, "text_en")` with `forms culminants`: exactly the in-order strain (score 509.68). Bind-parameter phrase works.
+  10. `PHRASE` with the other-order bind value `culminants forms`: 0 rows.
+  11. `PHRASE` on `editable_summary` linked with the featureless `stock_search_norm` analyzer: **returned 1 row with score 500, no error.** The plan's expectation (error or 0 rows) is wrong — PHRASE still matched on the norm analyzer. The reason to keep `text_en` on prose stands regardless: prose needs tokenization and stemming, which a norm analyzer does not supply.
+  12. Prefix `dictyo` on `species`: 2 rows (both strains share the `Dictyostelium` genus). Prefix match works.
+  13. Token `costanza` on `depositor`: 1 row, score 250.29.
+  14. Full statement with `dbs023`: prefix row leads at 1000; a fuzzy `stock_id` row follows at 16.6.
+  15. Measured BM25 range: token branch 3.07–8.18 (`calibword` in 34 docs, `forms` in 3 docs); fuzzy branch 18.95–39.52 (`dbs0236127` at threshold 0.2, 15 docs); pure-prefix rows score BM25 0. **Maximum 39.5, far below the 250-point band width; the bands hold.**
+  16. Full statement with `forms culminants`: phrase strain leads (509.7), both-words strain follows (259.0), single-word strain last (258.2). Matches the plan.
+  17. Multi-token noise: **1 of 3 rows matched only one token** (the `forms`-only strain). The tail stays small and bounded by the limit; decision: keep the **any-token** form of `IN TOKENS`.
+  18. `TOKENS("the and", "text_en")` returns `["the", "and"]` — **`text_en` does NOT remove stopwords**. The full statement with `the and` returned 2 rows in the 250-point band (bounded noise). Decision: the repository applies a **Go-side stopword list** and rejects an all-stopword query with an error, so a stopword-only request never reaches AQL. `TestSearchStockStopwordOnlyQuery` pins the error.
+  19. Whitespace query (trimmed empty) and `---`: 0 rows, no AQL error.
+  20. Entity filter: in-branch `plasmid` filter over 65 `xylose` gene docs returns exactly the 5 plasmids. Post-merge variant also returned 5 here (at equal BM25 the `DBP…` keys sort before the `DBS…` keys, so the 50-row cap kept them), and the unfiltered variant kept 50 rows of which 5 were plasmids — **no loss measurable on this fixture ordering**, but the loss depends on key order and BM25 ties, so the in-branch filter stays (design already decided; `TestSearchStockEntityFilterKeepsSmallGroup` pins it).
+  21. One stock matching `label` + `genes` + `summary` for `cordax`: exactly 1 merged row, field attributed to the highest band (`genes` prefix, 1000).
+  22. Array display: prefix `ax` → `Ax2` (matched element); fuzzy-only `gammas` → `gammaS13` (matched element, `CONTAINS` passes); document without `names` → empty string. Never `null`, never an error.
+  23. The orphan property document: 0 rows — dropped by `FILTER own != null`.
+  24. The plasmid without a summary attribute: `sm` empty string, no error.
+  25. `FLATTEN([...])` over the 19 branch variables: flat list, one object per row.
+  26. Full statement for the `editable_summary`-only term: 0 rows, no error.
+- Final n-gram threshold: **0.30** (0.45 folded out; see probe 6).
+- Query normalization decision, Go lowercase or `TOKENS`: **Go side** — trim, lowercase, strip combining diacritical marks (same `normalizeAutocompleteQuery` shape as the autocomplete feature). A punctuation-only query keeps its tokens safe, where an AQL `TOKENS` normalization would produce an empty token list and a null prefix argument.
+- `TOKENS("the and", "text_en")` output `["the", "and"]`, and the chosen stopword behavior: text_en keeps stopwords; **Go-side stopword rejection** (invalid-argument error) chosen; see probe 18.
+- Multi-token noise count, and the decision between any-token and all-token: 1 of 3 rows; **any-token retained**; see probe 17.
+- Measured `BM25` minimum and maximum: token 3.07–8.18, fuzzy 18.95–39.52, prefix 0. **The 250-point bands hold** (see probe 15).
+- Whether the `IN TOKENS` form needs the `ANALYZER()` wrapper, from probe 8: **yes** — 0 rows without it.
+- EXPLAIN node list and the baseline p95 in milliseconds: 19 `EnumerateViewNode`, 0 `EnumerateCollectionNode`; full node counts `{SingletonNode:1, SubqueryStartNode:46, EnumerateViewNode:19, TraversalNode:19, LimitNode:46, CalculationNode:116, SubqueryEndNode:46, FilterNode:25, SortNode:22, EnumerateListNode:9, CollectNode:1, ReturnNode:1}`. Latency over 20 runs on the warmed 1071-doc fixture with `forms culminants`, limit 50: **min 10 ms, median 10 ms, p95 11 ms**.
 - Task 6 measured p95, and the ratio against the baseline: (none yet)
 - Build break recorded in Task 2 Step 4: (none yet)
-- Pre-existing test failures on the branch before any change: (none yet)
+- Pre-existing test failures on the branch before any change: **none** — `go test ./...` green on `feat/stock-full-search` (493 tests, 1 skipped integration test) before any change.
 - The gRPC code that `aphgrpc.HandleGetError` really returns: (none yet)
-- Deviations from [Exact interfaces](#exact-interfaces), with the reason: (none yet)
+- Deviations from [Exact interfaces](#exact-interfaces), with the reason:
+  - `fullSearchNgramThreshold` 0.45 → 0.30 (Task 1 probe 6; the assumed 0.45 misses real one-character typos).
+  - Probe 11 contradicted the plan's PHRASE feature expectation (PHRASE matched on a featureless norm analyzer); `text_en` stays on prose because prose needs tokenization and stemming.
+  - The repository adds a Go-side stopword check that rejects an all-stopword query with an error (Task 1 probe 18; text_en does not remove stopwords). This is the documented mitigation the plan anticipated, not a deviation from an interface.
