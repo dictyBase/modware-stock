@@ -943,7 +943,7 @@ func testListStrainsByIDsMixed(params *testParams) {
 func testListStrainsDefault(params *testParams) {
 	params.t.Helper()
 	// Create a few strains
-	for idx := 0; idx < 5; idx++ {
+	for range 5 {
 		createReq := newTestStrain()
 		_, err := params.client.CreateStrain(params.ctx, createReq)
 		params.assert.NoError(err, "should create strain without error")
@@ -969,7 +969,7 @@ func testListStrainsDefault(params *testParams) {
 func testListStrainsWithLimit(params *testParams) {
 	params.t.Helper()
 	// Create several strains
-	for idx := 0; idx < 10; idx++ {
+	for range 10 {
 		createReq := newTestStrain()
 		_, err := params.client.CreateStrain(params.ctx, createReq)
 		params.assert.NoError(err, "should create strain without error")
@@ -997,7 +997,7 @@ func testListStrainsWithLimit(params *testParams) {
 func testListStrainsWithCursor(params *testParams) {
 	params.t.Helper()
 	// Create several strains
-	for idx := 0; idx < 15; idx++ {
+	for range 15 {
 		createReq := newTestStrain()
 		_, err := params.client.CreateStrain(params.ctx, createReq)
 		params.assert.NoError(err, "should create strain without error")
