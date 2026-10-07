@@ -41,10 +41,7 @@ const (
 	defaultAutocompleteLimit = 5
 	// maxAutocompleteLimit is the hard cap of the list length.
 	maxAutocompleteLimit = 50
-)
 
-// Score expressions of the two branch stages.
-const (
 	// autocompletePrefixScore is the score bonus of a prefix branch. A
 	// prefix match always ranks above a fuzzy match, and the BM25 of a
 	// pure STARTS_WITH match can be 0, so the deterministic tiebreak on
@@ -139,7 +136,10 @@ func autocompleteNgramDef() *driver.ArangoSearchAnalyzerDefinition {
 		Type: driver.ArangoSearchAnalyzerTypePipeline,
 		Properties: driver.ArangoSearchAnalyzerProperties{
 			Pipeline: []driver.ArangoSearchAnalyzerPipeline{
-				{Type: driver.ArangoSearchAnalyzerTypeNorm, Properties: normStep.Properties},
+				{
+					Type:       driver.ArangoSearchAnalyzerTypeNorm,
+					Properties: normStep.Properties,
+				},
 				{
 					Type: driver.ArangoSearchAnalyzerTypeNGram,
 					Properties: driver.ArangoSearchAnalyzerProperties{
@@ -236,7 +236,10 @@ func (ar *arangorepository) ensureAutocompleteView(ctx context.Context) error {
 	if sameLinkShape(props.Links, want) {
 		return nil
 	}
-	if err := asv.SetProperties(ctx, driver.ArangoSearchViewProperties{Links: want}); err != nil {
+	if err := asv.SetProperties(
+		ctx,
+		driver.ArangoSearchViewProperties{Links: want},
+	); err != nil {
 		return errors.Errorf(
 			"error in reconciling view %s %s",
 			autocompleteViewName,
