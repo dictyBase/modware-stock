@@ -27,6 +27,7 @@ const (
 	// testStockColl and testStockPropColl mirror getCollectionParams.
 	testStockColl    = "stock_test"
 	testStockPropCol = "stock_properties_test"
+	testIdentityAnl  = "identity"
 	// testAutocompleteGene is the gene of the ranking test.
 	testAutocompleteGene = "sada"
 )
@@ -159,9 +160,20 @@ func TestEnsureAutocompleteSearchReconcilesStaleView(t *testing.T) {
 		testAutocompleteVw,
 		&driver.ArangoSearchViewProperties{
 			Links: driver.ArangoSearchLinks{
+				// Two links, so the top-level length check passes
+				// and the field-level comparisons run: one link
+				// carries a renamed field, the other a wrong
+				// analyzer list.
 				"stock_test": {
 					Fields: driver.ArangoSearchFields{
-						"stock_id": {Analyzers: []string{"identity"}},
+						paramStockID:      {Analyzers: []string{testIdentityAnl}},
+						fieldGenes:        {Analyzers: []string{testIdentityAnl}},
+						"dbxrefs_renamed": {Analyzers: []string{testIdentityAnl}},
+					},
+				},
+				"stock_properties_test": {
+					Fields: driver.ArangoSearchFields{
+						fieldLabel: {Analyzers: []string{testIdentityAnl}},
 					},
 				},
 			},
@@ -764,4 +776,159 @@ func TestAutocompleteStockAccentedQuery(t *testing.T) {
 		&repository.AutocompleteQuery{Query: "Ÿs1", Limit: 5})
 	assert.Len(acc, 1, "expect the accented query to match")
 	assert.Equal(m.Key, acc[0].ID)
+}
+
+// TestEnsureAutocompleteSearchIdempotentSecondCall builds the
+// repository twice on the same database: the second constructor finds
+// the view with the correct shape and must not rewrite it.
+func TestEnsureAutocompleteSearchIdempotentSecondCall(t *testing.T) {
+	assert := require.New(t)
+	ta, err := testarango.NewTestArangoFromEnv(true)
+	assert.NoErrorf(
+		err,
+		"expect no error creating a test database, received %s",
+		err,
+	)
+	repo1, err := NewStockRepo(
+		getConnectParamsFromDb(ta),
+		getCollectionParams(),
+		getOntoParams(),
+	)
+	assert.NoErrorf(
+		err,
+		"expect no error building the first repository, received %s",
+		err,
+	)
+	ctx := context.Background()
+	before, err := repo1.Dbh().Handler().View(ctx, testAutocompleteVw)
+	assert.NoError(err, "expect no error opening the view")
+	beforeAsv, err := before.ArangoSearchView()
+	assert.NoError(err, "expect no error casting the view")
+	beforeProps, err := beforeAsv.Properties(ctx)
+	assert.NoError(err, "expect no error reading the view")
+	repo2, err := NewStockRepo(
+		getConnectParamsFromDb(ta),
+		getCollectionParams(),
+		getOntoParams(),
+	)
+	assert.NoErrorf(
+		err,
+		"expect no error building the second repository, received %s",
+		err,
+	)
+	after, err := repo2.Dbh().Handler().View(ctx, testAutocompleteVw)
+	assert.NoError(err, "expect no error reopening the view")
+	afterAsv, err := after.ArangoSearchView()
+	assert.NoError(err, "expect no error casting the view")
+	afterProps, err := afterAsv.Properties(ctx)
+	assert.NoError(err, "expect no error reading the view")
+	assert.Equal(
+		beforeProps.ID,
+		afterProps.ID,
+		"expect the same view identifier after the second construction",
+	)
+	assertAutocompleteViewShape(
+		ctx,
+		assert,
+		repo2.Dbh().Handler(),
+		[]string{testStockColl, testStockPropCol},
+	)
+	assert.NoError(repo2.Dbh().Drop(), "expect no error dropping the database")
+	_ = repo1
+}
+
+// TestNewStockRepoFailsOnAnalyzerConflict pre-creates the norm analyzer
+// with a conflicting definition and expects the constructor to fail.
+func TestNewStockRepoFailsOnAnalyzerConflict(t *testing.T) {
+	assert := require.New(t)
+	ta, err := testarango.NewTestArangoFromEnv(true)
+	assert.NoErrorf(
+		err,
+		"expect no error creating a test database, received %s",
+		err,
+	)
+	dbr, err := ta.DB(ta.Database)
+	assert.NoErrorf(err, "expect no error opening database, received %s", err)
+	_, _, err = dbr.Handler().EnsureCreatedAnalyzer(
+		context.Background(),
+		&driver.ArangoSearchAnalyzerDefinition{
+			Name: testNormAnalyzer,
+			Type: driver.ArangoSearchAnalyzerTypeNorm,
+			Properties: driver.ArangoSearchAnalyzerProperties{
+				Locale: "en.utf-8",
+				Case:   driver.ArangoSearchCaseUpper,
+				Accent: new(true),
+			},
+		},
+	)
+	assert.NoErrorf(
+		err,
+		"expect no error creating the conflicting analyzer, received %s",
+		err,
+	)
+	_, err = NewStockRepo(
+		getConnectParamsFromDb(ta),
+		getCollectionParams(),
+		getOntoParams(),
+	)
+	assert.Errorf(
+		err,
+		"expect an error from a conflicting analyzer definition",
+	)
+	assert.NoError(repo1Drop(ta), "expect no error dropping the database")
+}
+
+// TestNewStockRepoFailsOnNonArangoSearchView pre-creates a plain view
+// under the autocomplete name and expects the constructor to fail
+// without deleting the other view.
+func TestNewStockRepoFailsOnNonArangoSearchView(t *testing.T) {
+	assert := require.New(t)
+	ta, err := testarango.NewTestArangoFromEnv(true)
+	assert.NoErrorf(
+		err,
+		"expect no error creating a test database, received %s",
+		err,
+	)
+	dbr, err := ta.DB(ta.Database)
+	assert.NoErrorf(err, "expect no error opening database, received %s", err)
+	_, err = dbr.Handler().CreateArangoSearchAliasView(
+		context.Background(),
+		testAutocompleteVw,
+		nil,
+	)
+	assert.NoErrorf(
+		err,
+		"expect no error creating the plain view, received %s",
+		err,
+	)
+	_, err = NewStockRepo(
+		getConnectParamsFromDb(ta),
+		getCollectionParams(),
+		getOntoParams(),
+	)
+	assert.Errorf(
+		err,
+		"expect an error when a non-arangosearch view holds the name",
+	)
+	still, err := dbr.Handler().ViewExists(context.Background(), testAutocompleteVw)
+	assert.NoError(err, "expect no error checking the view")
+	assert.True(still, "expect the plain view to survive the failed setup")
+	assert.NoError(repo1Drop(ta), "expect no error dropping the database")
+}
+
+// TestAutocompleteStockRejectsNilParams pins the nil-parameter guard.
+func TestAutocompleteStockRejectsNilParams(t *testing.T) {
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	_, err := repo.AutocompleteStock(nil)
+	assert.Errorf(err, "expect an error for nil autocomplete parameters")
+}
+
+// repo1Drop drops the test database of the constructor tests.
+func repo1Drop(ta *testarango.TestArango) error {
+	dbr, err := ta.DB(ta.Database)
+	if err != nil {
+		return err
+	}
+	return dbr.Drop()
 }

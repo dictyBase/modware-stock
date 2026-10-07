@@ -295,3 +295,9 @@ func TestAutocompleteFieldMapping(t *testing.T) {
 			"entity %s must map to the right enum", filter)
 	}
 }
+
+func TestAutocompleteEntityFilterRejectsUnknown(t *testing.T) {
+	assert := require.New(t)
+	_, err := autocompleteEntityFilter(stock.StockEntity(7))
+	assert.Error(err, "expect an error for an undefined stock entity")
+}
