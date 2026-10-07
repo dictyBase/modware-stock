@@ -2,10 +2,15 @@ package arangodb
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	A "github.com/IBM/fp-go/array"
+	F "github.com/IBM/fp-go/function"
 	driver "github.com/arangodb/go-driver"
 	"github.com/cockroachdb/errors"
 	"github.com/dictyBase/modware-stock/internal/repository"
+	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 )
 
 // Search asset names owned by the full search feature. Every name
@@ -26,36 +31,63 @@ const (
 	// serves the token branches and the phrase branches. It is built in,
 	// so the setup must not try to create it.
 	fullSearchTextAnalyzer = "text_en"
+	// defaultFullSearchLimit is the list length for a non-positive limit.
+	defaultFullSearchLimit = 50
+	// maxFullSearchLimit is the hard cap of the returned list length. The
+	// proto accepts a limit up to 100, and the repository clamps it to
+	// this value, because the spec asks for one list of 50 items.
+	maxFullSearchLimit = 50
+	// fullSearchNgramThreshold is the minimum n-gram similarity of a
+	// fuzzy match. Task 1 calibration on ArangoDB 3.11.14 corrected the
+	// assumed 0.45 to 0.30: 0.45 misses the one-character typo
+	// dbs0236127 against DBS0236126 entirely, while 0.30 matches it and
+	// still admits no junk. This mirrors the autocomplete calibration.
+	fullSearchNgramThreshold = 0.3
+
+	// Score bands. The bands are 250 apart and carry the stage order:
+	// prefix above phrase above token above fuzzy. The BM25 of a pure
+	// STARTS_WITH match can be 0, so the constants carry the order and
+	// the deterministic tiebreak on the key carries the rest. The Task 1
+	// calibration measured a BM25 maximum of 39.5 on a 1071-document
+	// fixture, far below the band width of 250.
+
+	fullSearchPrefixBand = "1000 + BM25(d)"
+	fullSearchPhraseBand = "500 + BM25(d)"
+	fullSearchProseBand  = "250 + BM25(d)"
+	fullSearchFuzzyBand  = "BM25(d)"
 )
 
 // fullSearchIdentifierFields lists the 8 identifier and name fields
 // that the view indexes with both custom analyzers. The first three
 // live on the stock collection, the last five on the stock property
-// collection.
+// collection. Each field serves one prefix branch and one fuzzy branch.
 var fullSearchIdentifierFields = []struct {
-	label string
-	coll  fullSearchColl
+	label   string
+	coll    fullSearchColl
+	display fullSearchDisplay
 }{
-	{label: paramStockID, coll: fullSearchCollStock},
-	{label: fieldGenes, coll: fullSearchCollStock},
-	{label: fieldDbxrefs, coll: fullSearchCollStock},
-	{label: fieldLabel, coll: fullSearchCollProp},
-	{label: fieldNames, coll: fullSearchCollProp},
-	{label: fieldSpecies, coll: fullSearchCollProp},
-	{label: fieldPlasmid, coll: fullSearchCollProp},
-	{label: fieldName, coll: fullSearchCollProp},
+	{label: paramStockID, coll: fullSearchCollStock, display: fullSearchScalar},
+	{label: fieldGenes, coll: fullSearchCollStock, display: fullSearchArray},
+	{label: fieldDbxrefs, coll: fullSearchCollStock, display: fullSearchArray},
+	{label: fieldLabel, coll: fullSearchCollProp, display: fullSearchScalar},
+	{label: fieldNames, coll: fullSearchCollProp, display: fullSearchArray},
+	{label: fieldSpecies, coll: fullSearchCollProp, display: fullSearchScalar},
+	{label: fieldPlasmid, coll: fullSearchCollProp, display: fullSearchScalar},
+	{label: fieldName, coll: fullSearchCollProp, display: fullSearchScalar},
 }
 
 // fullSearchProseFields lists the 2 prose fields that the view indexes
 // with the built-in text analyzer only. The plan does not index
 // editable_summary: an n-gram index over long prose grows fast and
-// returns weak matches.
+// returns weak matches. Each field serves one token branch, and the
+// summary field serves the single phrase branch.
 var fullSearchProseFields = []struct {
-	label string
-	coll  fullSearchColl
+	label   string
+	coll    fullSearchColl
+	display fullSearchDisplay
 }{
-	{label: fieldSummary, coll: fullSearchCollStock},
-	{label: fieldDepositor, coll: fullSearchCollStock},
+	{label: fieldSummary, coll: fullSearchCollStock, display: fullSearchScalar},
+	{label: fieldDepositor, coll: fullSearchCollStock, display: fullSearchScalar},
 }
 
 type fullSearchColl int
@@ -65,12 +97,264 @@ const (
 	fullSearchCollProp
 )
 
-// SearchStock is a placeholder that Task 4 replaces with the real
-// 19-branch query implementation.
+type fullSearchDisplay int
+
+const (
+	fullSearchScalar fullSearchDisplay = iota
+	fullSearchArray
+)
+
+// SearchStock returns at most 50 ranked results for the normalized
+// query of params. The repository trims and lowercases the query,
+// rejects an empty, punctuation-only or all-stopword query, clamps the
+// limit, and validates the entity filter before any AQL runs. An empty
+// result is not an error.
 func (ar *arangorepository) SearchStock(
-	_ *repository.FullSearchQuery,
+	params *repository.FullSearchQuery,
 ) ([]*repository.FullSearchResult, error) {
-	return nil, errors.New("SearchStock is not implemented yet")
+	if params == nil {
+		return nil, errors.New("expect a non-nil full search query")
+	}
+	query := normalizeAutocompleteQuery(params.Query)
+	if query == "" {
+		return nil, errors.New("expect a non-empty full search query")
+	}
+	if fullSearchAllStopwords(query) {
+		return nil, errors.Errorf(
+			"expect a query with at least one non-stopword, received %q",
+			params.Query,
+		)
+	}
+	limit := fullSearchLimit(params.Limit)
+	entity, err := autocompleteEntity(params.Entity)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := ar.database.SearchRows(fullSearchQuery, map[string]any{
+		"q":                 query,
+		"th":                fullSearchNgramThreshold,
+		"limit":             limit,
+		"entity":            string(entity),
+		nameStockPropGraph:  ar.stockc.stockPropType.Name(),
+		nameStockCollection: ar.stockc.stock.Name(),
+	})
+	if err != nil {
+		return nil, errors.Errorf("error in running full search query %s", err)
+	}
+	defer func() { _ = rows.Close() }()
+	matches := make([]searchResultRow, 0, limit)
+	for rows.Scan() {
+		var row searchResultRow
+		if err := rows.Read(&row); err != nil {
+			return nil, errors.Errorf("error in reading full search row %s", err)
+		}
+		matches = append(matches, row)
+	}
+	return F.Pipe1(
+		matches,
+		A.Map(searchResultRow.result),
+	), nil
+}
+
+// searchResultRow mirrors one object row of the full search projection.
+// go-driver v1 cannot decode an array row, so the projection returns one
+// object per row.
+type searchResultRow struct {
+	Key         string  `json:"k"`
+	ID          string  `json:"id"`
+	Entity      string  `json:"entity"`
+	Field       string  `json:"f"`
+	Value       string  `json:"v"`
+	Summary     string  `json:"sm"`
+	StrainLabel string  `json:"sl"`
+	Score       float64 `json:"s"`
+}
+
+// result converts one query row into a repository full search result.
+func (r searchResultRow) result() *repository.FullSearchResult {
+	return &repository.FullSearchResult{
+		ID:          r.ID,
+		Field:       r.Field,
+		DisplayText: r.Value,
+		Summary:     r.Summary,
+		StrainLabel: r.StrainLabel,
+		Entity:      repository.StockEntityFilter(r.Entity),
+		Score:       r.Score,
+	}
+}
+
+// fullSearchStopwords is the short stopword list of the token stage.
+// Task 1 probe 18 recorded that the built-in text_en analyzer does not
+// remove stopwords, so the repository rejects a query whose tokens are
+// all stopwords before any AQL runs.
+var fullSearchStopwords = map[string]struct{}{
+	"a": {}, "an": {}, "and": {}, "are": {}, "as": {}, "at": {},
+	"be": {}, "but": {}, "by": {}, "for": {}, "from": {}, "had": {},
+	"has": {}, "have": {}, "if": {}, "in": {}, "is": {}, "it": {},
+	"its": {}, "not": {}, "of": {}, "on": {}, "or": {}, "so": {},
+	"than": {}, "that": {}, "the": {}, "their": {}, "then": {},
+	"there": {}, "these": {}, "this": {}, "to": {}, "too": {},
+	"very": {}, "was": {}, "were": {}, "what": {}, "when": {},
+	"which": {}, "while": {}, "who": {}, "will": {}, "with": {},
+}
+
+// fullSearchAllStopwords reports whether every whitespace-separated
+// word of the normalized query is a stopword.
+func fullSearchAllStopwords(query string) bool {
+	words := strings.Fields(query)
+	if len(words) == 0 {
+		return true
+	}
+	for _, w := range words {
+		if _, ok := fullSearchStopwords[w]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// fullSearchLimit clamps the requested limit: at or below 0 becomes
+// the default, above 50 the hard cap.
+func fullSearchLimit(limit int) int {
+	if limit <= 0 {
+		return defaultFullSearchLimit
+	}
+	if limit > maxFullSearchLimit {
+		return maxFullSearchLimit
+	}
+	return limit
+}
+
+// fullSearchQuery is the full 19-branch statement, built once per
+// process.
+var fullSearchQuery = buildFullSearchQuery()
+
+// buildFullSearchQuery assembles the statement from the two branch
+// templates and the merge template. It emits a prefix branch and a
+// fuzzy branch per identifier field, a token branch per prose field,
+// the single phrase branch over summary, and appends the merge.
+func buildFullSearchQuery() string {
+	branches := make([]string, 0, len(fullSearchIdentifierFields)*2+3)
+	names := make([]string, 0, len(fullSearchIdentifierFields)*2+3)
+	for i, f := range fullSearchIdentifierFields {
+		display := fullSearchDisplayExpr(f)
+		tpl := statement.FullSearchStockBranch
+		if f.coll == fullSearchCollProp {
+			tpl = statement.FullSearchPropBranch
+		}
+		branches = append(branches,
+			fmt.Sprintf(
+				tpl,
+				fmt.Sprintf("p%d", i),
+				fullSearchPrefixExpr(f.label),
+				f.label,
+				display,
+				fullSearchPrefixBand,
+			),
+			fmt.Sprintf(
+				tpl,
+				fmt.Sprintf("n%d", i),
+				fullSearchFuzzyExpr(f.label),
+				f.label,
+				display,
+				fullSearchFuzzyBand,
+			),
+		)
+		names = append(names, fmt.Sprintf("p%d", i), fmt.Sprintf("n%d", i))
+	}
+	for i, f := range fullSearchProseFields {
+		display := fullSearchDisplayExpr(f)
+		branches = append(branches, fmt.Sprintf(
+			statement.FullSearchStockBranch,
+			fmt.Sprintf("t%d", i),
+			fullSearchTokenExpr(f.label),
+			f.label,
+			display,
+			fullSearchProseBand,
+		))
+		names = append(names, fmt.Sprintf("t%d", i))
+	}
+	// The single phrase branch runs over summary only.
+	branches = append(branches, fmt.Sprintf(
+		statement.FullSearchStockBranch,
+		"h0",
+		fullSearchPhraseExpr(fieldSummary),
+		fieldSummary,
+		fullSearchDisplayExpr(fullSearchProseFields[0]),
+		fullSearchPhraseBand,
+	))
+	names = append(names, "h0")
+	return fmt.Sprintf(
+		"%s\n%s",
+		strings.Join(branches, "\n"),
+		fmt.Sprintf(statement.FullSearchMerge, strings.Join(names, ", ")),
+	)
+}
+
+// fullSearchPrefixExpr is the SEARCH expression of a prefix branch.
+// STARTS_WITH inside SEARCH needs the ANALYZER wrapper: without it the
+// comparison uses the identity analyzer and matches nothing.
+func fullSearchPrefixExpr(field string) string {
+	return fmt.Sprintf(
+		"ANALYZER(STARTS_WITH(d.%s, @q), %q)",
+		field,
+		fullSearchNormAnalyzer,
+	)
+}
+
+// fullSearchFuzzyExpr is the SEARCH expression of a fuzzy branch.
+// NGRAM_MATCH takes the analyzer as its fourth argument.
+func fullSearchFuzzyExpr(field string) string {
+	return fmt.Sprintf(
+		"NGRAM_MATCH(d.%s, @q, @th, %q)",
+		field,
+		fullSearchNgramAnalyzer,
+	)
+}
+
+// fullSearchTokenExpr is the SEARCH expression of a token branch. The
+// IN TOKENS form needs the ANALYZER wrapper, because the comparison of
+// the indexed value against the token list must run under the same
+// analyzer that produced the index.
+func fullSearchTokenExpr(field string) string {
+	return fmt.Sprintf(
+		"ANALYZER(d.%s IN TOKENS(@q, %q), %q)",
+		field,
+		fullSearchTextAnalyzer,
+		fullSearchTextAnalyzer,
+	)
+}
+
+// fullSearchPhraseExpr is the SEARCH expression of the phrase branch.
+// PHRASE takes the analyzer as its last argument.
+func fullSearchPhraseExpr(field string) string {
+	return fmt.Sprintf(
+		"PHRASE(d.%s, @q, %q)",
+		field,
+		fullSearchTextAnalyzer,
+	)
+}
+
+// fullSearchDisplayExpr returns the display expression of a field.
+// A scalar field returns its value; an array field returns the first
+// element that contains the query, or the joined list as a fallback.
+// The expressions run only on the rows that survive the branch LIMIT,
+// never inside the index.
+func fullSearchDisplayExpr(f struct {
+	label   string
+	coll    fullSearchColl
+	display fullSearchDisplay
+}) string {
+	if f.display == fullSearchScalar {
+		return fmt.Sprintf(`NOT_NULL(d.%s, "")`, f.label)
+	}
+	return fmt.Sprintf(
+		`NOT_NULL(FIRST(FOR item IN NOT_NULL(d.%s, []) `+
+			`FILTER CONTAINS(LOWER(item), @q) RETURN item), `+
+			`CONCAT_SEPARATOR(", ", NOT_NULL(d.%s, [])))`,
+		f.label,
+		f.label,
+	)
 }
 
 // ensureFullSearch creates both custom analyzers and the view. It is
