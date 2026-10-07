@@ -59,6 +59,11 @@ func (sr *autocompleteStubRepo) LoadPlasmid(string, *stock.ExistingPlasmid) IOE.
 	return IOE.Left[*model.StockDoc](errors.New("not used"))
 }
 func (sr *autocompleteStubRepo) RemoveStock(string) error { return nil }
+func (sr *autocompleteStubRepo) SearchStock(
+	_ *repository.FullSearchQuery,
+) ([]*repository.FullSearchResult, error) {
+	return nil, nil
+}
 func (sr *autocompleteStubRepo) AutocompleteStock(
 	params *repository.AutocompleteQuery,
 ) ([]*repository.Suggestion, error) {

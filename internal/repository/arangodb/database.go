@@ -61,7 +61,11 @@ func createDBStruct(ar *arangorepository, collP *CollectionParams) error {
 	if err := createIndex(ar); err != nil {
 		return err
 	}
-	return ar.ensureAutocompleteSearch(context.Background())
+	// Keep the autocomplete call when that plan has landed.
+	if err := ar.ensureAutocompleteSearch(context.Background()); err != nil {
+		return err
+	}
+	return ar.ensureFullSearch(context.Background())
 }
 
 func docCollections(ar *arangorepository, collP *CollectionParams) error {
