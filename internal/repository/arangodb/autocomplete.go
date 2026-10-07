@@ -120,7 +120,7 @@ func autocompleteNormDef() *driver.ArangoSearchAnalyzerDefinition {
 		Name: autocompleteNormAnalyzer,
 		Type: driver.ArangoSearchAnalyzerTypeNorm,
 		Properties: driver.ArangoSearchAnalyzerProperties{
-			Locale: "en.utf-8",
+			Locale: analyzerNormLocale,
 			Case:   driver.ArangoSearchCaseLower,
 			Accent: new(false),
 		},

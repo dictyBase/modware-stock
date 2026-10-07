@@ -47,4 +47,8 @@ const (
 	fieldPlasmid         = "plasmid"
 	fieldName            = "name"
 	fieldNames           = "names"
+
+	// analyzerNormLocale is the locale of the norm analyzer step that
+	// both search features share.
+	analyzerNormLocale = "en.utf-8"
 )
