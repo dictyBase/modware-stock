@@ -1,14 +1,12 @@
 package service
 
 // One real round trip for the autocomplete handler over a buffer
-// connection. The helpers come from strain_test_helpers.go of this
-// package. This file does not use setupGrpcServer or setupGrpcClient:
-// both mutate global gRPC state or log and exit from the serving
-// goroutine, which races with the testing package.
+// connection. The helpers come from strain_test_helpers.go and
+// bufconn_test_helpers.go of this package; the buffer connection goes
+// through the shared newBufconnClient helper.
 
 import (
 	"context"
-	"net"
 	"testing"
 	"time"
 
@@ -16,9 +14,6 @@ import (
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	arangodb "github.com/dictyBase/modware-stock/internal/repository/arangodb"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/test/bufconn"
 )
 
 func newAutocompleteArangoEnv(
@@ -38,34 +33,12 @@ func newAutocompleteArangoEnv(
 		"expect no error building the repository, received %s", err)
 	assert.NoError(loadData(tra), "expect no error loading the ontology")
 	svc := setupTestService(repo)
-	srv := grpc.NewServer()
-	stock.RegisterStockServiceServer(srv, svc)
-	lis := bufconn.Listen(1024 * 1024)
-	go func() {
-		// Serve returns grpc.ErrServerStopped during cleanup. The
-		// goroutine can outlive the test, so it must not log and must
-		// not exit the process.
-		_ = srv.Serve(lis)
-	}()
-	conn, err := grpc.NewClient(
-		"passthrough:///bufnet",
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithContextDialer(
-			func(context.Context, string) (net.Conn, error) {
-				return lis.Dial()
-			},
-		),
-	)
-	assert.NoErrorf(err,
-		"expect no error creating a grpc client, received %s", err)
+	client := newBufconnClient(t, svc)
 	t.Cleanup(func() {
-		_ = conn.Close()
-		_ = lis.Close()
-		srv.Stop()
 		_ = repo.Dbh().Drop()
 	})
 
-	return stock.NewStockServiceClient(conn), assert
+	return client, assert
 }
 
 func TestAutocompleteStockEndToEnd(t *testing.T) {

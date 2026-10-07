@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,11 +18,8 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
-	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -214,37 +210,6 @@ func setupTestService(repo repository.StockRepository) *StockService {
 	return svc
 }
 
-func setupGrpcServer(t *testing.T, svc *StockService) (*grpc.Server, *bufconn.Listener) {
-	t.Helper()
-	server := grpc.NewServer()
-	stock.RegisterStockServiceServer(server, svc)
-	lis := bufconn.Listen(1024 * 1024)
-	go func() {
-		// Serve returns grpc.ErrServerStopped during cleanup. The
-		// goroutine can outlive the test, so it must not log and must
-		// not exit the process: logging races with the testing
-		// package and os.Exit kills the test binary.
-		_ = server.Serve(lis)
-	}()
-	return server, lis
-}
-
-func setupGrpcClient(t *testing.T, assert *require.Assertions, lis *bufconn.Listener) *grpc.ClientConn {
-	t.Helper()
-	conn, err := grpc.NewClient(
-		// The target carries its own passthrough scheme, so no call to
-		// resolver.SetDefaultScheme is needed. A global resolver change
-		// races with every other test in the package.
-		"passthrough:///bufnet",
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-			return lis.Dial()
-		}),
-	)
-	assert.NoError(err)
-	return conn
-}
-
 // setup initializes the test environment with a test database, repository, and gRPC server/client.
 func setup(t *testing.T) (stock.StockServiceClient, *require.Assertions) {
 	t.Helper()
@@ -252,20 +217,8 @@ func setup(t *testing.T) (stock.StockServiceClient, *require.Assertions) {
 
 	repo := setupTestRepository(t, assert)
 	svc := setupTestService(repo)
-	server, lis := setupGrpcServer(t, svc)
-	conn := setupGrpcClient(t, assert, lis)
-
-	t.Cleanup(func() {
-		if err := conn.Close(); err != nil {
-			t.Logf("failed to close connection: %v", err)
-		}
-		if err := lis.Close(); err != nil {
-			t.Logf("failed to close listener: %v", err)
-		}
-		server.Stop()
-	})
-
-	return stock.NewStockServiceClient(conn), assert
+	client := newBufconnClient(t, svc)
+	return client, assert
 }
 
 // newTestStrain provides a consistent *stock.NewStrain for testing.
