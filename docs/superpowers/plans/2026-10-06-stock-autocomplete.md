@@ -1177,7 +1177,7 @@ Input classes and risks that no single task fully owns. Each has a named owner t
 
 Filled 2026-10-07. Server: local docker `arango311`, **ArangoDB 3.11.14** community (this container maps host port 8530; host port 8529 is held by an unrelated 3.12 container). Harness: `scripts/autocomplete-calibration.js` plus two follow-up probe runs (threshold sweeps); disposable databases dropped at exit.
 
-- ArangoDB version string from Task 1 Step 1: `3.11.14`
+- ArangoDB version string from Task 1 Step 1: `3.11.14`. Cross-version validation (user request): the same harness and the full Go test suite also ran against **ArangoDB 3.12.12 EE** (localhost:8529). Calibration results on 3.12 are identical in shape: threshold sweep unchanged (0.3 matches `dbs0236127`, 0.45+ matches nothing), accents need TOKENS, entity filter and array-display probes behave the same, EXPLAIN reports 16 `EnumerateViewNode` and 0 `EnumerateCollectionNode`, p95 11 ms. Full Go suite on 3.12: 488 tests, 1 skipped, 0 failures. The confirmed threshold 0.3 and the normalization decision hold on both 3.11 and 3.12.
 - Probe results 1 to 20:
   1. prefix `dbs023` on `stock_id`: 1 row, `k` = DBS0236126, score 1000 (BM25 of a pure prefix match is 0, so the score is exactly 1000 — assertions must use `>= 1000`).
   2. prefix `ys` on `label`: 1 row, `k` = the **stock** key DBS0236126 → INBOUND direction proven.
