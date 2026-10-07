@@ -133,6 +133,7 @@ Full protobuf definitions: [dictybaseapis/stock.proto](https://github.com/dictyB
 | `ListPlasmids` | `StockParameters` | `PlasmidCollection` | Paginated plasmid listing with filters |
 | `RemoveStock` | `StockId` | `Empty` | Delete a stock (strain or plasmid) by ID |
 | `AutocompleteStock` | `StockAutocompleteParameters` | `StockSuggestionCollection` | Type-ahead suggestions for a partial stock identifier, name or attribute value |
+| `SearchStock` | `StockSearchParameters` | `StockSearchResultCollection` | Ranked full search over identifier, name and prose fields; returns at most 50 results |
 | `OboJSONFileUpload` | `stream FileUploadRequest` | `FileUploadResponse` | Stream-upload an OBO JSON ontology file to populate the ontology collections |
 
 ### Stock Autocomplete
@@ -159,6 +160,50 @@ partial search text.
   `stock_autocomplete_norm` and `stock_autocomplete_ngram`, and the
   arangosearch view `stock_autocomplete`. A failed creation stops the
   start of the service, so an operator sees the problem at once.
+- The tests read 4 environment variables: `ARANGO_HOST`, `ARANGO_USER`,
+  `ARANGO_PASS`, and the optional `ARANGO_PORT` (default 8529).
+
+### Stock Full Search
+
+The `SearchStock` method returns a ranked list of matching stocks for a
+search text.
+
+- The request message is `StockSearchParameters`; the response message
+  is `StockSearchResultCollection`.
+- The query must hold at least 2 characters. The server rejects a
+  shorter query, a query that has only whitespace characters, and a
+  query whose words are all common English stop words.
+- The request limit can hold 0 to 100. A limit of 0 means 50 results,
+  the default. A limit from 51 to 100 is capped at 50. The server
+  returns at most 50 results.
+- The server searches 10 fields: `stock_id`, `genes`, `dbxrefs`,
+  `label`, `names`, `species`, `plasmid`, `name`, `summary` and
+  `depositor`. The identifier fields live on the stock and stock
+  property documents; `summary` and `depositor` are prose fields on the
+  stock document. The field `editable_summary` is not searched.
+- The server matches with 4 stages, and the stage sets the score band:
+  a prefix match scores at least 1000, a phrase match at least 500, a
+  token match at least 250, and a fuzzy (typo-tolerant) match scores
+  below 250.
+- A query with more than one word matches a stock that holds any one
+  of the words (token stage). A stock whose prose holds the words in
+  their stored order ranks higher (phrase stage). A single word that is
+  the prefix of an identifier ranks highest.
+- The request can filter by kind of stock. No filter means both
+  strains and plasmids; the filter values are `STRAIN` and `PLASMID`.
+- Each result names the stock ID, the kind of stock, the field that
+  matched, the complete stored display text of the matched field, a
+  score, the complete stored `summary` value of the stock, and the
+  `strain_label`. The `strain_label` is the Descriptor label of a
+  strain property; it is an empty string for a plasmid or a strain
+  with no label. There is no snippet and no highlight.
+- The method has no pagination. An empty result list is a valid
+  result. It is not an error.
+- The repository constructor creates the search assets: the analyzers
+  `stock_search_norm` and `stock_search_ngram`, and the arangosearch
+  view `stock_full_search`. The built-in analyzer `text_en` serves the
+  prose fields and is not created. A failed creation stops the start of
+  the service, so an operator sees the problem at once.
 - The tests read 4 environment variables: `ARANGO_HOST`, `ARANGO_USER`,
   `ARANGO_PASS`, and the optional `ARANGO_PORT` (default 8529).
 
