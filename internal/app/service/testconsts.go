@@ -23,3 +23,10 @@ const (
 	testMissingStrainID  = "DBS9999999"
 	testInvalidSubstring = "invalid"
 )
+
+const (
+	// testStockID is the fixture strain identifier.
+	testStockID = "DBS0236126"
+	// testPlasmidID is the fixture plasmid identifier.
+	testPlasmidID = "DBP0000027"
+)
