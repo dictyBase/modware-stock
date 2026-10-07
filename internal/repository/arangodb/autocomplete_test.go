@@ -165,15 +165,22 @@ func TestEnsureAutocompleteSearchReconcilesStaleView(t *testing.T) {
 				// carries a renamed field, the other a wrong
 				// analyzer list.
 				"stock_test": {
+					// Same field names as the definition, so the
+					// shape comparison reaches the analyzer check.
 					Fields: driver.ArangoSearchFields{
-						paramStockID:      {Analyzers: []string{testIdentityAnl}},
-						fieldGenes:        {Analyzers: []string{testIdentityAnl}},
-						"dbxrefs_renamed": {Analyzers: []string{testIdentityAnl}},
+						paramStockID: {Analyzers: []string{testIdentityAnl}},
+						fieldGenes:   {Analyzers: []string{testIdentityAnl}},
+						fieldDbxrefs: {Analyzers: []string{testIdentityAnl}},
 					},
 				},
 				"stock_properties_test": {
+					// Three fields with the same length as the
+					// definition but one renamed, so the comparison
+					// reaches the missing-field check.
 					Fields: driver.ArangoSearchFields{
-						fieldLabel: {Analyzers: []string{testIdentityAnl}},
+						fieldLabel:    {Analyzers: []string{testIdentityAnl}},
+						fieldNames:    {Analyzers: []string{testIdentityAnl}},
+						"speciesssss": {Analyzers: []string{testIdentityAnl}},
 					},
 				},
 			},

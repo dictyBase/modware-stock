@@ -143,13 +143,13 @@ func TestAutocompleteStockHandlerPassesThroughQueryAndLimit(t *testing.T) {
 	_, err := svc.AutocompleteStock(
 		context.Background(),
 		autocompleteRequest(
-			"  ys1  ", 10, stock.StockEntity_STOCK_ENTITY_STRAIN,
+			"  ys1  ", 10, stock.StockEntity_STOCK_ENTITY_PLASMID,
 		),
 	)
 	assert.NoError(err, "expect no error")
 	assert.Equal("ys1", stub.got.Query, "expect the trimmed query")
 	assert.Equal(10, stub.got.Limit, "expect the request limit")
-	assert.Equal(repository.EntityStrain, stub.got.Entity)
+	assert.Equal(repository.EntityPlasmid, stub.got.Entity)
 }
 
 func TestAutocompleteStockHandlerDefaultsLimitToFive(t *testing.T) {
@@ -159,11 +159,12 @@ func TestAutocompleteStockHandlerDefaultsLimitToFive(t *testing.T) {
 	res, err := svc.AutocompleteStock(
 		context.Background(),
 		autocompleteRequest(
-			"ys1", 0, stock.StockEntity_STOCK_ENTITY_UNSPECIFIED,
+			"ys1", 0, stock.StockEntity_STOCK_ENTITY_STRAIN,
 		),
 	)
 	assert.NoError(err, "expect no error")
 	assert.Equal(5, stub.got.Limit, "expect the effective limit")
+	assert.Equal(repository.EntityStrain, stub.got.Entity)
 	assert.Equal(int64(5), res.Meta.Limit)
 }
 
