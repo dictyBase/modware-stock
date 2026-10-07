@@ -23,28 +23,22 @@ const defaultFullSearchLimit = 50
 const maxFullSearchLimit = 50
 
 // SearchStock returns at most 50 ranked results for a search text of
-// at least 2 characters. The order of operations is: the nil guard,
-// the protovalidate validation, the trim guard, the effective limit,
-// the entity mapping and the repository call. A panic in a handler
-// kills this process, because the server has no recovery interceptor,
-// so the nil guard runs first.
+// at least 2 characters. The order of operations is: the protovalidate
+// validation, the trim guard, the effective limit, the entity mapping
+// and the repository call. protovalidate rejects nil data and nil
+// attributes at the boundary, because the proto marks both required,
+// so no explicit nil guard is needed.
 func (s *StockService) SearchStock(
 	ctx context.Context,
 	r *stock.StockSearchParameters,
 ) (*stock.StockSearchResultCollection, error) {
-	// 1. The nil guard runs before validation.
-	if r.GetData() == nil || r.GetData().GetAttributes() == nil {
-		return nil, aphgrpc.HandleInvalidParamError(
-			ctx,
-			errors.New("search request needs data and attributes"),
-		)
-	}
-	// 2. The generated Validate method is a no-op for these messages.
+	// 1. The generated Validate method is a no-op for these messages,
+	// and it also skips absent nested messages; protovalidate does not.
 	if err := protovalidate.Validate(r); err != nil {
 		return nil, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
 	attrs := r.GetData().GetAttributes()
-	// 3. The proto rule counts characters, so a whitespace-only query
+	// 2. The proto rule counts characters, so a whitespace-only query
 	// reaches this point.
 	query := strings.TrimSpace(attrs.GetQuery())
 	if query == "" {
@@ -53,7 +47,7 @@ func (s *StockService) SearchStock(
 			errors.New("expect a non-empty search query"),
 		)
 	}
-	// 4. A limit of 0 becomes 50, and a limit from 51 to 100 becomes 50.
+	// 3. A limit of 0 becomes 50, and a limit from 51 to 100 becomes 50.
 	effLimit := attrs.GetLimit()
 	if effLimit <= 0 {
 		effLimit = defaultFullSearchLimit
@@ -61,13 +55,13 @@ func (s *StockService) SearchStock(
 	if effLimit > maxFullSearchLimit {
 		effLimit = maxFullSearchLimit
 	}
-	// 5. The entity mapping rejects a value outside the three defined
+	// 4. The entity mapping rejects a value outside the three defined
 	// enum values, so a future proto change cannot open a silent hole.
 	entity, err := autocompleteEntityFilter(attrs.GetEntity())
 	if err != nil {
 		return nil, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
-	// 6. An empty result is not a not-found error.
+	// 5. An empty result is not a not-found error.
 	rows, err := s.repo.SearchStock(&repository.FullSearchQuery{
 		Query:  query,
 		Entity: entity,
@@ -76,7 +70,7 @@ func (s *StockService) SearchStock(
 	if err != nil {
 		return nil, aphgrpc.HandleGetError(ctx, err)
 	}
-	// 7. Every result carries the complete stored summary and the
+	// 6. Every result carries the complete stored summary and the
 	// strain label.
 	return &stock.StockSearchResultCollection{
 		Data: F.Pipe1(rows, A.Map(mapFullSearchResult)),

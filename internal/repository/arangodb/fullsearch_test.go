@@ -27,6 +27,7 @@ const (
 	testCordaProbe   = "corda"
 	testCordaxGene   = "cordaxin"
 	testCap0Probe    = "cap0"
+	testLimiProbe    = "limi"
 	testFullSearchVw = fullSearchViewName
 	// testFullSearchColls mirror getCollectionParams.
 	testFullSearchTextAnl = fullSearchTextAnalyzer
@@ -654,8 +655,15 @@ func TestSearchStockDefaultLimitIsFifty(t *testing.T) {
 			a.Publications = nil
 		})
 	}
-	waitFullSearchRows(assert, repo, "limi")
-	rows := autocompleteRowsSearch(assert, repo, "limi")
+	// Poll until the whole fixture is committed: the view commits in
+	// batches, so a wait for one row does not prove all 60 are visible.
+	assert.Eventually(func() bool {
+		rows, err := repo.SearchStock(
+			&repository.FullSearchQuery{Query: testLimiProbe, Limit: 50},
+		)
+		return err == nil && len(rows) == 50
+	}, 20*time.Second, 500*time.Millisecond, "expect the default limit of 50")
+	rows := autocompleteRowsSearch(assert, repo, testLimiProbe)
 	assert.Len(rows, 50, "expect the default limit of 50")
 }
 

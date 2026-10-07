@@ -604,9 +604,9 @@ func TestAutocompleteStockDefaultLimitIsFive(t *testing.T) {
 		})
 	}
 	waitAutocompleteIndexed(assert, repo,
-		&repository.AutocompleteQuery{Query: "limi", Limit: 50})
+		&repository.AutocompleteQuery{Query: testLimiProbe, Limit: 50})
 	rows := autocompleteRows(assert, repo,
-		&repository.AutocompleteQuery{Query: "limi", Limit: 0})
+		&repository.AutocompleteQuery{Query: testLimiProbe, Limit: 0})
 	assert.Len(rows, 5, "expect the default limit")
 }
 
