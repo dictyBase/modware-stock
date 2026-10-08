@@ -22,6 +22,8 @@ On every create, update, or delete mutation the service publishes a protobuf-ser
   - [Connect with Go](#connect-with-go)
   - [Create a Strain](#create-a-strain)
   - [Get a Strain](#get-a-strain)
+  - [Stock Autocomplete](#stock-autocomplete)
+  - [Stock Full Search](#stock-full-search)
   - [Update a Strain](#update-a-strain)
   - [Update a Plasmid](#update-a-plasmid)
   - [List Strains with Pagination and Filters](#list-strains-with-pagination-and-filters)
@@ -136,77 +138,6 @@ Full protobuf definitions: [dictybaseapis/stock.proto](https://github.com/dictyB
 | `SearchStock` | `StockSearchParameters` | `StockSearchResultCollection` | Ranked full search over identifier, name and prose fields; returns at most 50 results |
 | `OboJSONFileUpload` | `stream FileUploadRequest` | `FileUploadResponse` | Stream-upload an OBO JSON ontology file to populate the ontology collections |
 
-### Stock Autocomplete
-
-The `AutocompleteStock` method returns type-ahead suggestions for a
-partial search text.
-
-- The request message is `StockAutocompleteParameters`; the response
-  message is `StockSuggestionCollection`.
-- The query must hold at least 3 characters. The server rejects a
-  shorter query, and it rejects a query that has only whitespace
-  characters.
-- The request limit can hold 0 to 50. A limit of 0 means 5 suggestions,
-  the default. The server returns at most 50 suggestions.
-- The server searches 8 fields: `stock_id`, `genes`, `dbxrefs`, `label`,
-  `names`, `species`, `plasmid` and `name`. The first three fields live
-  on the stock document; the last five on the stock property document.
-- Each suggestion names the stock ID, the kind of stock (`strain` or
-  `plasmid`), the field that matched, the display text and a score. The
-  request can filter by kind of stock. A prefix match scores at least
-  1000; a fuzzy (typo-tolerant) match scores below 1000.
-- An empty suggestion list is a valid result. It is not an error.
-- The repository constructor creates the search assets: the analyzers
-  `stock_autocomplete_norm` and `stock_autocomplete_ngram`, and the
-  arangosearch view `stock_autocomplete`. A failed creation stops the
-  start of the service, so an operator sees the problem at once.
-- The tests read 4 environment variables: `ARANGO_HOST`, `ARANGO_USER`,
-  `ARANGO_PASS`, and the optional `ARANGO_PORT` (default 8529).
-
-### Stock Full Search
-
-The `SearchStock` method returns a ranked list of matching stocks for a
-search text.
-
-- The request message is `StockSearchParameters`; the response message
-  is `StockSearchResultCollection`.
-- The query must hold at least 2 characters. The server rejects a
-  shorter query, a query that has only whitespace characters, and a
-  query whose words are all common English stop words.
-- The request limit can hold 0 to 100. A limit of 0 means 50 results,
-  the default. A limit from 51 to 100 is capped at 50. The server
-  returns at most 50 results.
-- The server searches 10 fields: `stock_id`, `genes`, `dbxrefs`,
-  `label`, `names`, `species`, `plasmid`, `name`, `summary` and
-  `depositor`. The identifier fields live on the stock and stock
-  property documents; `summary` and `depositor` are prose fields on the
-  stock document. The field `editable_summary` is not searched.
-- The server matches with 4 stages, and the stage sets the score band:
-  a prefix match scores at least 1000, a phrase match at least 500, a
-  token match at least 250, and a fuzzy (typo-tolerant) match scores
-  below 250.
-- A query with more than one word matches a stock that holds any one
-  of the words (token stage). A stock whose prose holds the words in
-  their stored order ranks higher (phrase stage). A single word that is
-  the prefix of an identifier ranks highest.
-- The request can filter by kind of stock. No filter means both
-  strains and plasmids; the filter values are `STRAIN` and `PLASMID`.
-- Each result names the stock ID, the kind of stock, the field that
-  matched, the complete stored display text of the matched field, a
-  score, the complete stored `summary` value of the stock, and the
-  `strain_label`. The `strain_label` is the Descriptor label of a
-  strain property; it is an empty string for a plasmid or a strain
-  with no label. There is no snippet and no highlight.
-- The method has no pagination. An empty result list is a valid
-  result. It is not an error.
-- The repository constructor creates the search assets: the analyzers
-  `stock_search_norm` and `stock_search_ngram`, and the arangosearch
-  view `stock_full_search`. The built-in analyzer `text_en` serves the
-  prose fields and is not created. A failed creation stops the start of
-  the service, so an operator sees the problem at once.
-- The tests read 4 environment variables: `ARANGO_HOST`, `ARANGO_USER`,
-  `ARANGO_PASS`, and the optional `ARANGO_PORT` (default 8529).
-
 ### Connect with Go
 
 ```go
@@ -260,8 +191,69 @@ resp, err := client.CreateStrain(ctx, &stock.NewStrain{
 
 ### Get a Strain
 
+The `GetStrain` method returns the strain with the given stock ID.
+
 ```go
 resp, err := client.GetStrain(ctx, &stock.StockId{Id: "DBS0350123"})
+```
+
+### Stock Autocomplete
+
+The `AutocompleteStock` method gives type-ahead suggestions for a query of 3 characters or more, with stock ID, kind, matched field, display text and score (default 5, maximum 50).
+
+```go
+resp, err := client.AutocompleteStock(ctx, &stock.StockAutocompleteParameters{
+    Data: &stock.StockAutocompleteParameters_Data{
+        Type: "stock",
+        Attributes: &stock.StockAutocompleteAttributes{
+            Query: "DBS03",
+        },
+    },
+})
+// resp.Data — slice of suggestions (id, entity, field, display_text, score)
+// resp.Meta.Total — number of suggestions in this response
+
+// Restrict the suggestions to strains and request more results
+resp, err := client.AutocompleteStock(ctx, &stock.StockAutocompleteParameters{
+    Data: &stock.StockAutocompleteParameters_Data{
+        Type: "stock",
+        Attributes: &stock.StockAutocompleteAttributes{
+            Query:  "sadA",
+            Limit:  20,
+            Entity: stock.StockEntity_STOCK_ENTITY_STRAIN,
+        },
+    },
+})
+```
+
+### Stock Full Search
+
+The `SearchStock` method gives a ranked list of stocks for a query of 2 characters or more, with stock ID, kind, matched field, display text, score, `summary` and `strain_label` (maximum 50, no pagination).
+
+```go
+resp, err := client.SearchStock(ctx, &stock.StockSearchParameters{
+    Data: &stock.StockSearchParameters_Data{
+        Type: "stock",
+        Attributes: &stock.StockSearchAttributes{
+            Query: "actin binding",
+        },
+    },
+})
+// resp.Data — ranked slice of results
+// Each result has: id, entity, field, display_text, score, summary, strain_label
+// resp.Meta.Total — number of results in this response
+
+// Restrict the results to plasmids and request fewer results
+resp, err := client.SearchStock(ctx, &stock.StockSearchParameters{
+    Data: &stock.StockSearchParameters_Data{
+        Type: "stock",
+        Attributes: &stock.StockSearchAttributes{
+            Query:  "pDM",
+            Limit:  10,
+            Entity: stock.StockEntity_STOCK_ENTITY_PLASMID,
+        },
+    },
+})
 ```
 
 ### Update a Strain
