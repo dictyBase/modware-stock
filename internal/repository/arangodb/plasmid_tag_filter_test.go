@@ -54,7 +54,6 @@ func TestSelectPlasmidStatement(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			result := ar.selectPlasmidStatement(tc.params)
@@ -187,7 +186,6 @@ func TestInjectFilter(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			result := injectFilter(tc.filter)(tc.stmt)
@@ -277,7 +275,7 @@ func TestListPlasmidsByTagWithCursorPagination(t *testing.T) {
 	defer tearDown(repo)
 
 	// Setup: Create 15 plasmids with Gateway vector tag
-	for i := 0; i < 15; i++ {
+	for range 15 {
 		p := newTestPlasmid(fmt.Sprintf("%s@cye.com", arangomanager.RandomString(15, 25)))
 		p.Data.Attributes.DictyPlasmidProperty = OntologyTermGatewayVector
 		res := F.Pipe2(repo.AddPlasmid(p), ToEither, toStockDocResult)
