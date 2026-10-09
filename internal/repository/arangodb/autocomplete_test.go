@@ -372,7 +372,7 @@ func TestBuildAutocompleteQueryBranchCount(t *testing.T) {
 		strings.Count(q, "FOR d IN stock_autocomplete"),
 		"expect one FOR per branch",
 	)
-	branchVars := regexp.MustCompile(`LET [pn]\d+ = \(`).FindAllString(q, -1)
+	branchVars := regexp.MustCompile(`LET [pn]_[a-z0-9_]+ = \(`).FindAllString(q, -1)
 	assert.Len(branchVars, 16, "expect 16 branch variables")
 	assert.Equal(6, strings.Count(q, "OUTBOUND"),
 		"expect one OUTBOUND traversal per stage of the 3 stock fields")
@@ -399,7 +399,7 @@ func TestBuildAutocompleteQueryFilterOrder(t *testing.T) {
 		if !strings.HasPrefix(branch, "LET ") {
 			branch = "LET " + branch
 		}
-		if !regexp.MustCompile(`^LET [pn]\d+ = \(`).MatchString(branch) {
+		if !regexp.MustCompile(`^LET [pn]_[a-z0-9_]+ = \(`).MatchString(branch) {
 			continue
 		}
 		entity := strings.Index(branch, "FILTER @entity")
