@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"unicode"
 
 	A "github.com/IBM/fp-go/array"
 	F "github.com/IBM/fp-go/function"
@@ -13,7 +12,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
-	"golang.org/x/text/unicode/norm"
 )
 
 // Search asset names owned by the autocomplete feature. Every name
@@ -344,27 +342,6 @@ func (r suggestionRow) suggestion() *repository.Suggestion {
 		Entity:      repository.StockEntityFilter(r.Entity),
 		Score:       r.Score,
 	}
-}
-
-// normalizeAutocompleteQuery trims, lowercases and strips combining
-// diacritical marks from the query. The calibration probe 10 decided
-// this Go-side form: a punctuation-only query keeps its tokens safe,
-// where an AQL TOKENS normalization would produce an empty token list
-// and a null prefix argument.
-func normalizeAutocompleteQuery(q string) string {
-	done := F.Pipe1(
-		q,
-		F.Flow3(strings.TrimSpace, strings.ToLower, norm.NFD.String),
-	)
-	var b strings.Builder
-	b.Grow(len(done))
-	for _, r := range done {
-		if unicode.Is(unicode.Mn, r) {
-			continue
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
 }
 
 // autocompleteLimit clamps the requested limit: at or below 0 becomes
