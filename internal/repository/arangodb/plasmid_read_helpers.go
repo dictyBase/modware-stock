@@ -21,14 +21,14 @@ type dbQueryResult struct {
 // dbRow represents a database row interface
 type dbRow interface {
 	IsEmpty() bool
-	Read(interface{}) error
+	Read(any) error
 }
 
 // dbRows represents a database rows interface for scanning multiple results
 type dbRows interface {
 	IsEmpty() bool
 	Scan() bool
-	Read(interface{}) error
+	Read(any) error
 }
 
 // plasmidListQueryParams encapsulates parameters for plasmid list query

@@ -612,7 +612,7 @@ func TestFilterFlags_EdgeCases(t *testing.T) {
 
 		// Create a large slice of flags
 		input := make([]cli.Flag, 1000)
-		for idx := 0; idx < 1000; idx++ {
+		for idx := range 1000 {
 			input[idx] = cli.StringFlag{Name: fmt.Sprintf("flag%d", idx)}
 		}
 

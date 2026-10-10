@@ -2,18 +2,13 @@ package arangodb
 
 import (
 	"context"
-	"fmt"
 	"slices"
-	"strings"
-	"unicode"
 
 	A "github.com/IBM/fp-go/array"
 	F "github.com/IBM/fp-go/function"
 	driver "github.com/arangodb/go-driver"
 	"github.com/cockroachdb/errors"
 	"github.com/dictyBase/modware-stock/internal/repository"
-	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
-	"golang.org/x/text/unicode/norm"
 )
 
 // Search asset names owned by the autocomplete feature. Every name
@@ -51,26 +46,24 @@ const (
 	autocompleteFuzzyScore = "BM25(d)"
 )
 
-// autocompleteStockFields lists the 8 indexed fields in the order of the
-// branch matrix. The first three run over the stock collection, the last
-// five over the stock property collection.
-var autocompleteStockFields = []autocompleteField{
-	{label: paramStockID, coll: autocompleteCollStock, display: autocompleteScalar},
-	{label: fieldGenes, coll: autocompleteCollStock, display: autocompleteArray},
-	{label: fieldDbxrefs, coll: autocompleteCollStock, display: autocompleteArray},
-	{label: fieldLabel, coll: autocompleteCollProp, display: autocompleteScalar},
-	{label: fieldNames, coll: autocompleteCollProp, display: autocompleteArray},
-	{label: fieldSpecies, coll: autocompleteCollProp, display: autocompleteScalar},
-	{label: fieldPlasmid, coll: autocompleteCollProp, display: autocompleteScalar},
-	{label: fieldName, coll: autocompleteCollProp, display: autocompleteScalar},
+// stockFields lists the indexed fields of the stock collection. Each
+// field gets a prefix branch and a fuzzy branch in the statement.
+var stockFields = []autocompleteField{
+	{label: paramStockID, display: autocompleteScalar},
+	{label: fieldGenes, display: autocompleteArray},
+	{label: fieldDbxrefs, display: autocompleteArray},
 }
 
-type autocompleteColl int
-
-const (
-	autocompleteCollStock autocompleteColl = iota
-	autocompleteCollProp
-)
+// propFields lists the indexed fields of the stock property
+// collection. Each field gets a prefix branch and a fuzzy branch in
+// the statement.
+var propFields = []autocompleteField{
+	{label: fieldLabel, display: autocompleteScalar},
+	{label: fieldNames, display: autocompleteArray},
+	{label: fieldSpecies, display: autocompleteScalar},
+	{label: fieldPlasmid, display: autocompleteScalar},
+	{label: fieldName, display: autocompleteScalar},
+}
 
 type autocompleteDisplay int
 
@@ -79,9 +72,10 @@ const (
 	autocompleteArray
 )
 
+// autocompleteField is one indexed search field. The label names the
+// field in the AQL, and the display selects the display expression.
 type autocompleteField struct {
 	label   string
-	coll    autocompleteColl
 	display autocompleteDisplay
 }
 
@@ -162,23 +156,22 @@ func autocompleteNgramDef() *driver.ArangoSearchAnalyzerDefinition {
 // autocompleteLinks builds the view links from the collection names of
 // the repository. It never hardcodes a production name.
 func (ar *arangorepository) autocompleteLinks() driver.ArangoSearchLinks {
-	stockFields := driver.ArangoSearchFields{}
-	propFields := driver.ArangoSearchFields{}
+	stockIndex := driver.ArangoSearchFields{}
+	propIndex := driver.ArangoSearchFields{}
 	analyzers := []string{autocompleteNormAnalyzer, autocompleteNgramAnalyzer}
-	for _, f := range autocompleteStockFields {
-		if f.coll == autocompleteCollStock {
-			stockFields[f.label] = driver.ArangoSearchElementProperties{
-				Analyzers: analyzers,
-			}
-		} else {
-			propFields[f.label] = driver.ArangoSearchElementProperties{
-				Analyzers: analyzers,
-			}
+	for _, f := range stockFields {
+		stockIndex[f.label] = driver.ArangoSearchElementProperties{
+			Analyzers: analyzers,
+		}
+	}
+	for _, f := range propFields {
+		propIndex[f.label] = driver.ArangoSearchElementProperties{
+			Analyzers: analyzers,
 		}
 	}
 	return driver.ArangoSearchLinks{
-		ar.stockc.stock.Name():     {Fields: stockFields},
-		ar.stockc.stockProp.Name(): {Fields: propFields},
+		ar.stockc.stock.Name():     {Fields: stockIndex},
+		ar.stockc.stockProp.Name(): {Fields: propIndex},
 	}
 }
 
@@ -346,27 +339,6 @@ func (r suggestionRow) suggestion() *repository.Suggestion {
 	}
 }
 
-// normalizeAutocompleteQuery trims, lowercases and strips combining
-// diacritical marks from the query. The calibration probe 10 decided
-// this Go-side form: a punctuation-only query keeps its tokens safe,
-// where an AQL TOKENS normalization would produce an empty token list
-// and a null prefix argument.
-func normalizeAutocompleteQuery(q string) string {
-	done := F.Pipe1(
-		q,
-		F.Flow3(strings.TrimSpace, strings.ToLower, norm.NFD.String),
-	)
-	var b strings.Builder
-	b.Grow(len(done))
-	for _, r := range done {
-		if unicode.Is(unicode.Mn, r) {
-			continue
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
-}
-
 // autocompleteLimit clamps the requested limit: at or below 0 becomes
 // the default, above 50 the hard cap.
 func autocompleteLimit(limit int) int {
@@ -391,88 +363,4 @@ func autocompleteEntity(entity repository.StockEntityFilter) (repository.StockEn
 			entity,
 		)
 	}
-}
-
-// autocompleteQuery is the full 16-branch statement, built once per
-// process.
-var autocompleteQuery = buildAutocompleteQuery()
-
-// buildAutocompleteQuery assembles the statement from the two branch
-// templates and the merge template. It emits a prefix branch and a
-// fuzzy branch per field of the branch matrix, and appends the merge.
-func buildAutocompleteQuery() string {
-	branches := make([]string, 0, len(autocompleteStockFields)*2)
-	names := make([]string, 0, len(autocompleteStockFields)*2)
-	for i, f := range autocompleteStockFields {
-		prefixName := fmt.Sprintf("p%d", i)
-		fuzzyName := fmt.Sprintf("n%d", i)
-		tpl := statement.AutocompleteStockBranch
-		if f.coll == autocompleteCollProp {
-			tpl = statement.AutocompletePropBranch
-		}
-		display := autocompleteDisplayExpr(f)
-		branches = append(branches,
-			fmt.Sprintf(
-				tpl,
-				prefixName,
-				autocompletePrefixExpr(f.label),
-				f.label,
-				display,
-				autocompletePrefixScore,
-			),
-			fmt.Sprintf(
-				tpl,
-				fuzzyName,
-				autocompleteFuzzyExpr(f.label),
-				f.label,
-				display,
-				autocompleteFuzzyScore,
-			),
-		)
-		names = append(names, prefixName, fuzzyName)
-	}
-	return fmt.Sprintf(
-		"%s\n%s",
-		strings.Join(branches, "\n"),
-		fmt.Sprintf(statement.AutocompleteMerge, strings.Join(names, ", ")),
-	)
-}
-
-// autocompletePrefixExpr is the SEARCH expression of a prefix branch.
-// STARTS_WITH inside SEARCH needs the ANALYZER wrapper: without it the
-// comparison uses the identity analyzer and matches nothing.
-func autocompletePrefixExpr(field string) string {
-	return fmt.Sprintf(
-		"ANALYZER(STARTS_WITH(d.%s, @q), %q)",
-		field,
-		autocompleteNormAnalyzer,
-	)
-}
-
-// autocompleteFuzzyExpr is the SEARCH expression of a fuzzy branch.
-// NGRAM_MATCH takes the analyzer as its fourth argument.
-func autocompleteFuzzyExpr(field string) string {
-	return fmt.Sprintf(
-		"NGRAM_MATCH(d.%s, @q, @th, %q)",
-		field,
-		autocompleteNgramAnalyzer,
-	)
-}
-
-// autocompleteDisplayExpr returns the display expression of a field.
-// A scalar field returns its value; an array field returns the first
-// element that contains the query, or the joined list as a fallback.
-// The expressions run only on the rows that survive the branch LIMIT,
-// never inside the index.
-func autocompleteDisplayExpr(f autocompleteField) string {
-	if f.display == autocompleteScalar {
-		return fmt.Sprintf(`NOT_NULL(d.%s, "")`, f.label)
-	}
-	return fmt.Sprintf(
-		`NOT_NULL(FIRST(FOR item IN NOT_NULL(d.%s, []) `+
-			`FILTER CONTAINS(LOWER(item), @q) RETURN item), `+
-			`CONCAT_SEPARATOR(", ", NOT_NULL(d.%s, [])))`,
-		f.label,
-		f.label,
-	)
 }
