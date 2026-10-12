@@ -5,6 +5,7 @@ import (
 	"io"
 
 	IOE "github.com/IBM/fp-go/ioeither"
+	IOEV2 "github.com/IBM/fp-go/v2/ioeither"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/go-obograph/storage"
@@ -105,8 +106,10 @@ type StockRepository interface {
 	// the normalized query of params. An empty result is not an error.
 	SearchStock(params *FullSearchQuery) ([]*FullSearchResult, error)
 	// AutocompleteStock returns at most Limit short suggestions for the
-	// normalized query of params.
-	AutocompleteStock(params *AutocompleteQuery) ([]*Suggestion, error)
+	// normalized query of params as a lazy IOEither pipeline.
+	AutocompleteStock(
+		params *AutocompleteQuery,
+	) IOEV2.IOEither[error, []*Suggestion]
 	Dbh() *manager.Database
 	LoadOboJSON(r io.Reader) (*storage.UploadInformation, error)
 }

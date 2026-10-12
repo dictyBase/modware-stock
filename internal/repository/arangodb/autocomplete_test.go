@@ -11,6 +11,7 @@ import (
 	"time"
 
 	F "github.com/IBM/fp-go/function"
+	E "github.com/IBM/fp-go/v2/either"
 	driver "github.com/arangodb/go-driver"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/arangomanager/testarango"
@@ -316,13 +317,24 @@ func addTestPlasmid(
 	return result.F1
 }
 
+// autocompleteResult forces the lazy autocomplete pipeline into the
+// eager rows and error pair that the assertions use.
+func autocompleteResult(
+	repo repository.StockRepository,
+	params *repository.AutocompleteQuery,
+) ([]*repository.Suggestion, error) {
+	suggestions := repo.AutocompleteStock(params)
+	either := suggestions()
+	return E.UnwrapError(either)
+}
+
 // autocompleteRows runs the query and requires no error.
 func autocompleteRows(
 	assert *require.Assertions,
 	repo repository.StockRepository,
 	params *repository.AutocompleteQuery,
 ) []*repository.Suggestion {
-	rows, err := repo.AutocompleteStock(params)
+	rows, err := autocompleteResult(repo, params)
 	assert.NoErrorf(err, "expect no error for query %q, received %s", params.Query, err)
 	return rows
 }
@@ -336,7 +348,8 @@ func waitAutocompleteRows(
 ) []*repository.Suggestion {
 	var rows []*repository.Suggestion
 	assert.Eventually(func() bool {
-		got, err := repo.AutocompleteStock(
+		got, err := autocompleteResult(
+			repo,
 			&repository.AutocompleteQuery{Query: probe, Limit: 5},
 		)
 		if err != nil || len(got) == 0 {
@@ -356,7 +369,7 @@ func waitAutocompleteIndexed(
 	params *repository.AutocompleteQuery,
 ) {
 	assert.Eventually(func() bool {
-		got, err := repo.AutocompleteStock(params)
+		got, err := autocompleteResult(repo, params)
 		return err == nil && len(got) > 0
 	}, 20*time.Second, 500*time.Millisecond,
 		"the view must commit the new documents for query %q", params.Query)
@@ -552,7 +565,7 @@ func TestAutocompleteStockEntityFilterKeepsSmallGroup(t *testing.T) {
 	// commits in the background, so a single wait for one row does not
 	// prove that all five plasmids are visible.
 	assert.Eventually(func() bool {
-		rows, err := repo.AutocompleteStock(&repository.AutocompleteQuery{
+		rows, err := autocompleteResult(repo, &repository.AutocompleteQuery{
 			Query:  testXyloseGene,
 			Entity: repository.EntityPlasmid,
 			Limit:  10,
@@ -624,7 +637,8 @@ func TestAutocompleteStockLimitCapIsFifty(t *testing.T) {
 	}
 	// Poll until the whole fixture is committed and the cap holds.
 	assert.Eventually(func() bool {
-		rows, err := repo.AutocompleteStock(
+		rows, err := autocompleteResult(
+			repo,
 			&repository.AutocompleteQuery{Query: testCap0Probe, Limit: 500},
 		)
 		return err == nil && len(rows) == 50
@@ -675,7 +689,8 @@ func TestAutocompleteStockEmptyResultIsNotAnError(t *testing.T) {
 	defer tearDown(repo)
 	addTestStrain(assert, repo, nil)
 	waitAutocompleteRows(assert, repo, "ys1")
-	rows, err := repo.AutocompleteStock(
+	rows, err := autocompleteResult(
+		repo,
 		&repository.AutocompleteQuery{Query: "zzzqqq", Limit: 5},
 	)
 	assert.NoError(err, "expect no error for a non-matching query")
@@ -709,7 +724,8 @@ func TestAutocompleteStockArrayDisplayFallback(t *testing.T) {
 func TestAutocompleteStockRejectsWhitespaceQuery(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	_, err := repo.AutocompleteStock(
+	_, err := autocompleteResult(
+		repo,
 		&repository.AutocompleteQuery{Query: "   ", Limit: 5},
 	)
 	assert.Errorf(err, "expect an error for a whitespace-only query")
@@ -718,7 +734,8 @@ func TestAutocompleteStockRejectsWhitespaceQuery(t *testing.T) {
 func TestAutocompleteStockRejectsUnknownEntity(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	_, err := repo.AutocompleteStock(
+	_, err := autocompleteResult(
+		repo,
 		&repository.AutocompleteQuery{
 			Query:  "ys1",
 			Entity: repository.StockEntityFilter("vector"),
@@ -758,7 +775,8 @@ func TestAutocompleteStockSkipsStockWithoutEdge(t *testing.T) {
 		_ = search.Close()
 		return found
 	}, 20*time.Second, 500*time.Millisecond, "the view must index the orphan document")
-	rows, err := repo.AutocompleteStock(
+	rows, err := autocompleteResult(
+		repo,
 		&repository.AutocompleteQuery{Query: "orphan", Limit: 5},
 	)
 	assert.NoError(err, "expect no error for the orphan query")
@@ -927,7 +945,7 @@ func TestNewStockRepoFailsOnNonArangoSearchView(t *testing.T) {
 func TestAutocompleteStockRejectsNilParams(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	_, err := repo.AutocompleteStock(nil)
+	_, err := autocompleteResult(repo, nil)
 	assert.Errorf(err, "expect an error for nil autocomplete parameters")
 }
 

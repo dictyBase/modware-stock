@@ -6,9 +6,11 @@ import (
 
 	A "github.com/IBM/fp-go/array"
 	F "github.com/IBM/fp-go/function"
+	E "github.com/IBM/fp-go/v2/either"
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/cockroachdb/errors"
 	"github.com/dictyBase/aphgrpc"
+	ioeutils "github.com/dictyBase/fp-go-loom/ioeitherutils"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/repository"
 )
@@ -47,11 +49,15 @@ func (s *StockService) AutocompleteStock(
 	if err != nil {
 		return nil, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
-	rows, err := s.repo.AutocompleteStock(&repository.AutocompleteQuery{
+	suggestions := s.repo.AutocompleteStock(&repository.AutocompleteQuery{
 		Query:  query,
 		Entity: entity,
 		Limit:  int(effLimit),
 	})
+	rows, err := E.UnwrapError(F.Pipe1(
+		suggestions,
+		ioeutils.ToEither[error, []*repository.Suggestion],
+	))
 	if err != nil {
 		return nil, aphgrpc.HandleGetError(ctx, err)
 	}

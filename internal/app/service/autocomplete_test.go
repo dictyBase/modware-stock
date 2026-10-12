@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	IOE "github.com/IBM/fp-go/ioeither"
+	IOEV2 "github.com/IBM/fp-go/v2/ioeither"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/go-obograph/storage"
@@ -66,9 +67,12 @@ func (sr *autocompleteStubRepo) SearchStock(
 }
 func (sr *autocompleteStubRepo) AutocompleteStock(
 	params *repository.AutocompleteQuery,
-) ([]*repository.Suggestion, error) {
+) IOEV2.IOEither[error, []*repository.Suggestion] {
 	sr.got = params
-	return sr.sugs, sr.err
+	if sr.err != nil {
+		return IOEV2.Left[[]*repository.Suggestion](sr.err)
+	}
+	return IOEV2.Of[error](sr.sugs)
 }
 func (sr *autocompleteStubRepo) Dbh() *manager.Database { return nil }
 func (sr *autocompleteStubRepo) LoadOboJSON(io.Reader) (*storage.UploadInformation, error) {

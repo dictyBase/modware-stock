@@ -4,10 +4,18 @@ import (
 	"context"
 	"slices"
 
-	A "github.com/IBM/fp-go/array"
-	F "github.com/IBM/fp-go/function"
+	A "github.com/IBM/fp-go/v2/array"
+	E "github.com/IBM/fp-go/v2/either"
+	fperrors "github.com/IBM/fp-go/v2/errors"
+	F "github.com/IBM/fp-go/v2/function"
+	IOE "github.com/IBM/fp-go/v2/ioeither"
+	L "github.com/IBM/fp-go/v2/optics/lens"
+	O "github.com/IBM/fp-go/v2/option"
+	S "github.com/IBM/fp-go/v2/string"
 	driver "github.com/arangodb/go-driver"
 	"github.com/cockroachdb/errors"
+	"github.com/dictyBase/fp-go-loom/eithererr"
+	predarrays "github.com/dictyBase/fp-go-loom/predicate/array"
 	"github.com/dictyBase/modware-stock/internal/repository"
 )
 
@@ -272,49 +280,165 @@ func sameFieldShape(got, want driver.ArangoSearchFields) bool {
 	return true
 }
 
+// autocompleteRequest is the validated and normalized input of one
+// autocomplete search.
+type autocompleteRequest struct {
+	query  string
+	limit  int
+	entity repository.StockEntityFilter
+}
+
+// autocompleteQueryParams carries the generated statement and its
+// bind parameters for one autocomplete search.
+type autocompleteQueryParams struct {
+	statement  string
+	bindParams map[string]any
+}
+
+const (
+	msgNilAutocompleteQuery   = "expect a non-nil autocomplete query"
+	msgEmptyAutocompleteQuery = "expect a non-empty autocomplete query"
+)
+
+// entityLens focuses the entity filter of a validated request.
+var entityLens = L.MakeLens(
+	func(req autocompleteRequest) repository.StockEntityFilter {
+		return req.entity
+	},
+	func(
+		req autocompleteRequest,
+		entity repository.StockEntityFilter,
+	) autocompleteRequest {
+		req.entity = entity
+		return req
+	},
+)
+
+// nonNilQueryParams reports whether the raw request is present.
+func nonNilQueryParams(params *repository.AutocompleteQuery) bool {
+	return params != nil
+}
+
+// hasQueryText reports whether the normalized query has content.
+func hasQueryText(req autocompleteRequest) bool {
+	return S.IsNonEmpty(req.query)
+}
+
+// newAutocompleteRequest normalizes the query and clamps the limit of
+// the raw request.
+func newAutocompleteRequest(
+	params *repository.AutocompleteQuery,
+) autocompleteRequest {
+	return autocompleteRequest{
+		query:  normalizeAutocompleteQuery(params.Query),
+		limit:  autocompleteLimit(params.Limit),
+		entity: params.Entity,
+	}
+}
+
+// validateAutocompleteRequest guards the request before any AQL runs:
+// the parameters must exist, the normalized query must be non-empty
+// and the entity filter must be defined.
+func validateAutocompleteRequest(
+	params *repository.AutocompleteQuery,
+) IOE.IOEither[error, autocompleteRequest] {
+	return F.Pipe5(
+		params,
+		E.FromPredicate(
+			nonNilQueryParams,
+			eithererr.ConstErr[*repository.AutocompleteQuery](
+				msgNilAutocompleteQuery,
+			),
+		),
+		E.Map[error](newAutocompleteRequest),
+		E.Chain(E.FromPredicate(
+			hasQueryText,
+			eithererr.ConstErr[autocompleteRequest](
+				msgEmptyAutocompleteQuery,
+			),
+		)),
+		E.BindL(entityLens, E.Eitherize1(autocompleteEntity)),
+		IOE.FromEither[error, autocompleteRequest],
+	)
+}
+
+// buildAutocompleteQueryParams assembles the statement and the bind
+// parameters from the validated request.
+func (ar *arangorepository) buildAutocompleteQueryParams(
+	req autocompleteRequest,
+) autocompleteQueryParams {
+	return autocompleteQueryParams{
+		statement: buildAutocompleteQuery(),
+		bindParams: map[string]any{
+			"q":                req.query,
+			"th":               autocompleteNgramThreshold,
+			"limit":            req.limit,
+			"entity":           string(req.entity),
+			nameStockPropGraph: ar.stockc.stockPropType.Name(),
+		},
+	}
+}
+
+// executeAutocompleteQuery runs the generated statement and returns
+// the raw result rows.
+func (ar *arangorepository) executeAutocompleteQuery(
+	params autocompleteQueryParams,
+) IOE.IOEither[error, dbRows] {
+	return F.Pipe1(
+		IOE.TryCatchError(
+			func() (dbRows, error) {
+				return ar.database.SearchRows(params.statement, params.bindParams)
+			},
+		),
+		IOE.MapLeft[dbRows](
+			fperrors.OnError("error in running autocomplete query"),
+		),
+	)
+}
+
+// scanAutocompleteRows drains the cursor into projection rows. The
+// go-driver cursor is a pull iterator, so the raw callback keeps the
+// scan loop and the defer close.
+//
+// fp-go:allow-trycatch-iferr the go-driver cursor reports a read
+// error only inside the scan loop
+func scanAutocompleteRows(rows dbRows) IOE.IOEither[error, []suggestionRow] {
+	return F.Pipe1(
+		IOE.TryCatchError(
+			func() ([]suggestionRow, error) {
+				defer func() { _ = rows.Close() }()
+				matches := []suggestionRow{}
+				for rows.Scan() {
+					var row suggestionRow
+					if err := rows.Read(&row); err != nil {
+						return nil, err
+					}
+					matches = append(matches, row)
+				}
+				return matches, nil
+			},
+		),
+		IOE.MapLeft[[]suggestionRow](
+			fperrors.OnError("error in reading autocomplete row"),
+		),
+	)
+}
+
 // AutocompleteStock returns suggestions for a partial stock
 // identifier, name or attribute value. The repository normalizes the
 // query, clamps the limit, and validates the entity filter before any
 // AQL runs.
 func (ar *arangorepository) AutocompleteStock(
 	params *repository.AutocompleteQuery,
-) ([]*repository.Suggestion, error) {
-	if params == nil {
-		return nil, errors.New("expect a non-nil autocomplete query")
-	}
-	query := normalizeAutocompleteQuery(params.Query)
-	if query == "" {
-		return nil, errors.New("expect a non-empty autocomplete query")
-	}
-	limit := autocompleteLimit(params.Limit)
-	entity, err := autocompleteEntity(params.Entity)
-	if err != nil {
-		return nil, err
-	}
-	stmt := buildAutocompleteQuery()
-	rows, err := ar.database.SearchRows(stmt, map[string]any{
-		"q":                query,
-		"th":               autocompleteNgramThreshold,
-		"limit":            limit,
-		"entity":           string(entity),
-		nameStockPropGraph: ar.stockc.stockPropType.Name(),
-	})
-	if err != nil {
-		return nil, errors.Errorf("error in running autocomplete query %s", err)
-	}
-	defer func() { _ = rows.Close() }()
-	matches := make([]suggestionRow, 0, limit)
-	for rows.Scan() {
-		var row suggestionRow
-		if err := rows.Read(&row); err != nil {
-			return nil, errors.Errorf("error in reading autocomplete row %s", err)
-		}
-		matches = append(matches, row)
-	}
-	return F.Pipe1(
-		matches,
-		A.Map(suggestionRow.suggestion),
-	), nil
+) IOE.IOEither[error, []*repository.Suggestion] {
+	return F.Pipe5(
+		params,
+		validateAutocompleteRequest,
+		IOE.Map[error](ar.buildAutocompleteQueryParams),
+		IOE.Chain(ar.executeAutocompleteQuery),
+		IOE.Chain(scanAutocompleteRows),
+		IOE.Map[error](toSuggestions),
+	)
 }
 
 // suggestionRow mirrors one object row of the autocomplete projection.
@@ -329,8 +453,26 @@ type suggestionRow struct {
 	Score  float64 `json:"s"`
 }
 
-// suggestion converts one query row into a repository suggestion.
-func (r suggestionRow) suggestion() *repository.Suggestion {
+// toSuggestions converts projection rows into suggestions. An empty
+// input stays a non-nil empty slice, because the callers report an
+// empty list and not a missing one.
+func toSuggestions(rows []suggestionRow) []*repository.Suggestion {
+	return F.Pipe2(
+		rows,
+		O.FromPredicate(predarrays.IsNonEmpty[suggestionRow]()),
+		O.Fold(emptySuggestions, A.Map(toSuggestion)),
+	)
+}
+
+// emptySuggestions is the None branch of toSuggestions: it reports an
+// empty list, not a missing one.
+func emptySuggestions() []*repository.Suggestion {
+	return []*repository.Suggestion{}
+}
+
+// toSuggestion converts one projection row into a repository
+// suggestion.
+func toSuggestion(r suggestionRow) *repository.Suggestion {
 	return &repository.Suggestion{
 		ID:          r.ID,
 		Field:       r.Field,
