@@ -118,7 +118,7 @@ var addCursorParam = F.Curry2(
 	func(cursor int64, params map[string]any) map[string]any {
 		return F.Pipe1(
 			params,
-			R.Union[string, any](lastWins)(
+			R.Union[string](lastWins)(
 				map[string]any{"cursor": cursor},
 			),
 		)
@@ -130,7 +130,7 @@ var addLimitParam = F.Curry2(
 	func(limit int64, params map[string]any) map[string]any {
 		return F.Pipe1(
 			params,
-			R.Union[string, any](lastWins)(
+			R.Union[string](lastWins)(
 				map[string]any{paramLimit: limit},
 			),
 		)
@@ -142,7 +142,7 @@ var mergeParams = F.Curry2(
 	func(additional, base map[string]any) map[string]any {
 		return F.Pipe1(
 			base,
-			R.Union[string, any](lastWins)(additional),
+			R.Union[string](lastWins)(additional),
 		)
 	},
 )

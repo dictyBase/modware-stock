@@ -98,56 +98,55 @@ func fuzzyBranch(f autocompleteField, tpl string) queryBranch {
 	}
 }
 
-// stockPrefixes is the prefix branch of each stock field.
-var stockPrefixes = F.Pipe1(
-	stockFields,
-	A.Map(F.Bind2nd(prefixBranch, statement.AutocompleteStockBranch)),
-)
+// branchSet is one group of branches. The builder makes one branch
+// for each field with the template.
+type branchSet struct {
+	fields   []autocompleteField
+	template string
+	builder  func(autocompleteField, string) queryBranch
+}
 
-// stockFuzzies is the fuzzy branch of each stock field.
-var stockFuzzies = F.Pipe1(
-	stockFields,
-	A.Map(F.Bind2nd(fuzzyBranch, statement.AutocompleteStockBranch)),
-)
+// branchSets lists the four groups of branches in statement order.
+var branchSets = []branchSet{
+	{stockFields, statement.AutocompleteStockBranch, prefixBranch},
+	{stockFields, statement.AutocompleteStockBranch, fuzzyBranch},
+	{propFields, statement.AutocompletePropBranch, prefixBranch},
+	{propFields, statement.AutocompletePropBranch, fuzzyBranch},
+}
 
-// stockBranches is the prefix branches and the fuzzy branches of the
-// stock fields.
-var stockBranches = F.Pipe1(stockPrefixes, A.Concat(stockFuzzies))
+// branchesFromSet makes the branch of each field in one group.
+func branchesFromSet(set branchSet) []queryBranch {
+	return F.Pipe1(
+		set.fields,
+		A.Map(F.Bind2nd(set.builder, set.template)),
+	)
+}
 
-// propPrefixes is the prefix branch of each property field.
-var propPrefixes = F.Pipe1(
-	propFields,
-	A.Map(F.Bind2nd(prefixBranch, statement.AutocompletePropBranch)),
-)
+// autocompleteBranches makes all branches of the statement.
+func autocompleteBranches() []queryBranch {
+	return F.Pipe1(branchSets, A.Chain(branchesFromSet))
+}
 
-// propFuzzies is the fuzzy branch of each property field.
-var propFuzzies = F.Pipe1(
-	propFields,
-	A.Map(F.Bind2nd(fuzzyBranch, statement.AutocompletePropBranch)),
-)
-
-// propBranches is the prefix branches and the fuzzy branches of the
-// property fields.
-var propBranches = F.Pipe1(propPrefixes, A.Concat(propFuzzies))
-
-// mergeBlock is the merge of the statement. It keeps one best row per
-// stock key and returns the top rows.
-var mergeBlock = F.Pipe4(
-	stockBranches,
-	A.Concat(propBranches),
-	A.Map(nameLens.Get),
-	joinVariables,
-	S.Format[string](statement.AutocompleteMerge),
-)
+// mergeBlock makes the merge of the statement. It keeps one best row
+// per stock key and returns the top rows.
+func mergeBlock(branches []queryBranch) string {
+	return F.Pipe3(
+		branches,
+		A.Map(nameLens.Get),
+		joinVariables,
+		S.Format[string](statement.AutocompleteMerge),
+	)
+}
 
 // buildAutocompleteQuery generates the full statement: the LET blocks
 // of the branches and the merge block.
 func buildAutocompleteQuery() string {
-	return F.Pipe4(
-		stockBranches,
-		A.Concat(propBranches),
+	branches := autocompleteBranches()
+
+	return F.Pipe3(
+		branches,
 		A.Map(bodyLens.Get),
-		F.Bind2nd(A.Append, mergeBlock),
+		F.Bind2nd(A.Append, mergeBlock(branches)),
 		joinStatements,
 	)
 }
