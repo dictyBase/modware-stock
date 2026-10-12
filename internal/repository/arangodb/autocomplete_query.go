@@ -2,7 +2,6 @@ package arangodb
 
 import (
 	"fmt"
-	"strings"
 
 	A "github.com/IBM/fp-go/v2/array"
 	F "github.com/IBM/fp-go/v2/function"
@@ -12,12 +11,6 @@ import (
 	"github.com/dictyBase/fp-go-loom/strutils"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 )
-
-// joinStatements joins the LET blocks of the branches with newlines.
-var joinStatements = F.Bind2nd(strings.Join, "\n")
-
-// joinVariables joins the AQL variables of the branches with commas.
-var joinVariables = F.Bind2nd(strings.Join, ", ")
 
 var scalarOrArray = F.Pipe1(isScalarField, P.Fold(displayArray, displayScalar))
 
@@ -133,7 +126,7 @@ func mergeBlock(branches []queryBranch) string {
 	return F.Pipe3(
 		branches,
 		A.Map(nameLens.Get),
-		joinVariables,
+		S.Join(", "),
 		S.Format[string](statement.AutocompleteMerge),
 	)
 }
@@ -147,13 +140,9 @@ func buildAutocompleteQuery() string {
 		branches,
 		A.Map(bodyLens.Get),
 		F.Bind2nd(A.Append, mergeBlock(branches)),
-		joinStatements,
+		S.Join("\n"),
 	)
 }
-
-// autocompleteQuery is the full 16-branch statement, built once per
-// process.
-var autocompleteQuery = buildAutocompleteQuery()
 
 // autocompletePrefixExpr is the SEARCH expression of a prefix branch.
 // STARTS_WITH inside SEARCH needs the ANALYZER wrapper: without it the

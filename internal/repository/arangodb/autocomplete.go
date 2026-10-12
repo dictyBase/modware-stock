@@ -291,7 +291,8 @@ func (ar *arangorepository) AutocompleteStock(
 	if err != nil {
 		return nil, err
 	}
-	rows, err := ar.database.SearchRows(autocompleteQuery, map[string]any{
+	stmt := buildAutocompleteQuery()
+	rows, err := ar.database.SearchRows(stmt, map[string]any{
 		"q":                query,
 		"th":               autocompleteNgramThreshold,
 		"limit":            limit,
