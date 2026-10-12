@@ -6,7 +6,10 @@ import (
 
 	A "github.com/IBM/fp-go/v2/array"
 	F "github.com/IBM/fp-go/v2/function"
+	L "github.com/IBM/fp-go/v2/optics/lens"
+	P "github.com/IBM/fp-go/v2/predicate"
 	S "github.com/IBM/fp-go/v2/string"
+	"github.com/dictyBase/fp-go-loom/strutils"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 )
 
@@ -16,6 +19,8 @@ var joinStatements = F.Bind2nd(strings.Join, "\n")
 // joinVariables joins the AQL variables of the branches with commas.
 var joinVariables = F.Bind2nd(strings.Join, ", ")
 
+var scalarOrArray = F.Pipe1(isScalarField, P.Fold(displayArray, displayScalar))
+
 // queryBranch is one generated LET branch of the statement. The name
 // is the AQL variable of the branch, and the body is its LET block.
 type queryBranch struct {
@@ -23,89 +28,125 @@ type queryBranch struct {
 	body string
 }
 
-// statement is the LET block of the branch.
-func (b queryBranch) statement() string { return b.body }
+var (
+	nameLens = L.MakeLens(
+		func(b queryBranch) string { return b.name },
+		func(b queryBranch, v string) queryBranch { b.name = v; return b },
+	)
+	bodyLens = L.MakeLens(
+		func(b queryBranch) string { return b.body },
+		func(b queryBranch, v string) queryBranch { b.body = v; return b },
+	)
+)
 
-// variable is the AQL variable of the branch.
-func (b queryBranch) variable() string { return b.name }
+// displayScalar is the display expression of a scalar field: its
+// value.
+func displayScalar(f autocompleteField) string {
+	return fmt.Sprintf(`NOT_NULL(d.%s, "")`, f.label)
+}
 
-// branchPair fills the branch template twice for one field: the
-// prefix branch with the variable p_<label> and the fuzzy branch with
-// the variable n_<label>. The label makes the variables unique and
-// self-describing in the generated AQL. The template is the second
-// parameter so the branch pipelines bind it with F.Bind2nd.
-func branchPair(f autocompleteField, tpl string) []queryBranch {
-	label := f.label
-	display := autocompleteDisplayExpr(f)
-	prefixName := "p_" + label
-	fuzzyName := "n_" + label
-	prefixSearch := autocompletePrefixExpr(label)
-	fuzzySearch := autocompleteFuzzyExpr(label)
+// displayArray is the display expression of an array field: the first
+// element that contains the query, or the joined list as a fallback.
+func displayArray(f autocompleteField) string {
+	return fmt.Sprintf(
+		`NOT_NULL(FIRST(FOR item IN NOT_NULL(d.%s, []) `+
+			`FILTER CONTAINS(LOWER(item), @q) RETURN item), `+
+			`CONCAT_SEPARATOR(", ", NOT_NULL(d.%s, [])))`,
+		f.label,
+		f.label,
+	)
+}
 
-	return []queryBranch{
-		{
-			name: prefixName,
-			body: fmt.Sprintf(
-				tpl,
-				prefixName,
-				prefixSearch,
-				label,
-				display,
-				autocompletePrefixScore,
-			),
-		},
-		{
-			name: fuzzyName,
-			body: fmt.Sprintf(
-				tpl,
-				fuzzyName,
-				fuzzySearch,
-				label,
-				display,
-				autocompleteFuzzyScore,
-			),
-		},
+// isScalarField reports whether the field displays as a scalar.
+func isScalarField(f autocompleteField) bool {
+	return f.display == autocompleteScalar
+}
+
+// prefixBranch fills the prefix branch of one field: the variable
+// p_<label> with the prefix score. The template is the second
+// parameter so the field pipelines bind it with F.Bind2nd.
+func prefixBranch(f autocompleteField, tpl string) queryBranch {
+	parts := A.From[any](
+		strutils.JoinStrings("p_", f.label),
+		autocompletePrefixExpr(f.label),
+		f.label,
+		scalarOrArray(f),
+		autocompletePrefixScore,
+	)
+
+	return queryBranch{
+		name: strutils.JoinStrings("p_", f.label),
+		body: fmt.Sprintf(tpl, parts...),
 	}
 }
 
-// stockBranches is the prefix branch and the fuzzy branch of each
-// stock field.
-var stockBranches = F.Pipe1(
+// fuzzyBranch fills the fuzzy branch of one field: the variable
+// n_<label> with the fuzzy score. The template is the second
+// parameter so the field pipelines bind it with F.Bind2nd.
+func fuzzyBranch(f autocompleteField, tpl string) queryBranch {
+	parts := A.From[any](
+		strutils.JoinStrings("n_", f.label),
+		autocompleteFuzzyExpr(f.label),
+		f.label,
+		scalarOrArray(f),
+		autocompleteFuzzyScore,
+	)
+
+	return queryBranch{
+		name: strutils.JoinStrings("n_", f.label),
+		body: fmt.Sprintf(tpl, parts...),
+	}
+}
+
+// stockPrefixes is the prefix branch of each stock field.
+var stockPrefixes = F.Pipe1(
 	stockFields,
-	A.Chain(F.Bind2nd(branchPair, statement.AutocompleteStockBranch)),
+	A.Map(F.Bind2nd(prefixBranch, statement.AutocompleteStockBranch)),
 )
 
-// propBranches is the prefix branch and the fuzzy branch of each
-// property field.
-var propBranches = F.Pipe1(
+// stockFuzzies is the fuzzy branch of each stock field.
+var stockFuzzies = F.Pipe1(
+	stockFields,
+	A.Map(F.Bind2nd(fuzzyBranch, statement.AutocompleteStockBranch)),
+)
+
+// stockBranches is the prefix branches and the fuzzy branches of the
+// stock fields.
+var stockBranches = F.Pipe1(stockPrefixes, A.Concat(stockFuzzies))
+
+// propPrefixes is the prefix branch of each property field.
+var propPrefixes = F.Pipe1(
 	propFields,
-	A.Chain(F.Bind2nd(branchPair, statement.AutocompletePropBranch)),
+	A.Map(F.Bind2nd(prefixBranch, statement.AutocompletePropBranch)),
 )
 
-// allBranches is the stock branches and the property branches.
-var allBranches = F.Pipe1(stockBranches, A.Concat(propBranches))
-
-// branchVariables is the AQL variables of all branches, joined with
-// commas. The merge block merges the rows of these branches.
-var branchVariables = F.Pipe2(
-	allBranches,
-	A.Map(queryBranch.variable),
-	joinVariables,
+// propFuzzies is the fuzzy branch of each property field.
+var propFuzzies = F.Pipe1(
+	propFields,
+	A.Map(F.Bind2nd(fuzzyBranch, statement.AutocompletePropBranch)),
 )
+
+// propBranches is the prefix branches and the fuzzy branches of the
+// property fields.
+var propBranches = F.Pipe1(propPrefixes, A.Concat(propFuzzies))
 
 // mergeBlock is the merge of the statement. It keeps one best row per
 // stock key and returns the top rows.
-var mergeBlock = F.Pipe1(
-	branchVariables,
+var mergeBlock = F.Pipe4(
+	stockBranches,
+	A.Concat(propBranches),
+	A.Map(nameLens.Get),
+	joinVariables,
 	S.Format[string](statement.AutocompleteMerge),
 )
 
 // buildAutocompleteQuery generates the full statement: the LET blocks
 // of the branches and the merge block.
 func buildAutocompleteQuery() string {
-	return F.Pipe3(
-		allBranches,
-		A.Map(queryBranch.statement),
+	return F.Pipe4(
+		stockBranches,
+		A.Concat(propBranches),
+		A.Map(bodyLens.Get),
 		F.Bind2nd(A.Append, mergeBlock),
 		joinStatements,
 	)
@@ -133,23 +174,5 @@ func autocompleteFuzzyExpr(field string) string {
 		"NGRAM_MATCH(d.%s, @q, @th, %q)",
 		field,
 		autocompleteNgramAnalyzer,
-	)
-}
-
-// autocompleteDisplayExpr returns the display expression of a field.
-// A scalar field returns its value; an array field returns the first
-// element that contains the query, or the joined list as a fallback.
-// The expressions run only on the rows that survive the branch LIMIT,
-// never inside the index.
-func autocompleteDisplayExpr(f autocompleteField) string {
-	if f.display == autocompleteScalar {
-		return fmt.Sprintf(`NOT_NULL(d.%s, "")`, f.label)
-	}
-	return fmt.Sprintf(
-		`NOT_NULL(FIRST(FOR item IN NOT_NULL(d.%s, []) `+
-			`FILTER CONTAINS(LOWER(item), @q) RETURN item), `+
-			`CONCAT_SEPARATOR(", ", NOT_NULL(d.%s, [])))`,
-		f.label,
-		f.label,
 	)
 }
