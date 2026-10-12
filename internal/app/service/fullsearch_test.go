@@ -14,6 +14,7 @@ import (
 	"io"
 
 	IOE "github.com/IBM/fp-go/ioeither"
+	IOEV2 "github.com/IBM/fp-go/v2/ioeither"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-obograph/storage"
 	"github.com/dictyBase/modware-stock/internal/model"
@@ -70,8 +71,8 @@ func (sr *fullSearchStubRepo) SearchStock(
 }
 func (sr *fullSearchStubRepo) AutocompleteStock(
 	_ *repository.AutocompleteQuery,
-) ([]*repository.Suggestion, error) {
-	return nil, nil
+) IOEV2.IOEither[error, []*repository.Suggestion] {
+	return IOEV2.Of[error]([]*repository.Suggestion(nil))
 }
 func (sr *fullSearchStubRepo) Dbh() *manager.Database { return nil }
 func (sr *fullSearchStubRepo) LoadOboJSON(io.Reader) (*storage.UploadInformation, error) {

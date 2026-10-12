@@ -29,6 +29,7 @@ type dbRows interface {
 	IsEmpty() bool
 	Scan() bool
 	Read(any) error
+	Close() error
 }
 
 // plasmidListQueryParams encapsulates parameters for plasmid list query
