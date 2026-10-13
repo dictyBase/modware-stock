@@ -5,10 +5,19 @@ import (
 	"fmt"
 	"strings"
 
-	A "github.com/IBM/fp-go/array"
-	F "github.com/IBM/fp-go/function"
+	A "github.com/IBM/fp-go/v2/array"
+	E "github.com/IBM/fp-go/v2/either"
+	fperrors "github.com/IBM/fp-go/v2/errors"
+	F "github.com/IBM/fp-go/v2/function"
+	IOE "github.com/IBM/fp-go/v2/ioeither"
+	L "github.com/IBM/fp-go/v2/optics/lens"
+	O "github.com/IBM/fp-go/v2/option"
+	P "github.com/IBM/fp-go/v2/predicate"
+	S "github.com/IBM/fp-go/v2/string"
 	driver "github.com/arangodb/go-driver"
 	"github.com/cockroachdb/errors"
+	"github.com/dictyBase/fp-go-loom/eithererr"
+	predarrays "github.com/dictyBase/fp-go-loom/predicate/array"
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 )
@@ -29,6 +38,21 @@ type (
 	}
 	fullSearchColl    int
 	fullSearchDisplay int
+
+	// fullSearchRequest is the validated and normalized input of one
+	// full search.
+	fullSearchRequest struct {
+		query  string
+		limit  int
+		entity repository.StockEntityFilter
+	}
+
+	// fullSearchQueryParams carries the generated statement and its bind
+	// parameters for one full search.
+	fullSearchQueryParams struct {
+		statement  string
+		bindParams map[string]any
+	}
 )
 
 const (
@@ -78,6 +102,12 @@ const (
 	fullSearchPhraseBand = "500 + BM25(d)"
 	fullSearchProseBand  = "250 + BM25(d)"
 	fullSearchFuzzyBand  = "BM25(d)"
+
+	// msgNilFullSearchQuery is the sentinel message of an absent request.
+	msgNilFullSearchQuery = "expect a non-nil full search query"
+	// msgEmptyFullSearchQuery is the sentinel message of a query that
+	// normalizes to nothing.
+	msgEmptyFullSearchQuery = "expect a non-empty full search query"
 )
 
 var (
@@ -132,58 +162,175 @@ var (
 	// fullSearchQuery is the full 19-branch statement, built once per
 	// process.
 	fullSearchQuery = buildFullSearchQuery()
+
+	// fullSearchEntityLens focuses the entity filter of a validated
+	// request.
+	fullSearchEntityLens = L.MakeLens(
+		func(req fullSearchRequest) repository.StockEntityFilter {
+			return req.entity
+		},
+		func(
+			req fullSearchRequest,
+			entity repository.StockEntityFilter,
+		) fullSearchRequest {
+			req.entity = entity
+			return req
+		},
+	)
+
+	// fullSearchQueryLens focuses the normalized query of a validated
+	// request.
+	fullSearchQueryLens = L.MakeLens(
+		func(req fullSearchRequest) string { return req.query },
+		func(req fullSearchRequest, query string) fullSearchRequest {
+			req.query = query
+			return req
+		},
+	)
+
+	// queryAllStopwords lifts the stopword test onto a validated request.
+	queryAllStopwords = F.Pipe1(
+		fullSearchAllStopwords,
+		P.ContraMap(fullSearchQueryLens.Get),
+	)
+
+	// keepsNonStopword is the guard of the stopword rule: the repository
+	// rejects a query whose tokens are all stopwords before any AQL runs.
+	keepsNonStopword = F.Pipe1(queryAllStopwords, P.Not)
 )
 
-// SearchStock returns at most 50 ranked results for the normalized
-// query of params. The repository trims and lowercases the query,
-// rejects an empty, punctuation-only or all-stopword query, clamps the
-// limit, and validates the entity filter before any AQL runs. An empty
-// result is not an error.
+// nonNilFullSearchParams reports whether the raw request is present.
+func nonNilFullSearchParams(params *repository.FullSearchQuery) bool {
+	return params != nil
+}
+
+// hasFullSearchQueryText reports whether the normalized query has
+// content.
+func hasFullSearchQueryText(req fullSearchRequest) bool {
+	return S.IsNonEmpty(req.query)
+}
+
+// stopwordFullSearchError reports a query whose every token is a
+// stopword. The message names the normalized query, because that is the
+// form the statement searches.
+func stopwordFullSearchError(req fullSearchRequest) error {
+	return errors.Errorf(
+		"expect a query with at least one non-stopword, received %q",
+		req.query,
+	)
+}
+
+// newFullSearchRequest normalizes the query and clamps the limit of the
+// raw request.
+func newFullSearchRequest(
+	params *repository.FullSearchQuery,
+) fullSearchRequest {
+	return fullSearchRequest{
+		query:  normalizeAutocompleteQuery(params.Query),
+		limit:  fullSearchLimit(params.Limit),
+		entity: params.Entity,
+	}
+}
+
+// validateFullSearchRequest guards the request before any AQL runs: the
+// parameters must exist, the normalized query must be non-empty and
+// must keep at least one non-stopword, and the entity filter must be
+// defined.
+func validateFullSearchRequest(
+	params *repository.FullSearchQuery,
+) E.Either[error, fullSearchRequest] {
+	return F.Pipe5(
+		params,
+		E.FromPredicate(
+			nonNilFullSearchParams,
+			eithererr.ConstErr[*repository.FullSearchQuery](
+				msgNilFullSearchQuery,
+			),
+		),
+		E.Map[error](newFullSearchRequest),
+		E.Chain(E.FromPredicate(
+			hasFullSearchQueryText,
+			eithererr.ConstErr[fullSearchRequest](
+				msgEmptyFullSearchQuery,
+			),
+		)),
+		E.Chain(E.FromPredicate(keepsNonStopword, stopwordFullSearchError)),
+		E.BindL(fullSearchEntityLens, E.Eitherize1(autocompleteEntity)),
+	)
+}
+
+// buildFullSearchQueryParams assembles the statement and the bind
+// parameters from the validated request.
+func (ar *arangorepository) buildFullSearchQueryParams(
+	req fullSearchRequest,
+) fullSearchQueryParams {
+	return fullSearchQueryParams{
+		statement: buildFullSearchQuery(),
+		bindParams: map[string]any{
+			"q":                 req.query,
+			"th":                fullSearchNgramThreshold,
+			"limit":             req.limit,
+			"entity":            string(req.entity),
+			nameStockPropGraph:  ar.stockc.stockPropType.Name(),
+			nameStockCollection: ar.stockc.stock.Name(),
+		},
+	}
+}
+
+// executeFullSearchQuery runs the generated statement and returns the
+// raw result rows.
+func (ar *arangorepository) executeFullSearchQuery(
+	params fullSearchQueryParams,
+) IOE.IOEither[error, dbRows] {
+	return F.Pipe1(
+		IOE.TryCatchError(
+			func() (dbRows, error) {
+				return ar.database.SearchRows(params.statement, params.bindParams)
+			},
+		),
+		IOE.MapLeft[dbRows](
+			fperrors.OnError("error in running full search query"),
+		),
+	)
+}
+
+// emptyFullSearchResults is the None branch of toFullSearchResults: it
+// reports an empty list, not a missing one.
+func emptyFullSearchResults() []*repository.FullSearchResult {
+	return []*repository.FullSearchResult{}
+}
+
+// toFullSearchResults converts projection rows into full search results.
+// An empty input stays a non-nil empty slice, because the callers report
+// an empty list and not a missing one.
+func toFullSearchResults(
+	rows []searchResultRow,
+) []*repository.FullSearchResult {
+	return F.Pipe2(
+		rows,
+		O.FromPredicate(predarrays.IsNonEmpty[searchResultRow]()),
+		O.Fold(emptyFullSearchResults, A.Map(searchResultRow.result)),
+	)
+}
+
+// SearchStock returns at most 50 ranked results for the normalized query
+// of params as a lazy IOEither pipeline, forced by the caller. The
+// repository trims and lowercases the query, rejects an empty,
+// punctuation-only or all-stopword query, clamps the limit, and validates
+// the entity filter before any AQL runs. An empty result is not an error.
 func (ar *arangorepository) SearchStock(
 	params *repository.FullSearchQuery,
-) ([]*repository.FullSearchResult, error) {
-	if params == nil {
-		return nil, errors.New("expect a non-nil full search query")
-	}
-	query := normalizeAutocompleteQuery(params.Query)
-	if query == "" {
-		return nil, errors.New("expect a non-empty full search query")
-	}
-	if fullSearchAllStopwords(query) {
-		return nil, errors.Errorf(
-			"expect a query with at least one non-stopword, received %q",
-			params.Query,
-		)
-	}
-	limit := fullSearchLimit(params.Limit)
-	entity, err := autocompleteEntity(params.Entity)
-	if err != nil {
-		return nil, err
-	}
-	rows, err := ar.database.SearchRows(fullSearchQuery, map[string]any{
-		"q":                 query,
-		"th":                fullSearchNgramThreshold,
-		"limit":             limit,
-		"entity":            string(entity),
-		nameStockPropGraph:  ar.stockc.stockPropType.Name(),
-		nameStockCollection: ar.stockc.stock.Name(),
-	})
-	if err != nil {
-		return nil, errors.Errorf("error in running full search query %s", err)
-	}
-	defer func() { _ = rows.Close() }()
-	matches := make([]searchResultRow, 0, limit)
-	for rows.Scan() {
-		var row searchResultRow
-		if err := rows.Read(&row); err != nil {
-			return nil, errors.Errorf("error in reading full search row %s", err)
-		}
-		matches = append(matches, row)
-	}
-	return F.Pipe1(
-		matches,
-		A.Map(searchResultRow.result),
-	), nil
+) IOE.IOEither[error, []*repository.FullSearchResult] {
+	return F.Pipe5(
+		IOE.Of[error](params),
+		IOE.ChainEitherK(validateFullSearchRequest),
+		IOE.Map[error](ar.buildFullSearchQueryParams),
+		IOE.Chain(ar.executeFullSearchQuery),
+		IOE.Chain(
+			scanSearchRows[searchResultRow]("error in reading full search row"),
+		),
+		IOE.Map[error](toFullSearchResults),
+	)
 }
 
 // result converts one query row into a repository full search result.
@@ -341,7 +488,8 @@ func fullSearchDisplayExpr(f struct {
 	label   string
 	coll    fullSearchColl
 	display fullSearchDisplay
-}) string {
+},
+) string {
 	if f.display == fullSearchScalar {
 		return fmt.Sprintf(`NOT_NULL(d.%s, "")`, f.label)
 	}

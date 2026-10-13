@@ -95,8 +95,11 @@ type (
 		LoadPlasmid(id string, ep *stock.ExistingPlasmid) IOE.IOEither[error, *model.StockDoc]
 		RemoveStock(id string) error
 		// SearchStock returns at most Limit ranked full search results for
-		// the normalized query of params. An empty result is not an error.
-		SearchStock(params *FullSearchQuery) ([]*FullSearchResult, error)
+		// the normalized query of params as a lazy IOEither pipeline. An
+		// empty result is not an error.
+		SearchStock(
+			params *FullSearchQuery,
+		) IOEV2.IOEither[error, []*FullSearchResult]
 		// AutocompleteStock returns at most Limit short suggestions for the
 		// normalized query of params as a lazy IOEither pipeline.
 		AutocompleteStock(

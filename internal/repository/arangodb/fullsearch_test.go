@@ -10,6 +10,7 @@ import (
 	"time"
 
 	F "github.com/IBM/fp-go/function"
+	E "github.com/IBM/fp-go/v2/either"
 	driver "github.com/arangodb/go-driver"
 	manager "github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/arangomanager/testarango"
@@ -400,6 +401,17 @@ func addFullSearchPlasmid(
 }
 
 // waitFullSearchRows polls until the view commits the documents and
+// fullSearchResult runs the lazy full search pipeline of the repository
+// and returns its rows or its error.
+func fullSearchResult(
+	repo repository.StockRepository,
+	params *repository.FullSearchQuery,
+) ([]*repository.FullSearchResult, error) {
+	results := repo.SearchStock(params)
+	either := results()
+	return E.UnwrapError(either)
+}
+
 // the probe returns at least one row, then returns the rows.
 func waitFullSearchRows(
 	assert *require.Assertions,
@@ -408,7 +420,7 @@ func waitFullSearchRows(
 ) []*repository.FullSearchResult {
 	var rows []*repository.FullSearchResult
 	assert.Eventually(func() bool {
-		got, err := repo.SearchStock(
+		got, err := fullSearchResult(repo,
 			&repository.FullSearchQuery{Query: probe, Limit: 50},
 		)
 		if err != nil || len(got) == 0 {
@@ -449,7 +461,7 @@ func TestSearchStockDoesNotSearchEditableSummary(t *testing.T) {
 		a.Summary = testStrainSummary
 	})
 	waitFullSearchRows(assert, repo, "general")
-	rows, err := repo.SearchStock(
+	rows, err := fullSearchResult(repo,
 		&repository.FullSearchQuery{Query: "editableonlyzzz", Limit: 50},
 	)
 	assert.NoError(err, "expect no error for the editable term")
@@ -523,7 +535,7 @@ func TestSearchStockMultiTokenMatchesAnyToken(t *testing.T) {
 	})
 	rows := waitFullSearchRows(assert, repo, "forms")
 	assert.Len(rows, 1, "expect the single-token row")
-	multi, err := repo.SearchStock(
+	multi, err := fullSearchResult(repo,
 		&repository.FullSearchQuery{Query: "forms culminants", Limit: 50},
 	)
 	assert.NoError(err, "expect no error for the 2-word query")
@@ -636,7 +648,7 @@ func autocompleteRowsSearch(
 	repo repository.StockRepository,
 	query string,
 ) []*repository.FullSearchResult {
-	rows, err := repo.SearchStock(
+	rows, err := fullSearchResult(repo,
 		&repository.FullSearchQuery{Query: query, Limit: 50},
 	)
 	assert.NoErrorf(err, "expect no error for query %q, received %s", query, err)
@@ -658,7 +670,7 @@ func TestSearchStockDefaultLimitIsFifty(t *testing.T) {
 	// Poll until the whole fixture is committed: the view commits in
 	// batches, so a wait for one row does not prove all 60 are visible.
 	assert.Eventually(func() bool {
-		rows, err := repo.SearchStock(
+		rows, err := fullSearchResult(repo,
 			&repository.FullSearchQuery{Query: testLimiProbe, Limit: 50},
 		)
 		return err == nil && len(rows) == 50
@@ -681,7 +693,7 @@ func TestSearchStockClampsLimitToFifty(t *testing.T) {
 	}
 	// Poll until the whole fixture is committed and the cap holds.
 	assert.Eventually(func() bool {
-		rows, err := repo.SearchStock(
+		rows, err := fullSearchResult(repo,
 			&repository.FullSearchQuery{Query: testCap0Probe, Limit: 100},
 		)
 		return err == nil && len(rows) == 50
@@ -711,14 +723,14 @@ func TestSearchStockEntityFilterKeepsSmallGroup(t *testing.T) {
 	}
 	// Poll until the whole plasmid group is committed.
 	assert.Eventually(func() bool {
-		rows, err := repo.SearchStock(&repository.FullSearchQuery{
+		rows, err := fullSearchResult(repo, &repository.FullSearchQuery{
 			Query:  testXyloseGene,
 			Entity: repository.EntityPlasmid,
 			Limit:  50,
 		})
 		return err == nil && len(rows) == 5
 	}, 20*time.Second, 500*time.Millisecond, "expect exactly the 5 plasmids")
-	filtered, err := repo.SearchStock(&repository.FullSearchQuery{
+	filtered, err := fullSearchResult(repo, &repository.FullSearchQuery{
 		Query:  testXyloseGene,
 		Entity: repository.EntityPlasmid,
 		Limit:  50,
@@ -769,7 +781,7 @@ func TestSearchStockEmptyResultIsNotAnError(t *testing.T) {
 	defer tearDown(repo)
 	addFullSearchStrain(assert, repo, nil)
 	waitFullSearchRows(assert, repo, "ys1")
-	rows, err := repo.SearchStock(
+	rows, err := fullSearchResult(repo,
 		&repository.FullSearchQuery{Query: "zzzqqq", Limit: 50},
 	)
 	assert.NoError(err, "expect no error for a non-matching query")
@@ -791,7 +803,7 @@ func TestSearchStockPunctuationOnlyQuery(t *testing.T) {
 	defer tearDown(repo)
 	addFullSearchStrain(assert, repo, nil)
 	waitFullSearchRows(assert, repo, "ys1")
-	rows, err := repo.SearchStock(
+	rows, err := fullSearchResult(repo,
 		&repository.FullSearchQuery{Query: "---", Limit: 50},
 	)
 	assert.NoError(err, "expect no error for a punctuation-only query")
@@ -805,7 +817,7 @@ func TestSearchStockStopwordOnlyQuery(t *testing.T) {
 	// Task 1 probe 18 recorded that text_en keeps stopwords, so the
 	// repository applies the Go-side stopword rule and rejects the
 	// query before any AQL runs.
-	_, err := repo.SearchStock(
+	_, err := fullSearchResult(repo,
 		&repository.FullSearchQuery{Query: "the and", Limit: 50},
 	)
 	assert.Errorf(err, "expect an error for an all-stopword query")
@@ -814,7 +826,7 @@ func TestSearchStockStopwordOnlyQuery(t *testing.T) {
 func TestSearchStockRejectsWhitespaceQuery(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	_, err := repo.SearchStock(
+	_, err := fullSearchResult(repo,
 		&repository.FullSearchQuery{Query: "   ", Limit: 50},
 	)
 	assert.Errorf(err, "expect an error for a whitespace-only query")
@@ -823,7 +835,7 @@ func TestSearchStockRejectsWhitespaceQuery(t *testing.T) {
 func TestSearchStockRejectsUnknownEntity(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)
-	_, err := repo.SearchStock(
+	_, err := fullSearchResult(repo,
 		&repository.FullSearchQuery{
 			Query:  "ys1",
 			Entity: repository.StockEntityFilter("vector"),
@@ -847,12 +859,12 @@ func TestSearchStockHandlesMissingPropertyMetadata(t *testing.T) {
 		a.Summary = "missinglabelmarker"
 	})
 	waitFullSearchRows(assert, repo, "missinglabelmarker")
-	orphan, err := repo.SearchStock(
+	orphan, err := fullSearchResult(repo,
 		&repository.FullSearchQuery{Query: "orphanonly", Limit: 50},
 	)
 	assert.NoError(err, "expect no error for the orphan query")
 	assert.Empty(orphan, "expect the orphan property to be dropped")
-	rows, err := repo.SearchStock(
+	rows, err := fullSearchResult(repo,
 		&repository.FullSearchQuery{Query: "missinglabelmarker", Limit: 50},
 	)
 	assert.NoError(err, "expect no error for the marker query")

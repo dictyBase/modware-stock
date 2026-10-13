@@ -65,9 +65,12 @@ func (sr *fullSearchStubRepo) LoadPlasmid(string, *stock.ExistingPlasmid) IOE.IO
 func (sr *fullSearchStubRepo) RemoveStock(string) error { return nil }
 func (sr *fullSearchStubRepo) SearchStock(
 	params *repository.FullSearchQuery,
-) ([]*repository.FullSearchResult, error) {
+) IOEV2.IOEither[error, []*repository.FullSearchResult] {
 	sr.got = params
-	return sr.hits, sr.err
+	if sr.err != nil {
+		return IOEV2.Left[[]*repository.FullSearchResult](sr.err)
+	}
+	return IOEV2.Of[error](sr.hits)
 }
 func (sr *fullSearchStubRepo) AutocompleteStock(
 	_ *repository.AutocompleteQuery,
