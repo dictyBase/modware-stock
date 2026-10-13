@@ -63,8 +63,8 @@ func (mp *MockPublisher) Close() error {
 	return nil
 }
 
-// getConnectParamsFromDb creates connection parameters from test database instance.
-func getConnectParamsFromDb(ta *testarango.TestArango) *manager.ConnectParams {
+// getConnectParamsFromDB creates connection parameters from test database instance.
+func getConnectParamsFromDB(ta *testarango.TestArango) *manager.ConnectParams {
 	return &manager.ConnectParams{
 		User:     ta.User,
 		Pass:     ta.Pass,
@@ -181,7 +181,7 @@ func setupTestRepository(t *testing.T, assert *require.Assertions) repository.St
 	assert.NoError(err, "expect no error from creating an arangodb instance")
 
 	repo, err := arangodb.NewStockRepo(
-		getConnectParamsFromDb(tra),
+		getConnectParamsFromDB(tra),
 		getCollectionParams(),
 		getOntoParams(),
 	)

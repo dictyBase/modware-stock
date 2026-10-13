@@ -25,7 +25,7 @@ func newAutocompleteArangoEnv(
 	assert.NoErrorf(err,
 		"expect no error creating a test database, received %s", err)
 	repo, err := arangodb.NewStockRepo(
-		getConnectParamsFromDb(tra),
+		getConnectParamsFromDB(tra),
 		getCollectionParams(),
 		getOntoParams(),
 	)

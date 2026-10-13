@@ -61,59 +61,59 @@ func TestDbCollectionFlags(t *testing.T) {
 	t.Parallel()
 
 	t.Run("ReturnsAllDatabaseCollectionFlags", func(t *testing.T) {
-		testDbCollectionFlagsCount(t)
+		testDBCollectionFlagsCount(t)
 	})
 
 	t.Run("ContainsStockCollectionFlag", func(t *testing.T) {
-		testDbStockCollectionFlag(t)
+		testDBStockCollectionFlag(t)
 	})
 
 	t.Run("ContainsStockPropCollectionFlag", func(t *testing.T) {
-		testDbStockPropCollectionFlag(t)
+		testDBStockPropCollectionFlag(t)
 	})
 
 	t.Run("ContainsStockKeyGeneratorCollectionFlag", func(t *testing.T) {
-		testDbStockKeyGeneratorFlag(t)
+		testDBStockKeyGeneratorFlag(t)
 	})
 
 	t.Run("ContainsStockTypeEdgeFlag", func(t *testing.T) {
-		testDbStockTypeEdgeFlag(t)
+		testDBStockTypeEdgeFlag(t)
 	})
 
 	t.Run("ContainsParentStrainEdgeFlag", func(t *testing.T) {
-		testDbParentStrainEdgeFlag(t)
+		testDBParentStrainEdgeFlag(t)
 	})
 
 	t.Run("ContainsStockTermEdgeFlag", func(t *testing.T) {
-		testDbStockTermEdgeFlag(t)
+		testDBStockTermEdgeFlag(t)
 	})
 
 	t.Run("ContainsStockPropTypeGraphFlag", func(t *testing.T) {
-		testDbStockPropTypeGraphFlag(t)
+		testDBStockPropTypeGraphFlag(t)
 	})
 
 	t.Run("ContainsStrain2ParentGraphFlag", func(t *testing.T) {
-		testDbStrain2ParentGraphFlag(t)
+		testDBStrain2ParentGraphFlag(t)
 	})
 
 	t.Run("ContainsStockOntoGraphFlag", func(t *testing.T) {
-		testDbStockOntoGraphFlag(t)
+		testDBStockOntoGraphFlag(t)
 	})
 
 	t.Run("AllDbCollectionFlagsAreStringFlags", func(t *testing.T) {
-		testDbCollectionFlagsAreStrings(t)
+		testDBCollectionFlagsAreStrings(t)
 	})
 
 	t.Run("AllDbCollectionFlagsHaveDefaults", func(t *testing.T) {
-		testDbCollectionFlagsHaveDefaults(t)
+		testDBCollectionFlagsHaveDefaults(t)
 	})
 
 	t.Run("DbCollectionFlagsHaveDescriptiveUsage", func(t *testing.T) {
-		testDbCollectionFlagsUsage(t)
+		testDBCollectionFlagsUsage(t)
 	})
 
 	t.Run("DbCollectionFlagsHaveNoEnvironmentVariables", func(t *testing.T) {
-		testDbCollectionFlagsNoEnvVars(t)
+		testDBCollectionFlagsNoEnvVars(t)
 	})
 }
 
@@ -129,11 +129,11 @@ func TestAllFlags(t *testing.T) {
 	})
 
 	t.Run("IncludesDatabaseCollectionFlags", func(t *testing.T) {
-		testAllFlagsIncludesDb(t)
+		testAllFlagsIncludesDB(t)
 	})
 
 	t.Run("IncludesArangoDBDatabaseFlag", func(t *testing.T) {
-		testAllFlagsIncludesArangoDb(t)
+		testAllFlagsIncludesArangoDB(t)
 	})
 
 	t.Run("FlagsAreNotDuplicated", func(t *testing.T) {
@@ -205,7 +205,7 @@ func TestMainFlagDefaults(t *testing.T) {
 	})
 
 	t.Run("DatabaseFlagsHaveReasonableDefaults", func(t *testing.T) {
-		testDbFlagsDefaults(t)
+		testDBFlagsDefaults(t)
 	})
 }
 
@@ -378,7 +378,7 @@ func testServerFlagsNoEnvVars(t *testing.T) {
 
 // Test implementation functions for database collection flags
 
-func testDbCollectionFlagsCount(t *testing.T) {
+func testDBCollectionFlagsCount(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 	require.NotNil(t, flags)
@@ -386,7 +386,7 @@ func testDbCollectionFlagsCount(t *testing.T) {
 	require.Len(t, flags, 9, "should return exactly 9 database collection flags")
 }
 
-func testDbStockCollectionFlag(t *testing.T) {
+func testDBStockCollectionFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 	stockFlag := findFlagByName(flags, collectionStock)
@@ -399,7 +399,7 @@ func testDbStockCollectionFlag(t *testing.T) {
 	require.Equal(t, "arangodb collection for storing biological stocks", strFlag.Usage)
 }
 
-func testDbStockPropCollectionFlag(t *testing.T) {
+func testDBStockPropCollectionFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 	stockPropFlag := findFlagByName(flags, collectionStockProp)
@@ -412,7 +412,7 @@ func testDbStockPropCollectionFlag(t *testing.T) {
 	require.Equal(t, "arangodb collection for storing stock properties", strFlag.Usage)
 }
 
-func testDbStockKeyGeneratorFlag(t *testing.T) {
+func testDBStockKeyGeneratorFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 	keyGenFlag := findFlagByName(flags, collectionStockKeyGenerator)
@@ -425,7 +425,7 @@ func testDbStockKeyGeneratorFlag(t *testing.T) {
 	require.Equal(t, "arangodb collection for generating unique IDs", strFlag.Usage)
 }
 
-func testDbStockTypeEdgeFlag(t *testing.T) {
+func testDBStockTypeEdgeFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 	stockTypeFlag := findFlagByName(flags, collectionStockTypeEdge)
@@ -440,7 +440,7 @@ func testDbStockTypeEdgeFlag(t *testing.T) {
 		strFlag.Usage)
 }
 
-func testDbParentStrainEdgeFlag(t *testing.T) {
+func testDBParentStrainEdgeFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 	parentFlag := findFlagByName(flags, collectionParentStrainEdge)
@@ -455,7 +455,7 @@ func testDbParentStrainEdgeFlag(t *testing.T) {
 		strFlag.Usage)
 }
 
-func testDbStockTermEdgeFlag(t *testing.T) {
+func testDBStockTermEdgeFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 	termFlag := findFlagByName(flags, collectionStockTermEdge)
@@ -470,7 +470,7 @@ func testDbStockTermEdgeFlag(t *testing.T) {
 		strFlag.Usage)
 }
 
-func testDbStockPropTypeGraphFlag(t *testing.T) {
+func testDBStockPropTypeGraphFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 	graphFlag := findFlagByName(flags, graphStockPropType)
@@ -485,7 +485,7 @@ func testDbStockPropTypeGraphFlag(t *testing.T) {
 		strFlag.Usage)
 }
 
-func testDbStrain2ParentGraphFlag(t *testing.T) {
+func testDBStrain2ParentGraphFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 	graphFlag := findFlagByName(flags, graphStrain2Parent)
@@ -500,7 +500,7 @@ func testDbStrain2ParentGraphFlag(t *testing.T) {
 		strFlag.Usage)
 }
 
-func testDbStockOntoGraphFlag(t *testing.T) {
+func testDBStockOntoGraphFlag(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 	graphFlag := findFlagByName(flags, graphStockOnto)
@@ -515,7 +515,7 @@ func testDbStockOntoGraphFlag(t *testing.T) {
 		strFlag.Usage)
 }
 
-func testDbCollectionFlagsAreStrings(t *testing.T) {
+func testDBCollectionFlagsAreStrings(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 
@@ -525,7 +525,7 @@ func testDbCollectionFlagsAreStrings(t *testing.T) {
 	}
 }
 
-func testDbCollectionFlagsHaveDefaults(t *testing.T) {
+func testDBCollectionFlagsHaveDefaults(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 
@@ -551,7 +551,7 @@ func testDbCollectionFlagsHaveDefaults(t *testing.T) {
 	}
 }
 
-func testDbCollectionFlagsUsage(t *testing.T) {
+func testDBCollectionFlagsUsage(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 
@@ -576,7 +576,7 @@ func testDbCollectionFlagsUsage(t *testing.T) {
 	}
 }
 
-func testDbCollectionFlagsNoEnvVars(t *testing.T) {
+func testDBCollectionFlagsNoEnvVars(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 
@@ -606,7 +606,7 @@ func testAllFlagsIncludesServer(t *testing.T) {
 	require.NotNil(t, keyOffsetFlag, "should include keyoffset flag from serverFlags")
 }
 
-func testAllFlagsIncludesDb(t *testing.T) {
+func testAllFlagsIncludesDB(t *testing.T) {
 	t.Helper()
 	flags := allFlags()
 	stockFlag := findFlagByName(flags, collectionStock)
@@ -616,7 +616,7 @@ func testAllFlagsIncludesDb(t *testing.T) {
 	require.NotNil(t, stockPropFlag, "should include stockprop-collection from dbCollectionFlags")
 }
 
-func testAllFlagsIncludesArangoDb(t *testing.T) {
+func testAllFlagsIncludesArangoDB(t *testing.T) {
 	t.Helper()
 	flags := allFlags()
 	dbFlag := findFlagByName(flags, "arangodb-database")
@@ -911,7 +911,7 @@ func testServerFlagsDefaults(t *testing.T) {
 	require.Greater(t, intFlag.Value, 0, "keyoffset should be positive")
 }
 
-func testDbFlagsDefaults(t *testing.T) {
+func testDBFlagsDefaults(t *testing.T) {
 	t.Helper()
 	flags := dbCollectionFlags()
 

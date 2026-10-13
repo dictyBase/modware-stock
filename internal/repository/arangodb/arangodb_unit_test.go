@@ -16,7 +16,7 @@ func TestCheckStock(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
 		require.NoError(t, err, "Failed to create test arango instance")
 
-		connParams := getConnectParamsFromDb(testArango)
+		connParams := getConnectParamsFromDB(testArango)
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
@@ -34,7 +34,7 @@ func TestCheckStock(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
 		require.NoError(t, err, "Failed to create test arango instance")
 
-		connParams := getConnectParamsFromDb(testArango)
+		connParams := getConnectParamsFromDB(testArango)
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
@@ -51,7 +51,7 @@ func TestCheckStock(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
 		require.NoError(t, err, "Failed to create test arango instance")
 
-		connParams := getConnectParamsFromDb(testArango)
+		connParams := getConnectParamsFromDB(testArango)
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
@@ -279,7 +279,7 @@ func TestTermID(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
 		require.NoError(t, err, "Failed to create test arango instance")
 
-		connParams := getConnectParamsFromDb(testArango)
+		connParams := getConnectParamsFromDB(testArango)
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
@@ -302,7 +302,7 @@ func TestTermID(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
 		require.NoError(t, err, "Failed to create test arango instance")
 
-		connParams := getConnectParamsFromDb(testArango)
+		connParams := getConnectParamsFromDB(testArango)
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
@@ -325,7 +325,7 @@ func TestTermID(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
 		require.NoError(t, err, "Failed to create test arango instance")
 
-		connParams := getConnectParamsFromDb(testArango)
+		connParams := getConnectParamsFromDB(testArango)
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
@@ -348,7 +348,7 @@ func TestTermID(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
 		require.NoError(t, err, "Failed to create test arango instance")
 
-		connParams := getConnectParamsFromDb(testArango)
+		connParams := getConnectParamsFromDB(testArango)
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
@@ -370,7 +370,7 @@ func TestTermID(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
 		require.NoError(t, err, "Failed to create test arango instance")
 
-		connParams := getConnectParamsFromDb(testArango)
+		connParams := getConnectParamsFromDB(testArango)
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
@@ -395,7 +395,7 @@ func TestLoadOboJSON_ErrorCases(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
 		require.NoError(t, err, "Failed to create test arango instance")
 
-		connParams := getConnectParamsFromDb(testArango)
+		connParams := getConnectParamsFromDB(testArango)
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
@@ -413,7 +413,7 @@ func TestLoadOboJSON_ErrorCases(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
 		require.NoError(t, err, "Failed to create test arango instance")
 
-		connParams := getConnectParamsFromDb(testArango)
+		connParams := getConnectParamsFromDB(testArango)
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
@@ -434,7 +434,7 @@ func TestDbh(t *testing.T) {
 		testArango, err := testarango.NewTestArangoFromEnv(true)
 		require.NoError(t, err, "Failed to create test arango instance")
 
-		connParams := getConnectParamsFromDb(testArango)
+		connParams := getConnectParamsFromDB(testArango)
 		collParams := getCollectionParams()
 		ontoParams := getOntoParams()
 
@@ -453,7 +453,7 @@ func TestNewStockRepo_ValidationErrors(t *testing.T) {
 	testArango, err := testarango.NewTestArangoFromEnv(true)
 	require.NoError(t, err, "Failed to create test arango instance")
 
-	connParams := getConnectParamsFromDb(testArango)
+	connParams := getConnectParamsFromDB(testArango)
 	collParams := getCollectionParams()
 	ontoParams := getOntoParams()
 
