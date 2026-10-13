@@ -13,14 +13,16 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository"
 )
 
-// defaultFullSearchLimit is the effective limit for a request limit of
-// 0. It mirrors the repository clamp.
-const defaultFullSearchLimit = 50
+const (
+	// defaultFullSearchLimit is the effective limit for a request limit of
+	// 0. It mirrors the repository clamp.
+	defaultFullSearchLimit = 50
 
-// maxFullSearchLimit is the hard cap of the returned list length. The
-// proto accepts a limit up to 100, and the handler clamps 51 to 100
-// down to this value, because the spec asks for one list of 50 items.
-const maxFullSearchLimit = 50
+	// maxFullSearchLimit is the hard cap of the returned list length. The
+	// proto accepts a limit up to 100, and the handler clamps 51 to 100
+	// down to this value, because the spec asks for one list of 50 items.
+	maxFullSearchLimit = 50
+)
 
 // SearchStock returns at most 50 ranked results for a search text of
 // at least 2 characters. The order of operations is: the protovalidate

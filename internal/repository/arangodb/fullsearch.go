@@ -13,38 +13,33 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 )
 
-// searchResultRow mirrors one object row of the full search projection.
-// go-driver v1 cannot decode an array row, so the projection returns one
-// object per row.
-type searchResultRow struct {
-	Key         string  `json:"k"`
-	ID          string  `json:"id"`
-	Entity      string  `json:"entity"`
-	Field       string  `json:"f"`
-	Value       string  `json:"v"`
-	Summary     string  `json:"sm"`
-	StrainLabel string  `json:"sl"`
-	Score       float64 `json:"s"`
-}
-
-type fullSearchColl int
-
-type fullSearchDisplay int
+type (
+	// searchResultRow mirrors one object row of the full search projection.
+	// go-driver v1 cannot decode an array row, so the projection returns one
+	// object per row.
+	searchResultRow struct {
+		Key         string  `json:"k"`
+		ID          string  `json:"id"`
+		Entity      string  `json:"entity"`
+		Field       string  `json:"f"`
+		Value       string  `json:"v"`
+		Summary     string  `json:"sm"`
+		StrainLabel string  `json:"sl"`
+		Score       float64 `json:"s"`
+	}
+	fullSearchColl    int
+	fullSearchDisplay int
+)
 
 const (
 	fullSearchCollStock fullSearchColl = iota
 	fullSearchCollProp
-)
-
-const (
 	fullSearchScalar fullSearchDisplay = iota
 	fullSearchArray
-)
 
-// Search asset names owned by the full search feature. Every name
-// belongs to this feature alone, so other search features can be
-// absent, present or stale without any effect.
-const (
+	// Search asset names owned by the full search feature. Every name
+	// belongs to this feature alone, so other search features can be
+	// absent, present or stale without any effect.
 	// fullSearchViewName is the classic arangosearch view of this
 	// feature. The AQL templates name it literally, because ArangoDB
 	// does not accept a bind parameter for a view name in SEARCH.
@@ -85,57 +80,59 @@ const (
 	fullSearchFuzzyBand  = "BM25(d)"
 )
 
-// fullSearchIdentifierFields lists the 8 identifier and name fields
-// that the view indexes with both custom analyzers. The first three
-// live on the stock collection, the last five on the stock property
-// collection. Each field serves one prefix branch and one fuzzy branch.
-var fullSearchIdentifierFields = []struct {
-	label   string
-	coll    fullSearchColl
-	display fullSearchDisplay
-}{
-	{label: paramStockID, coll: fullSearchCollStock, display: fullSearchScalar},
-	{label: fieldGenes, coll: fullSearchCollStock, display: fullSearchArray},
-	{label: fieldDbxrefs, coll: fullSearchCollStock, display: fullSearchArray},
-	{label: fieldLabel, coll: fullSearchCollProp, display: fullSearchScalar},
-	{label: fieldNames, coll: fullSearchCollProp, display: fullSearchArray},
-	{label: fieldSpecies, coll: fullSearchCollProp, display: fullSearchScalar},
-	{label: fieldPlasmid, coll: fullSearchCollProp, display: fullSearchScalar},
-	{label: fieldName, coll: fullSearchCollProp, display: fullSearchScalar},
-}
+var (
+	// fullSearchIdentifierFields lists the 8 identifier and name fields
+	// that the view indexes with both custom analyzers. The first three
+	// live on the stock collection, the last five on the stock property
+	// collection. Each field serves one prefix branch and one fuzzy branch.
+	fullSearchIdentifierFields = []struct {
+		label   string
+		coll    fullSearchColl
+		display fullSearchDisplay
+	}{
+		{label: paramStockID, coll: fullSearchCollStock, display: fullSearchScalar},
+		{label: fieldGenes, coll: fullSearchCollStock, display: fullSearchArray},
+		{label: fieldDbxrefs, coll: fullSearchCollStock, display: fullSearchArray},
+		{label: fieldLabel, coll: fullSearchCollProp, display: fullSearchScalar},
+		{label: fieldNames, coll: fullSearchCollProp, display: fullSearchArray},
+		{label: fieldSpecies, coll: fullSearchCollProp, display: fullSearchScalar},
+		{label: fieldPlasmid, coll: fullSearchCollProp, display: fullSearchScalar},
+		{label: fieldName, coll: fullSearchCollProp, display: fullSearchScalar},
+	}
 
-// fullSearchProseFields lists the 2 prose fields that the view indexes
-// with the built-in text analyzer only. The plan does not index
-// editable_summary: an n-gram index over long prose grows fast and
-// returns weak matches. Each field serves one token branch, and the
-// summary field serves the single phrase branch.
-var fullSearchProseFields = []struct {
-	label   string
-	coll    fullSearchColl
-	display fullSearchDisplay
-}{
-	{label: fieldSummary, coll: fullSearchCollStock, display: fullSearchScalar},
-	{label: fieldDepositor, coll: fullSearchCollStock, display: fullSearchScalar},
-}
+	// fullSearchProseFields lists the 2 prose fields that the view indexes
+	// with the built-in text analyzer only. The plan does not index
+	// editable_summary: an n-gram index over long prose grows fast and
+	// returns weak matches. Each field serves one token branch, and the
+	// summary field serves the single phrase branch.
+	fullSearchProseFields = []struct {
+		label   string
+		coll    fullSearchColl
+		display fullSearchDisplay
+	}{
+		{label: fieldSummary, coll: fullSearchCollStock, display: fullSearchScalar},
+		{label: fieldDepositor, coll: fullSearchCollStock, display: fullSearchScalar},
+	}
 
-// fullSearchStopwords is the short stopword list of the token stage.
-// Task 1 probe 18 recorded that the built-in text_en analyzer does not
-// remove stopwords, so the repository rejects a query whose tokens are
-// all stopwords before any AQL runs.
-var fullSearchStopwords = map[string]struct{}{
-	"a": {}, "an": {}, "and": {}, "are": {}, "as": {}, "at": {},
-	"be": {}, "but": {}, "by": {}, "for": {}, "from": {}, "had": {},
-	"has": {}, "have": {}, "if": {}, "in": {}, "is": {}, "it": {},
-	"its": {}, "not": {}, "of": {}, "on": {}, "or": {}, "so": {},
-	"than": {}, "that": {}, "the": {}, "their": {}, "then": {},
-	"there": {}, "these": {}, "this": {}, "to": {}, "too": {},
-	"very": {}, "was": {}, "were": {}, "what": {}, "when": {},
-	"which": {}, "while": {}, "who": {}, "will": {}, "with": {},
-}
+	// fullSearchStopwords is the short stopword list of the token stage.
+	// Task 1 probe 18 recorded that the built-in text_en analyzer does not
+	// remove stopwords, so the repository rejects a query whose tokens are
+	// all stopwords before any AQL runs.
+	fullSearchStopwords = map[string]struct{}{
+		"a": {}, "an": {}, "and": {}, "are": {}, "as": {}, "at": {},
+		"be": {}, "but": {}, "by": {}, "for": {}, "from": {}, "had": {},
+		"has": {}, "have": {}, "if": {}, "in": {}, "is": {}, "it": {},
+		"its": {}, "not": {}, "of": {}, "on": {}, "or": {}, "so": {},
+		"than": {}, "that": {}, "the": {}, "their": {}, "then": {},
+		"there": {}, "these": {}, "this": {}, "to": {}, "too": {},
+		"very": {}, "was": {}, "were": {}, "what": {}, "when": {},
+		"which": {}, "while": {}, "who": {}, "will": {}, "with": {},
+	}
 
-// fullSearchQuery is the full 19-branch statement, built once per
-// process.
-var fullSearchQuery = buildFullSearchQuery()
+	// fullSearchQuery is the full 19-branch statement, built once per
+	// process.
+	fullSearchQuery = buildFullSearchQuery()
+)
 
 // SearchStock returns at most 50 ranked results for the normalized
 // query of params. The repository trims and lowercases the query,

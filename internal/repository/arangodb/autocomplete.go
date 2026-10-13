@@ -19,56 +19,53 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository"
 )
 
-type autocompleteDisplay int
+type (
+	autocompleteDisplay int
 
-// autocompleteField is one indexed search field. The label names the
-// field in the AQL, and the display selects the display expression.
-type autocompleteField struct {
-	label   string
-	display autocompleteDisplay
-}
+	// autocompleteField is one indexed search field. The label names the
+	// field in the AQL, and the display selects the display expression.
+	autocompleteField struct {
+		label   string
+		display autocompleteDisplay
+	}
 
-// autocompleteRequest is the validated and normalized input of one
-// autocomplete search.
-type autocompleteRequest struct {
-	query  string
-	limit  int
-	entity repository.StockEntityFilter
-}
+	// autocompleteRequest is the validated and normalized input of one
+	// autocomplete search.
+	autocompleteRequest struct {
+		query  string
+		limit  int
+		entity repository.StockEntityFilter
+	}
 
-// autocompleteQueryParams carries the generated statement and its
-// bind parameters for one autocomplete search.
-type autocompleteQueryParams struct {
-	statement  string
-	bindParams map[string]any
-}
+	// autocompleteQueryParams carries the generated statement and its
+	// bind parameters for one autocomplete search.
+	autocompleteQueryParams struct {
+		statement  string
+		bindParams map[string]any
+	}
 
-// suggestionRow mirrors one object row of the autocomplete projection.
-// go-driver v1 cannot decode an array row, so the projection returns
-// one object per row.
-type suggestionRow struct {
-	Key    string  `json:"k"`
-	ID     string  `json:"id"`
-	Entity string  `json:"entity"`
-	Field  string  `json:"f"`
-	Value  string  `json:"v"`
-	Score  float64 `json:"s"`
-}
+	// suggestionRow mirrors one object row of the autocomplete projection.
+	// go-driver v1 cannot decode an array row, so the projection returns
+	// one object per row.
+	suggestionRow struct {
+		Key    string  `json:"k"`
+		ID     string  `json:"id"`
+		Entity string  `json:"entity"`
+		Field  string  `json:"f"`
+		Value  string  `json:"v"`
+		Score  float64 `json:"s"`
+	}
+)
 
 const (
 	autocompleteScalar autocompleteDisplay = iota
 	autocompleteArray
-)
-
-const (
 	msgNilAutocompleteQuery   = "expect a non-nil autocomplete query"
 	msgEmptyAutocompleteQuery = "expect a non-empty autocomplete query"
-)
 
-// Search asset names owned by the autocomplete feature. Every name
-// belongs to this feature alone, so other search features can be
-// absent, present or stale without any effect.
-const (
+	// Search asset names owned by the autocomplete feature. Every name
+	// belongs to this feature alone, so other search features can be
+	// absent, present or stale without any effect.
 	// autocompleteViewName is the classic arangosearch view of this
 	// feature. The AQL templates name it literally, because ArangoDB
 	// does not accept a bind parameter for a view name in SEARCH.
@@ -100,37 +97,39 @@ const (
 	autocompleteFuzzyScore = "BM25(d)"
 )
 
-// stockFields lists the indexed fields of the stock collection. Each
-// field gets a prefix branch and a fuzzy branch in the statement.
-var stockFields = []autocompleteField{
-	{label: paramStockID, display: autocompleteScalar},
-	{label: fieldGenes, display: autocompleteArray},
-	{label: fieldDbxrefs, display: autocompleteArray},
-}
+var (
+	// stockFields lists the indexed fields of the stock collection. Each
+	// field gets a prefix branch and a fuzzy branch in the statement.
+	stockFields = []autocompleteField{
+		{label: paramStockID, display: autocompleteScalar},
+		{label: fieldGenes, display: autocompleteArray},
+		{label: fieldDbxrefs, display: autocompleteArray},
+	}
 
-// propFields lists the indexed fields of the stock property
-// collection. Each field gets a prefix branch and a fuzzy branch in
-// the statement.
-var propFields = []autocompleteField{
-	{label: fieldLabel, display: autocompleteScalar},
-	{label: fieldNames, display: autocompleteArray},
-	{label: fieldSpecies, display: autocompleteScalar},
-	{label: fieldPlasmid, display: autocompleteScalar},
-	{label: fieldName, display: autocompleteScalar},
-}
+	// propFields lists the indexed fields of the stock property
+	// collection. Each field gets a prefix branch and a fuzzy branch in
+	// the statement.
+	propFields = []autocompleteField{
+		{label: fieldLabel, display: autocompleteScalar},
+		{label: fieldNames, display: autocompleteArray},
+		{label: fieldSpecies, display: autocompleteScalar},
+		{label: fieldPlasmid, display: autocompleteScalar},
+		{label: fieldName, display: autocompleteScalar},
+	}
 
-// entityLens focuses the entity filter of a validated request.
-var entityLens = L.MakeLens(
-	func(req autocompleteRequest) repository.StockEntityFilter {
-		return req.entity
-	},
-	func(
-		req autocompleteRequest,
-		entity repository.StockEntityFilter,
-	) autocompleteRequest {
-		req.entity = entity
-		return req
-	},
+	// entityLens focuses the entity filter of a validated request.
+	entityLens = L.MakeLens(
+		func(req autocompleteRequest) repository.StockEntityFilter {
+			return req.entity
+		},
+		func(
+			req autocompleteRequest,
+			entity repository.StockEntityFilter,
+		) autocompleteRequest {
+			req.entity = entity
+			return req
+		},
+	)
 )
 
 // ensureAutocompleteSearch creates both analyzers and the view. It is

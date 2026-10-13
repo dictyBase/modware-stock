@@ -7,49 +7,49 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-// CollectionParams are the arangodb collections required for storing stocks
-type CollectionParams struct {
-	// Stock is the collection for storing all stocks
-	Stock string `validate:"required"`
-	// Stockprop is the collection for storing stock properties
-	StockProp string `validate:"required"`
-	// StockKeyGenerator is the collection for generating unique stock IDs
-	StockKeyGenerator string `validate:"required"`
-	// StockType is the edge collection for connecting stocks to their types
-	StockType string `validate:"required"`
-	// ParentStrain is the edge collection for connecting strains to their parents
-	ParentStrain string `validate:"required"`
-	// StockPropTypeGraph is the named graph for connecting stock properties to types
-	StockPropTypeGraph string `validate:"required"`
-	// Strain2ParentGraph is the named graph for connecting strains to their parents
-	Strain2ParentGraph string `validate:"required"`
-	// KeyOffset is the initial offset for stock id generation. It is needed to
-	// maintain the previous stock identifiers.
-	KeyOffset int `validate:"required"`
-	// StockTerm is the edge collection for connecting stock with an ontology
-	// term
-	StockTerm string `validate:"required"`
-	// StockOntoGraph is the named graph for connecting stock
-	// with the ontology
-	StockOntoGraph string `validate:"required"`
-	// StrainOntology is the name ontology for storing strain group
-	StrainOntology string `validate:"required"`
-	// PlasmidOntology is the name ontology for storing plasmid keyword
-	PlasmidOntology string `validate:"required"`
-}
-
-type stockc struct {
-	stock, stockProp, stockKey         driver.Collection
-	stockType, parentStrain, stockTerm driver.Collection
-	stockPropType, strain2Parent       driver.Graph
-	stockOnto                          driver.Graph
-}
-
-type persistStrainParams struct {
-	parent, dictyStrainProp    string
-	statement, parentStatement string
-	bindVars                   map[string]any
-}
+type (
+	// CollectionParams are the arangodb collections required for storing stocks
+	CollectionParams struct {
+		// Stock is the collection for storing all stocks
+		Stock string `validate:"required"`
+		// Stockprop is the collection for storing stock properties
+		StockProp string `validate:"required"`
+		// StockKeyGenerator is the collection for generating unique stock IDs
+		StockKeyGenerator string `validate:"required"`
+		// StockType is the edge collection for connecting stocks to their types
+		StockType string `validate:"required"`
+		// ParentStrain is the edge collection for connecting strains to their parents
+		ParentStrain string `validate:"required"`
+		// StockPropTypeGraph is the named graph for connecting stock properties to types
+		StockPropTypeGraph string `validate:"required"`
+		// Strain2ParentGraph is the named graph for connecting strains to their parents
+		Strain2ParentGraph string `validate:"required"`
+		// KeyOffset is the initial offset for stock id generation. It is needed to
+		// maintain the previous stock identifiers.
+		KeyOffset int `validate:"required"`
+		// StockTerm is the edge collection for connecting stock with an ontology
+		// term
+		StockTerm string `validate:"required"`
+		// StockOntoGraph is the named graph for connecting stock
+		// with the ontology
+		StockOntoGraph string `validate:"required"`
+		// StrainOntology is the name ontology for storing strain group
+		StrainOntology string `validate:"required"`
+		// PlasmidOntology is the name ontology for storing plasmid keyword
+		PlasmidOntology string `validate:"required"`
+	}
+	stockc struct {
+		stock, stockProp, stockKey         driver.Collection
+		stockType, parentStrain, stockTerm driver.Collection
+		stockPropType, strain2Parent       driver.Graph
+		stockOnto                          driver.Graph
+	}
+	persistStrainParams struct {
+		parent, dictyStrainProp    string
+		statement, parentStatement string
+		bindVars                   map[string]any
+	}
+)
 
 func createDBStruct(ar *arangorepository, collP *CollectionParams) error {
 	if err := docCollections(ar, collP); err != nil {

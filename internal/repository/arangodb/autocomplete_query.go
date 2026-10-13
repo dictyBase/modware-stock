@@ -12,25 +12,26 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 )
 
-// queryBranch is one generated LET branch of the statement. The name
-// is the AQL variable of the branch, and the body is its LET block.
-type queryBranch struct {
-	name string
-	body string
-}
+type (
+	// queryBranch is one generated LET branch of the statement. The name
+	// is the AQL variable of the branch, and the body is its LET block.
+	queryBranch struct {
+		name string
+		body string
+	}
 
-// branchSet is one group of branches. The builder makes one branch
-// for each field with the template.
-type branchSet struct {
-	fields   []autocompleteField
-	template string
-	builder  func(autocompleteField, string) queryBranch
-}
-
-var scalarOrArray = F.Pipe1(isScalarField, P.Fold(displayArray, displayScalar))
+	// branchSet is one group of branches. The builder makes one branch
+	// for each field with the template.
+	branchSet struct {
+		fields   []autocompleteField
+		template string
+		builder  func(autocompleteField, string) queryBranch
+	}
+)
 
 var (
-	nameLens = L.MakeLens(
+	scalarOrArray = F.Pipe1(isScalarField, P.Fold(displayArray, displayScalar))
+	nameLens      = L.MakeLens(
 		func(b queryBranch) string { return b.name },
 		func(b queryBranch, v string) queryBranch { b.name = v; return b },
 	)
@@ -38,15 +39,15 @@ var (
 		func(b queryBranch) string { return b.body },
 		func(b queryBranch, v string) queryBranch { b.body = v; return b },
 	)
-)
 
-// branchSets lists the four groups of branches in statement order.
-var branchSets = []branchSet{
-	{stockFields, statement.AutocompleteStockBranch, prefixBranch},
-	{stockFields, statement.AutocompleteStockBranch, fuzzyBranch},
-	{propFields, statement.AutocompletePropBranch, prefixBranch},
-	{propFields, statement.AutocompletePropBranch, fuzzyBranch},
-}
+	// branchSets lists the four groups of branches in statement order.
+	branchSets = []branchSet{
+		{stockFields, statement.AutocompleteStockBranch, prefixBranch},
+		{stockFields, statement.AutocompleteStockBranch, fuzzyBranch},
+		{propFields, statement.AutocompletePropBranch, prefixBranch},
+		{propFields, statement.AutocompletePropBranch, fuzzyBranch},
+	}
+)
 
 // displayScalar is the display expression of a scalar field: its
 // value.

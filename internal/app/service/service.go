@@ -26,39 +26,36 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type listFn func(*stock.StockParameters) ([]*model.StockDoc, error)
+type (
+	listFn          func(*stock.StockParameters) ([]*model.StockDoc, error)
+	modelListParams struct {
+		ctx         context.Context
+		stockParams *stock.StockParameters
+		limit       int64
+		fn          listFn
+	}
 
-type modelListParams struct {
-	ctx         context.Context
-	stockParams *stock.StockParameters
-	limit       int64
-	fn          listFn
-}
-
-// StockService is the container for managing stock service
-// definition
-type StockService struct {
-	*aphgrpc.Service
-	repo      repository.StockRepository
-	publisher message.Publisher
-	stock.UnimplementedStockServiceServer
-}
-
-type oboStreamHandler struct {
-	writer *io.PipeWriter
-	stream stock.StockService_OboJSONFileUploadServer
-}
-
-// Use fp-go string API
-var isEmptyString = S.IsEmpty
-
-// Use fp-go ord API for numeric comparison
-var (
-	int64Ord   = ORD.FromStrictCompare[int64]()
-	isPositive = ORD.Gt(int64Ord)(int64(0))
+	// StockService is the container for managing stock service
+	// definition
+	StockService struct {
+		*aphgrpc.Service
+		repo      repository.StockRepository
+		publisher message.Publisher
+		stock.UnimplementedStockServiceServer
+	}
+	oboStreamHandler struct {
+		writer *io.PipeWriter
+		stream stock.StockService_OboJSONFileUploadServer
+	}
 )
 
 var (
+	// Use fp-go string API
+	isEmptyString = S.IsEmpty
+
+	// Use fp-go ord API for numeric comparison
+	int64Ord              = ORD.FromStrictCompare[int64]()
+	isPositive            = ORD.Gt(int64Ord)(int64(0))
 	parseFilterString     = E.Eitherize1(query.ParseFilterString)
 	genQualifiedAQLFilter = E.Eitherize2(query.GenQualifiedAQLFilterStatement)
 )

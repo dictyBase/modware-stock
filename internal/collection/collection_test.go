@@ -10,16 +10,17 @@ import (
 	"github.com/urfave/cli"
 )
 
-// Test types for Map function tests
-type testPerson struct {
-	Name string
-	Age  int
-}
-
-type testPersonDTO struct {
-	FullName string
-	Years    int
-}
+type (
+	// Test types for Map function tests
+	testPerson struct {
+		Name string
+		Age  int
+	}
+	testPersonDTO struct {
+		FullName string
+		Years    int
+	}
+)
 
 func TestMap_EmptyAndSingle(t *testing.T) {
 	t.Parallel()

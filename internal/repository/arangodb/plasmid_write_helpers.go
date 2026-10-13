@@ -11,36 +11,38 @@ import (
 
 // Helper types for AddPlasmid
 
-// addPlasmidWithTermID encapsulates new plasmid with validated term ID
-type addPlasmidWithTermID struct {
-	plasmid *stock.NewPlasmid
-	termID  string
-}
+type (
+	// addPlasmidWithTermID encapsulates new plasmid with validated term ID
+	addPlasmidWithTermID struct {
+		plasmid *stock.NewPlasmid
+		termID  string
+	}
 
-// editPlasmidWithPropKey encapsulates update with validated property key
-type editPlasmidWithPropKey struct {
-	update  *stock.PlasmidUpdate
-	propKey string
-}
+	// editPlasmidWithPropKey encapsulates update with validated property key
+	editPlasmidWithPropKey struct {
+		update  *stock.PlasmidUpdate
+		propKey string
+	}
 
-// editPlasmidQueryParams holds the query statement and bind parameters
-type editPlasmidQueryParams struct {
-	statement  string
-	bindParams map[string]any
-}
+	// editPlasmidQueryParams holds the query statement and bind parameters
+	editPlasmidQueryParams struct {
+		statement  string
+		bindParams map[string]any
+	}
 
-// loadPlasmidParams holds the initial load plasmid parameters
-type loadPlasmidParams struct {
-	id      string
-	plasmid *stock.ExistingPlasmid
-}
+	// loadPlasmidParams holds the initial load plasmid parameters
+	loadPlasmidParams struct {
+		id      string
+		plasmid *stock.ExistingPlasmid
+	}
 
-// loadPlasmidWithTermID encapsulates load params with validated term ID
-type loadPlasmidWithTermID struct {
-	id      string
-	plasmid *stock.ExistingPlasmid
-	termID  string
-}
+	// loadPlasmidWithTermID encapsulates load params with validated term ID
+	loadPlasmidWithTermID struct {
+		id      string
+		plasmid *stock.ExistingPlasmid
+		termID  string
+	}
+)
 
 // validateAddPlasmidOntologyTerm validates the ontology term for new plasmid
 func (ar *arangorepository) validateAddPlasmidOntologyTerm(

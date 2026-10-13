@@ -10,35 +10,37 @@ import (
 
 // Validation wrapper structs for input validation
 
-// newPlasmidValidation wraps NewPlasmid attributes for validation
-type newPlasmidValidation struct {
-	CreatedBy string   `validate:"required,email"`
-	UpdatedBy string   `validate:"required,email"`
-	Depositor string   `validate:"required,min=2"`
-	Name      string   `validate:"omitempty,min=2,max=255"`
-	Summary   string   `validate:"omitempty,min=10"`
-	Genes     []string `validate:"omitempty,dive,required,min=1"`
-}
+type (
+	// newPlasmidValidation wraps NewPlasmid attributes for validation
+	newPlasmidValidation struct {
+		CreatedBy string   `validate:"required,email"`
+		UpdatedBy string   `validate:"required,email"`
+		Depositor string   `validate:"required,min=2"`
+		Name      string   `validate:"omitempty,min=2,max=255"`
+		Summary   string   `validate:"omitempty,min=10"`
+		Genes     []string `validate:"omitempty,dive,required,min=1"`
+	}
 
-// plasmidUpdateValidation wraps PlasmidUpdate attributes for validation
-type plasmidUpdateValidation struct {
-	UpdatedBy       string   `validate:"required,email"`
-	Depositor       string   `validate:"omitempty,min=2"`
-	Name            string   `validate:"omitempty,min=2,max=255"`
-	Summary         string   `validate:"omitempty,min=10"`
-	EditableSummary string   `validate:"omitempty,min=10"`
-	Genes           []string `validate:"omitempty,dive,required,min=1"`
-}
+	// plasmidUpdateValidation wraps PlasmidUpdate attributes for validation
+	plasmidUpdateValidation struct {
+		UpdatedBy       string   `validate:"required,email"`
+		Depositor       string   `validate:"omitempty,min=2"`
+		Name            string   `validate:"omitempty,min=2,max=255"`
+		Summary         string   `validate:"omitempty,min=10"`
+		EditableSummary string   `validate:"omitempty,min=10"`
+		Genes           []string `validate:"omitempty,dive,required,min=1"`
+	}
 
-// existingPlasmidValidation wraps ExistingPlasmid attributes for validation
-type existingPlasmidValidation struct {
-	CreatedBy string   `validate:"required,email"`
-	UpdatedBy string   `validate:"required,email"`
-	Depositor string   `validate:"required,min=2"`
-	Name      string   `validate:"omitempty,min=2,max=255"`
-	Summary   string   `validate:"omitempty,min=10"`
-	Genes     []string `validate:"omitempty,dive,required,min=1"`
-}
+	// existingPlasmidValidation wraps ExistingPlasmid attributes for validation
+	existingPlasmidValidation struct {
+		CreatedBy string   `validate:"required,email"`
+		UpdatedBy string   `validate:"required,email"`
+		Depositor string   `validate:"required,min=2"`
+		Name      string   `validate:"omitempty,min=2,max=255"`
+		Summary   string   `validate:"omitempty,min=10"`
+		Genes     []string `validate:"omitempty,dive,required,min=1"`
+	}
+)
 
 // Package-level validator instance for input validation (thread-safe singleton)
 var validate = validator.New()

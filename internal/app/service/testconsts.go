@@ -1,19 +1,14 @@
 package service
 
-// Test fixture user emails shared by the service test helpers.
 const (
+	// Test fixture user emails shared by the service test helpers.
 	testUserEmail       = "testuser@dictybase.org"
 	testLoadUserEmail   = "loaduser@dictybase.org"
 	testUpdateUserEmail = "updateuser@dictybase.org"
-)
 
-// Test fixture field values shared by the service test helpers.
-const (
-	testStrainLabel = "yS13"
-	testStrainTag   = "general strain"
-)
-
-const (
+	// Test fixture field values shared by the service test helpers.
+	testStrainLabel      = "yS13"
+	testStrainTag        = "general strain"
 	testUpdatedSummary   = "Updated summary"
 	testDepositorFilter  = "depositor===John Doe"
 	testTagFilter        = "tag===Gateway vector"
@@ -22,9 +17,6 @@ const (
 	testRemiSeqProperty  = "REMI-seq"
 	testMissingStrainID  = "DBS9999999"
 	testInvalidSubstring = "invalid"
-)
-
-const (
 	// testStockID is the fixture strain identifier.
 	testStockID = "DBS0236126"
 	// testPlasmidID is the fixture plasmid identifier.
