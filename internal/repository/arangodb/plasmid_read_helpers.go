@@ -12,112 +12,114 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 )
 
-// dbQueryResult encapsulates database query result context
-type dbQueryResult struct {
-	row       dbRow
-	plasmidID string
-}
+type (
+	// dbQueryResult encapsulates database query result context
+	dbQueryResult struct {
+		row       dbRow
+		plasmidID string
+	}
 
-// dbRow represents a database row interface
-type dbRow interface {
-	IsEmpty() bool
-	Read(any) error
-}
+	// dbRow represents a database row interface
+	dbRow interface {
+		IsEmpty() bool
+		Read(any) error
+	}
 
-// dbRows represents a database rows interface for scanning multiple results
-type dbRows interface {
-	IsEmpty() bool
-	Scan() bool
-	Read(any) error
-	Close() error
-}
+	// dbRows represents a database rows interface for scanning multiple results
+	dbRows interface {
+		IsEmpty() bool
+		Scan() bool
+		Read(any) error
+		Close() error
+	}
 
-// plasmidListQueryParams encapsulates parameters for plasmid list query
-type plasmidListQueryParams struct {
-	statement  string
-	bindParams map[string]any
-}
+	// plasmidListQueryParams encapsulates parameters for plasmid list query
+	plasmidListQueryParams struct {
+		statement  string
+		bindParams map[string]any
+	}
+)
 
-// Predicates for query selection
 var (
+	// Predicates for query selection
 	// hasFilter checks if filter string is non-empty
 	hasFilter = func(s string) bool { return len(s) > 0 }
 
 	// hasCursor checks if cursor is positive
 	hasCursor = func(cursor int64) bool { return cursor > 0 }
-)
 
-// Magma for map merging (last key wins)
-var lastWins = M.MakeMagma(func(_, b any) any { return b })
+	// Magma for map merging (last key wins)
+	lastWins = M.MakeMagma(func(_, b any) any { return b })
 
-// selectStatementByCursor selects statement based on cursor presence
-var selectStatementByCursor = F.Curry2(
-	func(withCursor, withoutCursor string) func(bool) string {
-		return F.Ternary(
-			F.Identity[bool],
-			F.Constant1[bool](withCursor),
-			F.Constant1[bool](withoutCursor),
-		)
-	},
-)
-
-// selectStockFirstStatement selects stock-first query statements
-var selectStockFirstStatement = selectStatementByCursor(
-	statement.PlasmidListWithCursor,
-)(statement.PlasmidList)
-
-// selectOntologyFirstStatement selects ontology-first filtered query statements
-var selectOntologyFirstStatement = selectStatementByCursor(
-	statement.PlasmidListFilterByOntologyWithCursor,
-)(statement.PlasmidListFilterByOntology)
-
-// addCursorParam adds cursor to bind parameters
-var addCursorParam = F.Curry2(
-	func(cursor int64, params map[string]any) map[string]any {
-		return F.Pipe1(
-			params,
-			R.Union[string](lastWins)(
-				map[string]any{"cursor": cursor},
-			),
-		)
-	},
-)
-
-// addLimitParam adds limit to bind parameters
-var addLimitParam = F.Curry2(
-	func(limit int64, params map[string]any) map[string]any {
-		return F.Pipe1(
-			params,
-			R.Union[string](lastWins)(
-				map[string]any{paramLimit: limit},
-			),
-		)
-	},
-)
-
-// mergeParams merges two parameter maps
-var mergeParams = F.Curry2(
-	func(additional, base map[string]any) map[string]any {
-		return F.Pipe1(
-			base,
-			R.Union[string](lastWins)(additional),
-		)
-	},
-)
-
-// injectFilter injects filter string into statement if present
-var injectFilter = F.Curry2(
-	func(filter string, stmt string) string {
-		return F.Pipe2(
-			filter,
-			hasFilter,
-			F.Ternary(
+	// selectStatementByCursor selects statement based on cursor presence
+	selectStatementByCursor = F.Curry2(
+		func(withCursor, withoutCursor string) func(bool) string {
+			return F.Ternary(
 				F.Identity[bool],
-				F.Constant1[bool](fmt.Sprintf(stmt, filter)),
-				F.Constant1[bool](stmt),
-			),
-		)
-	},
+				F.Constant1[bool](withCursor),
+				F.Constant1[bool](withoutCursor),
+			)
+		},
+	)
+
+	// selectStockFirstStatement selects stock-first query statements
+	selectStockFirstStatement = selectStatementByCursor(
+		statement.PlasmidListWithCursor,
+	)(statement.PlasmidList)
+
+	// selectOntologyFirstStatement selects ontology-first filtered query statements
+	selectOntologyFirstStatement = selectStatementByCursor(
+		statement.PlasmidListFilterByOntologyWithCursor,
+	)(statement.PlasmidListFilterByOntology)
+
+	// addCursorParam adds cursor to bind parameters
+	addCursorParam = F.Curry2(
+		func(cursor int64, params map[string]any) map[string]any {
+			return F.Pipe1(
+				params,
+				R.Union[string](lastWins)(
+					map[string]any{"cursor": cursor},
+				),
+			)
+		},
+	)
+
+	// addLimitParam adds limit to bind parameters
+	addLimitParam = F.Curry2(
+		func(limit int64, params map[string]any) map[string]any {
+			return F.Pipe1(
+				params,
+				R.Union[string](lastWins)(
+					map[string]any{paramLimit: limit},
+				),
+			)
+		},
+	)
+
+	// mergeParams merges two parameter maps
+	mergeParams = F.Curry2(
+		func(additional, base map[string]any) map[string]any {
+			return F.Pipe1(
+				base,
+				R.Union[string](lastWins)(additional),
+			)
+		},
+	)
+
+	// injectFilter injects filter string into statement if present
+	injectFilter = F.Curry2(
+		func(filter string, stmt string) string {
+			return F.Pipe2(
+				filter,
+				hasFilter,
+				F.Ternary(
+					F.Identity[bool],
+					F.Constant1[bool](fmt.Sprintf(stmt, filter)),
+					F.Constant1[bool](stmt),
+				),
+			)
+		},
+	)
 )
 
 // selectPlasmidStatement selects appropriate query using functional composition

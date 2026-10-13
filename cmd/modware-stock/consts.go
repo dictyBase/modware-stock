@@ -1,33 +1,25 @@
 package main
 
-// CLI flag names shared by the application and its tests.
 const (
+	// CLI flag names shared by the application and its tests.
 	flagLogFormat   = "log-format"
 	flagLogLevel    = "log-level"
 	flagStartServer = "start-server"
-)
 
-// CLI flag usage strings.
-const (
+	// CLI flag usage strings.
 	usageLogFormat   = "format of the logging out, either of json or text."
 	usageLogLevel    = "log level for the application"
 	usageStartServer = "starts the modware-stock microservice with grpc backends"
-)
 
-// Accepted values for the logging flags.
-const (
+	// Accepted values for the logging flags.
 	logFormatJSON = "json"
 	logLevelError = "error"
-)
 
-// Default arangodb database and stock collection names.
-const (
+	// Default arangodb database and stock collection names.
 	defaultDatabase        = "stock"
 	defaultStockCollection = "stock"
-)
 
-// Arangodb collection and graph names.
-const (
+	// Arangodb collection and graph names.
 	collectionStock             = "stock-collection"
 	collectionStockProp         = "stockprop-collection"
 	collectionStockKeyGenerator = "stock-key-generator-collection"

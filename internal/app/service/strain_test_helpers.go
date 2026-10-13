@@ -23,24 +23,26 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// testParams holds the common test parameters.
-type testParams struct {
-	t      *testing.T
-	ctx    context.Context
-	client stock.StockServiceClient
-	assert *require.Assertions
-}
+type (
+	// testParams holds the common test parameters.
+	testParams struct {
+		t      *testing.T
+		ctx    context.Context
+		client stock.StockServiceClient
+		assert *require.Assertions
+	}
 
-// assertGrpcErrorParams holds the parameters for the assertGrpcError function.
-type assertGrpcErrorParams struct {
-	assert               *require.Assertions
-	err                  error
-	expectedCode         codes.Code
-	expectedMsgSubstring string
-}
+	// assertGrpcErrorParams holds the parameters for the assertGrpcError function.
+	assertGrpcErrorParams struct {
+		assert               *require.Assertions
+		err                  error
+		expectedCode         codes.Code
+		expectedMsgSubstring string
+	}
 
-// MockPublisher is a mock implementation of the message.Publisher interface.
-type MockPublisher struct{}
+	// MockPublisher is a mock implementation of the message.Publisher interface.
+	MockPublisher struct{}
+)
 
 // PublishStrain is a no-op mock implementation for testing
 func (mp *MockPublisher) PublishStrain(

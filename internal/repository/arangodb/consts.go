@@ -1,7 +1,7 @@
 package arangodb
 
-// Bind parameter keys used across AQL queries.
 const (
+	// Bind parameter keys used across AQL queries.
 	bindCVCollection        = "@cv_collection"
 	bindCvtermCollection    = "@cvterm_collection"
 	bindStockCollection     = "@stock_collection"
@@ -9,29 +9,23 @@ const (
 	bindStockPropCollection = "@stock_properties_collection"
 	bindStockTermCollection = "@stock_term_collection"
 	bindStockKeyGenerator   = "@stock_key_generator"
-)
 
-// Collection and graph names referenced by queries and map keys.
-const (
+	// Collection and graph names referenced by queries and map keys.
 	nameStockCollection   = "stock_collection"
 	nameStockPropGraph    = "stock_prop_graph"
 	nameStockCvtermGraph  = "stock_cvterm_graph"
 	nameParentGraph       = "parent_graph"
 	nameStockKeyGenerator = "stock_key_generator_collection"
-)
 
-// Query bind parameter names.
-const (
+	// Query bind parameter names.
 	paramStockID  = "stock_id"
 	paramOntology = "ontology"
 	paramLimit    = "limit"
 	paramKey      = "key"
 	paramName     = "name"
 	paramParent   = "parent"
-)
 
-// Attribute/field names used in bind params, filter maps and property maps.
-const (
+	// Attribute/field names used in bind params, filter maps and property maps.
 	fieldCreatedAt       = "created_at"
 	fieldUpdatedAt       = "updated_at"
 	fieldCreatedBy       = "created_by"
