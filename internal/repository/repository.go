@@ -17,15 +17,6 @@ import (
 // the edge in the stock property graph.
 type StockEntityFilter string
 
-const (
-	// EntityBoth covers strains and plasmids.
-	EntityBoth StockEntityFilter = ""
-	// EntityStrain covers strains only.
-	EntityStrain StockEntityFilter = "strain"
-	// EntityPlasmid covers plasmids only.
-	EntityPlasmid StockEntityFilter = "plasmid"
-)
-
 // AutocompleteQuery holds the input of an autocomplete search. The
 // repository normalizes Query and clamps Limit.
 type AutocompleteQuery struct {
@@ -113,3 +104,12 @@ type StockRepository interface {
 	Dbh() *manager.Database
 	LoadOboJSON(r io.Reader) (*storage.UploadInformation, error)
 }
+
+const (
+	// EntityBoth covers strains and plasmids.
+	EntityBoth StockEntityFilter = ""
+	// EntityStrain covers strains only.
+	EntityStrain StockEntityFilter = "strain"
+	// EntityPlasmid covers plasmids only.
+	EntityPlasmid StockEntityFilter = "plasmid"
+)

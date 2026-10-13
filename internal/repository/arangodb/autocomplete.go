@@ -19,6 +19,52 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository"
 )
 
+type autocompleteDisplay int
+
+// autocompleteField is one indexed search field. The label names the
+// field in the AQL, and the display selects the display expression.
+type autocompleteField struct {
+	label   string
+	display autocompleteDisplay
+}
+
+// autocompleteRequest is the validated and normalized input of one
+// autocomplete search.
+type autocompleteRequest struct {
+	query  string
+	limit  int
+	entity repository.StockEntityFilter
+}
+
+// autocompleteQueryParams carries the generated statement and its
+// bind parameters for one autocomplete search.
+type autocompleteQueryParams struct {
+	statement  string
+	bindParams map[string]any
+}
+
+// suggestionRow mirrors one object row of the autocomplete projection.
+// go-driver v1 cannot decode an array row, so the projection returns
+// one object per row.
+type suggestionRow struct {
+	Key    string  `json:"k"`
+	ID     string  `json:"id"`
+	Entity string  `json:"entity"`
+	Field  string  `json:"f"`
+	Value  string  `json:"v"`
+	Score  float64 `json:"s"`
+}
+
+const (
+	autocompleteScalar autocompleteDisplay = iota
+	autocompleteArray
+)
+
+const (
+	msgNilAutocompleteQuery   = "expect a non-nil autocomplete query"
+	msgEmptyAutocompleteQuery = "expect a non-empty autocomplete query"
+)
+
 // Search asset names owned by the autocomplete feature. Every name
 // belongs to this feature alone, so other search features can be
 // absent, present or stale without any effect.
@@ -73,19 +119,19 @@ var propFields = []autocompleteField{
 	{label: fieldName, display: autocompleteScalar},
 }
 
-type autocompleteDisplay int
-
-const (
-	autocompleteScalar autocompleteDisplay = iota
-	autocompleteArray
+// entityLens focuses the entity filter of a validated request.
+var entityLens = L.MakeLens(
+	func(req autocompleteRequest) repository.StockEntityFilter {
+		return req.entity
+	},
+	func(
+		req autocompleteRequest,
+		entity repository.StockEntityFilter,
+	) autocompleteRequest {
+		req.entity = entity
+		return req
+	},
 )
-
-// autocompleteField is one indexed search field. The label names the
-// field in the AQL, and the display selects the display expression.
-type autocompleteField struct {
-	label   string
-	display autocompleteDisplay
-}
 
 // ensureAutocompleteSearch creates both analyzers and the view. It is
 // idempotent, and a failure stops the start of the service.
@@ -280,40 +326,6 @@ func sameFieldShape(got, want driver.ArangoSearchFields) bool {
 	return true
 }
 
-// autocompleteRequest is the validated and normalized input of one
-// autocomplete search.
-type autocompleteRequest struct {
-	query  string
-	limit  int
-	entity repository.StockEntityFilter
-}
-
-// autocompleteQueryParams carries the generated statement and its
-// bind parameters for one autocomplete search.
-type autocompleteQueryParams struct {
-	statement  string
-	bindParams map[string]any
-}
-
-const (
-	msgNilAutocompleteQuery   = "expect a non-nil autocomplete query"
-	msgEmptyAutocompleteQuery = "expect a non-empty autocomplete query"
-)
-
-// entityLens focuses the entity filter of a validated request.
-var entityLens = L.MakeLens(
-	func(req autocompleteRequest) repository.StockEntityFilter {
-		return req.entity
-	},
-	func(
-		req autocompleteRequest,
-		entity repository.StockEntityFilter,
-	) autocompleteRequest {
-		req.entity = entity
-		return req
-	},
-)
-
 // nonNilQueryParams reports whether the raw request is present.
 func nonNilQueryParams(params *repository.AutocompleteQuery) bool {
 	return params != nil
@@ -439,18 +451,6 @@ func (ar *arangorepository) AutocompleteStock(
 		IOE.Chain(scanAutocompleteRows),
 		IOE.Map[error](toSuggestions),
 	)
-}
-
-// suggestionRow mirrors one object row of the autocomplete projection.
-// go-driver v1 cannot decode an array row, so the projection returns
-// one object per row.
-type suggestionRow struct {
-	Key    string  `json:"k"`
-	ID     string  `json:"id"`
-	Entity string  `json:"entity"`
-	Field  string  `json:"f"`
-	Value  string  `json:"v"`
-	Score  float64 `json:"s"`
 }
 
 // toSuggestions converts projection rows into suggestions. An empty

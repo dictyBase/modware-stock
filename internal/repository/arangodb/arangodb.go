@@ -30,6 +30,20 @@ type arangorepository struct {
 	plasmidOnto string
 }
 
+// bindParamsSemigroup provides a semigroup for merging bind parameter maps.
+// Uses "last wins" strategy where duplicate keys are resolved by taking the
+// rightmost value in the merge operation.
+var bindParamsSemigroup = R.UnionLastSemigroup[string, any]()
+
+// concatOptionalParams is a curried helper for combining base and optional parameters.
+// Enables point-free composition when building bind parameter maps with optional fields.
+// Usage: concatOptionalParams(baseParams)(optionalParamsList)
+var concatOptionalParams = F.Curry2(
+	func(base map[string]any, optional []map[string]any) map[string]any {
+		return SG.ConcatAll(bindParamsSemigroup)(base)(optional)
+	},
+)
+
 // NewStockRepo acts as constructor for database
 func NewStockRepo(connP *manager.ConnectParams,
 	collP *CollectionParams,
@@ -97,20 +111,6 @@ func normalizeStrBindParam(str string) string {
 	}
 	return ""
 }
-
-// bindParamsSemigroup provides a semigroup for merging bind parameter maps.
-// Uses "last wins" strategy where duplicate keys are resolved by taking the
-// rightmost value in the merge operation.
-var bindParamsSemigroup = R.UnionLastSemigroup[string, any]()
-
-// concatOptionalParams is a curried helper for combining base and optional parameters.
-// Enables point-free composition when building bind parameter maps with optional fields.
-// Usage: concatOptionalParams(baseParams)(optionalParamsList)
-var concatOptionalParams = F.Curry2(
-	func(base map[string]any, optional []map[string]any) map[string]any {
-		return SG.ConcatAll(bindParamsSemigroup)(base)(optional)
-	},
-)
 
 // mergeBindParams merges multiple bind parameter maps using Semigroup composition.
 // Later maps override earlier ones for duplicate keys (last wins semantics).

@@ -44,6 +44,25 @@ type StockService struct {
 	stock.UnimplementedStockServiceServer
 }
 
+type oboStreamHandler struct {
+	writer *io.PipeWriter
+	stream stock.StockService_OboJSONFileUploadServer
+}
+
+// Use fp-go string API
+var isEmptyString = S.IsEmpty
+
+// Use fp-go ord API for numeric comparison
+var (
+	int64Ord   = ORD.FromStrictCompare[int64]()
+	isPositive = ORD.Gt(int64Ord)(int64(0))
+)
+
+var (
+	parseFilterString     = E.Eitherize1(query.ParseFilterString)
+	genQualifiedAQLFilter = E.Eitherize2(query.GenQualifiedAQLFilterStatement)
+)
+
 func defaultOptions() *aphgrpc.ServiceOptions {
 	return &aphgrpc.ServiceOptions{Resource: autocompleteStockType}
 }
@@ -123,21 +142,7 @@ func genNextCursorVal(pts *timestamppb.Timestamp) int64 {
 	return tstmp.UnixMilli()
 }
 
-// Use fp-go string API
-var isEmptyString = S.IsEmpty
-
 func isEmptyFilterStmt(stmt string) bool { return stmt == "FILTER " }
-
-// Use fp-go ord API for numeric comparison
-var (
-	int64Ord   = ORD.FromStrictCompare[int64]()
-	isPositive = ORD.Gt(int64Ord)(int64(0))
-)
-
-var (
-	parseFilterString     = E.Eitherize1(query.ParseFilterString)
-	genQualifiedAQLFilter = E.Eitherize2(query.GenQualifiedAQLFilterStatement)
-)
 
 func normalizeFilterStmt(stmt string) string {
 	return F.Pipe1(
@@ -223,11 +228,6 @@ func limitVal(limit int64) int64 {
 			F.Constant1[int64](int64(10)),
 		),
 	)
-}
-
-type oboStreamHandler struct {
-	writer *io.PipeWriter
-	stream stock.StockService_OboJSONFileUploadServer
 }
 
 func (oh *oboStreamHandler) Write() error {

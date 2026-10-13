@@ -10,13 +10,6 @@ import (
 // UploadStatus represents the status of an upload operation.
 type UploadStatus int
 
-// Upload status constants
-const (
-	Created UploadStatus = iota // Created indicates a new record was created
-	Updated                     // Updated indicates an existing record was updated
-	Failed                      // Failed indicates the upload operation failed
-)
-
 // StockDoc is the data structure for biological stocks
 type StockDoc struct {
 	driver.DocumentMeta
@@ -53,3 +46,10 @@ type PlasmidProperties struct {
 	Name                 string `json:"name" validate:"required,min=1,max=200"`
 	DictyPlasmidProperty string `json:"dicty_plasmid_property" validate:"required"`
 }
+
+// Upload status constants
+const (
+	Created UploadStatus = iota // Created indicates a new record was created
+	Updated                     // Updated indicates an existing record was updated
+	Failed                      // Failed indicates the upload operation failed
+)

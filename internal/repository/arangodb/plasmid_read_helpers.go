@@ -71,6 +71,55 @@ var selectOntologyFirstStatement = selectStatementByCursor(
 	statement.PlasmidListFilterByOntologyWithCursor,
 )(statement.PlasmidListFilterByOntology)
 
+// addCursorParam adds cursor to bind parameters
+var addCursorParam = F.Curry2(
+	func(cursor int64, params map[string]any) map[string]any {
+		return F.Pipe1(
+			params,
+			R.Union[string](lastWins)(
+				map[string]any{"cursor": cursor},
+			),
+		)
+	},
+)
+
+// addLimitParam adds limit to bind parameters
+var addLimitParam = F.Curry2(
+	func(limit int64, params map[string]any) map[string]any {
+		return F.Pipe1(
+			params,
+			R.Union[string](lastWins)(
+				map[string]any{paramLimit: limit},
+			),
+		)
+	},
+)
+
+// mergeParams merges two parameter maps
+var mergeParams = F.Curry2(
+	func(additional, base map[string]any) map[string]any {
+		return F.Pipe1(
+			base,
+			R.Union[string](lastWins)(additional),
+		)
+	},
+)
+
+// injectFilter injects filter string into statement if present
+var injectFilter = F.Curry2(
+	func(filter string, stmt string) string {
+		return F.Pipe2(
+			filter,
+			hasFilter,
+			F.Ternary(
+				F.Identity[bool],
+				F.Constant1[bool](fmt.Sprintf(stmt, filter)),
+				F.Constant1[bool](stmt),
+			),
+		)
+	},
+)
+
 // selectPlasmidStatement selects appropriate query using functional composition
 func (ar *arangorepository) selectPlasmidStatement(
 	params *stock.StockParameters,
@@ -113,40 +162,6 @@ func (ar *arangorepository) ontologyFirstBindParams() map[string]any {
 		nameStockPropGraph:   ar.stockc.stockPropType.Name(),
 	}
 }
-
-// addCursorParam adds cursor to bind parameters
-var addCursorParam = F.Curry2(
-	func(cursor int64, params map[string]any) map[string]any {
-		return F.Pipe1(
-			params,
-			R.Union[string](lastWins)(
-				map[string]any{"cursor": cursor},
-			),
-		)
-	},
-)
-
-// addLimitParam adds limit to bind parameters
-var addLimitParam = F.Curry2(
-	func(limit int64, params map[string]any) map[string]any {
-		return F.Pipe1(
-			params,
-			R.Union[string](lastWins)(
-				map[string]any{paramLimit: limit},
-			),
-		)
-	},
-)
-
-// mergeParams merges two parameter maps
-var mergeParams = F.Curry2(
-	func(additional, base map[string]any) map[string]any {
-		return F.Pipe1(
-			base,
-			R.Union[string](lastWins)(additional),
-		)
-	},
-)
 
 // buildNoFilterBindParams builds bind params for no-filter queries
 func (ar *arangorepository) buildNoFilterBindParams(
@@ -262,21 +277,6 @@ func (ar *arangorepository) validatePlasmidQueryResult(
 	}
 	return IOE.TryCatchError(fn)
 }
-
-// injectFilter injects filter string into statement if present
-var injectFilter = F.Curry2(
-	func(filter string, stmt string) string {
-		return F.Pipe2(
-			filter,
-			hasFilter,
-			F.Ternary(
-				F.Identity[bool],
-				F.Constant1[bool](fmt.Sprintf(stmt, filter)),
-				F.Constant1[bool](stmt),
-			),
-		)
-	},
-)
 
 // buildPlasmidListQueryParams creates query parameters for listing plasmids
 func (ar *arangorepository) buildPlasmidListQueryParams(
