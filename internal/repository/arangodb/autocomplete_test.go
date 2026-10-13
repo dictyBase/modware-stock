@@ -195,7 +195,7 @@ func TestEnsureAutocompleteSearchReconcilesStaleView(t *testing.T) {
 	staleProps, err := stale.Properties(ctx)
 	assert.NoError(err, "expect no error reading the stale view")
 	repo, err := NewStockRepo(
-		getConnectParamsFromDb(ta),
+		getConnectParamsFromDB(ta),
 		getCollectionParams(),
 		getOntoParams(),
 	)
@@ -815,7 +815,7 @@ func TestEnsureAutocompleteSearchIdempotentSecondCall(t *testing.T) {
 		err,
 	)
 	repo1, err := NewStockRepo(
-		getConnectParamsFromDb(ta),
+		getConnectParamsFromDB(ta),
 		getCollectionParams(),
 		getOntoParams(),
 	)
@@ -832,7 +832,7 @@ func TestEnsureAutocompleteSearchIdempotentSecondCall(t *testing.T) {
 	beforeProps, err := beforeAsv.Properties(ctx)
 	assert.NoError(err, "expect no error reading the view")
 	repo2, err := NewStockRepo(
-		getConnectParamsFromDb(ta),
+		getConnectParamsFromDB(ta),
 		getCollectionParams(),
 		getOntoParams(),
 	)
@@ -892,7 +892,7 @@ func TestNewStockRepoFailsOnAnalyzerConflict(t *testing.T) {
 		err,
 	)
 	_, err = NewStockRepo(
-		getConnectParamsFromDb(ta),
+		getConnectParamsFromDB(ta),
 		getCollectionParams(),
 		getOntoParams(),
 	)
@@ -927,7 +927,7 @@ func TestNewStockRepoFailsOnNonArangoSearchView(t *testing.T) {
 		err,
 	)
 	_, err = NewStockRepo(
-		getConnectParamsFromDb(ta),
+		getConnectParamsFromDB(ta),
 		getCollectionParams(),
 		getOntoParams(),
 	)

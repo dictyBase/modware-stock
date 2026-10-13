@@ -219,7 +219,7 @@ func TestEnsureFullSearchReconcilesStaleView(t *testing.T) {
 	staleProps, err := stale.Properties(ctx)
 	assert.NoError(err, "expect no error reading the stale view")
 	repo, err := NewStockRepo(
-		getConnectParamsFromDb(ta),
+		getConnectParamsFromDB(ta),
 		getCollectionParams(),
 		getOntoParams(),
 	)

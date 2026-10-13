@@ -52,7 +52,7 @@ func getOntoParams() *ontoarango.CollectionParams {
 	}
 }
 
-func getConnectParamsFromDb(ta *testarango.TestArango) *manager.ConnectParams {
+func getConnectParamsFromDB(ta *testarango.TestArango) *manager.ConnectParams {
 	return &manager.ConnectParams{
 		User:     ta.User,
 		Pass:     ta.Pass,
@@ -202,7 +202,7 @@ func setUp(t *testing.T) (*require.Assertions, repository.StockRepository) {
 	}
 	assert := require.New(t)
 	repo, err := NewStockRepo(
-		getConnectParamsFromDb(ta),
+		getConnectParamsFromDB(ta),
 		getCollectionParams(),
 		getOntoParams(),
 	)
