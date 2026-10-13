@@ -13,6 +13,34 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 )
 
+// searchResultRow mirrors one object row of the full search projection.
+// go-driver v1 cannot decode an array row, so the projection returns one
+// object per row.
+type searchResultRow struct {
+	Key         string  `json:"k"`
+	ID          string  `json:"id"`
+	Entity      string  `json:"entity"`
+	Field       string  `json:"f"`
+	Value       string  `json:"v"`
+	Summary     string  `json:"sm"`
+	StrainLabel string  `json:"sl"`
+	Score       float64 `json:"s"`
+}
+
+type fullSearchColl int
+
+type fullSearchDisplay int
+
+const (
+	fullSearchCollStock fullSearchColl = iota
+	fullSearchCollProp
+)
+
+const (
+	fullSearchScalar fullSearchDisplay = iota
+	fullSearchArray
+)
+
 // Search asset names owned by the full search feature. Every name
 // belongs to this feature alone, so other search features can be
 // absent, present or stale without any effect.
@@ -90,19 +118,24 @@ var fullSearchProseFields = []struct {
 	{label: fieldDepositor, coll: fullSearchCollStock, display: fullSearchScalar},
 }
 
-type fullSearchColl int
+// fullSearchStopwords is the short stopword list of the token stage.
+// Task 1 probe 18 recorded that the built-in text_en analyzer does not
+// remove stopwords, so the repository rejects a query whose tokens are
+// all stopwords before any AQL runs.
+var fullSearchStopwords = map[string]struct{}{
+	"a": {}, "an": {}, "and": {}, "are": {}, "as": {}, "at": {},
+	"be": {}, "but": {}, "by": {}, "for": {}, "from": {}, "had": {},
+	"has": {}, "have": {}, "if": {}, "in": {}, "is": {}, "it": {},
+	"its": {}, "not": {}, "of": {}, "on": {}, "or": {}, "so": {},
+	"than": {}, "that": {}, "the": {}, "their": {}, "then": {},
+	"there": {}, "these": {}, "this": {}, "to": {}, "too": {},
+	"very": {}, "was": {}, "were": {}, "what": {}, "when": {},
+	"which": {}, "while": {}, "who": {}, "will": {}, "with": {},
+}
 
-const (
-	fullSearchCollStock fullSearchColl = iota
-	fullSearchCollProp
-)
-
-type fullSearchDisplay int
-
-const (
-	fullSearchScalar fullSearchDisplay = iota
-	fullSearchArray
-)
+// fullSearchQuery is the full 19-branch statement, built once per
+// process.
+var fullSearchQuery = buildFullSearchQuery()
 
 // SearchStock returns at most 50 ranked results for the normalized
 // query of params. The repository trims and lowercases the query,
@@ -156,20 +189,6 @@ func (ar *arangorepository) SearchStock(
 	), nil
 }
 
-// searchResultRow mirrors one object row of the full search projection.
-// go-driver v1 cannot decode an array row, so the projection returns one
-// object per row.
-type searchResultRow struct {
-	Key         string  `json:"k"`
-	ID          string  `json:"id"`
-	Entity      string  `json:"entity"`
-	Field       string  `json:"f"`
-	Value       string  `json:"v"`
-	Summary     string  `json:"sm"`
-	StrainLabel string  `json:"sl"`
-	Score       float64 `json:"s"`
-}
-
 // result converts one query row into a repository full search result.
 func (r searchResultRow) result() *repository.FullSearchResult {
 	return &repository.FullSearchResult{
@@ -181,21 +200,6 @@ func (r searchResultRow) result() *repository.FullSearchResult {
 		Entity:      repository.StockEntityFilter(r.Entity),
 		Score:       r.Score,
 	}
-}
-
-// fullSearchStopwords is the short stopword list of the token stage.
-// Task 1 probe 18 recorded that the built-in text_en analyzer does not
-// remove stopwords, so the repository rejects a query whose tokens are
-// all stopwords before any AQL runs.
-var fullSearchStopwords = map[string]struct{}{
-	"a": {}, "an": {}, "and": {}, "are": {}, "as": {}, "at": {},
-	"be": {}, "but": {}, "by": {}, "for": {}, "from": {}, "had": {},
-	"has": {}, "have": {}, "if": {}, "in": {}, "is": {}, "it": {},
-	"its": {}, "not": {}, "of": {}, "on": {}, "or": {}, "so": {},
-	"than": {}, "that": {}, "the": {}, "their": {}, "then": {},
-	"there": {}, "these": {}, "this": {}, "to": {}, "too": {},
-	"very": {}, "was": {}, "were": {}, "what": {}, "when": {},
-	"which": {}, "while": {}, "who": {}, "will": {}, "with": {},
 }
 
 // fullSearchAllStopwords reports whether every whitespace-separated
@@ -224,10 +228,6 @@ func fullSearchLimit(limit int) int {
 	}
 	return limit
 }
-
-// fullSearchQuery is the full 19-branch statement, built once per
-// process.
-var fullSearchQuery = buildFullSearchQuery()
 
 // buildFullSearchQuery assembles the statement from the two branch
 // templates and the merge template. It emits a prefix branch and a

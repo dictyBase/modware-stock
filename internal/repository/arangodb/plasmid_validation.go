@@ -8,9 +8,6 @@ import (
 	validator "github.com/go-playground/validator/v10"
 )
 
-// Package-level validator instance for input validation (thread-safe singleton)
-var validate = validator.New()
-
 // Validation wrapper structs for input validation
 
 // newPlasmidValidation wraps NewPlasmid attributes for validation
@@ -42,6 +39,9 @@ type existingPlasmidValidation struct {
 	Summary   string   `validate:"omitempty,min=10"`
 	Genes     []string `validate:"omitempty,dive,required,min=1"`
 }
+
+// Package-level validator instance for input validation (thread-safe singleton)
+var validate = validator.New()
 
 // validateNewPlasmidInput validates input for AddPlasmid operation
 func validateNewPlasmidInput(

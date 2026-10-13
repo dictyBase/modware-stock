@@ -17,6 +17,31 @@ type addPlasmidWithTermID struct {
 	termID  string
 }
 
+// editPlasmidWithPropKey encapsulates update with validated property key
+type editPlasmidWithPropKey struct {
+	update  *stock.PlasmidUpdate
+	propKey string
+}
+
+// editPlasmidQueryParams holds the query statement and bind parameters
+type editPlasmidQueryParams struct {
+	statement  string
+	bindParams map[string]any
+}
+
+// loadPlasmidParams holds the initial load plasmid parameters
+type loadPlasmidParams struct {
+	id      string
+	plasmid *stock.ExistingPlasmid
+}
+
+// loadPlasmidWithTermID encapsulates load params with validated term ID
+type loadPlasmidWithTermID struct {
+	id      string
+	plasmid *stock.ExistingPlasmid
+	termID  string
+}
+
 // validateAddPlasmidOntologyTerm validates the ontology term for new plasmid
 func (ar *arangorepository) validateAddPlasmidOntologyTerm(
 	plasmid *stock.NewPlasmid,
@@ -103,12 +128,6 @@ func (ar *arangorepository) executeAddPlasmidQuery(
 
 // Helper types for EditPlasmid
 
-// editPlasmidWithPropKey encapsulates update with validated property key
-type editPlasmidWithPropKey struct {
-	update  *stock.PlasmidUpdate
-	propKey string
-}
-
 // validateEditPlasmidStock validates that the stock exists and returns property key
 func (ar *arangorepository) validateEditPlasmidStock(
 	update *stock.PlasmidUpdate,
@@ -171,12 +190,6 @@ func (ar *arangorepository) updatePlasmidOntologyTerm(
 	)
 }
 
-// editPlasmidQueryParams holds the query statement and bind parameters
-type editPlasmidQueryParams struct {
-	statement  string
-	bindParams map[string]any
-}
-
 // buildEditPlasmidParams constructs bind parameters for edit plasmid query
 func (ar *arangorepository) buildEditPlasmidParams(
 	params editPlasmidWithPropKey,
@@ -225,21 +238,6 @@ func (ar *arangorepository) executeEditPlasmidQuery(
 			return stockDoc, nil
 		},
 	)
-}
-
-// Helper types for LoadPlasmid
-
-// loadPlasmidParams holds the initial load plasmid parameters
-type loadPlasmidParams struct {
-	id      string
-	plasmid *stock.ExistingPlasmid
-}
-
-// loadPlasmidWithTermID encapsulates load params with validated term ID
-type loadPlasmidWithTermID struct {
-	id      string
-	plasmid *stock.ExistingPlasmid
-	termID  string
 }
 
 // validateLoadPlasmidOntologyTerm validates the ontology term for loading plasmid

@@ -33,6 +33,28 @@ type (
 	StockDocListEither = E.Either[error, []*model.StockDoc]
 )
 
+const (
+	georgeFilter = `FILTER s.depositor == 'george@costanza.com'`
+	pfilterTwo   = `FILTER s.depositor == 'george@costanza.com' AND s.depositor == 'rg@gmail.com'`
+	pfilterThree = `LET x = (
+				FILTER '1348970' IN s.publications
+				RETURN 1
+			)`
+	pfilterFour  = `FILTER s.created_at <= DATE_ISO8601('2019')`
+	pfilterFive  = `FILTER stock_prop.sequence =~ 'ttttt'`
+	pfilterSix   = `FILTER s.summary =~ 'test'`
+	pfilterSeven = `FILTER s.depositor == 'george@costanza.com' OR stock_prop.name == 'gammaS13'`
+
+	// Ontology term constants for testing
+	OntologyTermCloningVector = "cloning vector"
+	OntologyTermREMIVector    = "REMI vector"
+	OntologyTermGFPMarker     = "GFP marker"
+	OntologyTermGatewayVector = "Gateway vector"
+	OntologyTermAct15Promoter = "act15 promoter"
+	OntologyTermTetOFFVector  = "tetOFF vector"
+	OntologyTermDoxONVector   = "doxON vector"
+)
+
 // ToEither executes IOEither to get Either result
 func ToEither[A any](ioe IOE.IOEither[error, A]) E.Either[error, A] {
 	return ioe()
@@ -67,28 +89,6 @@ func toStockDocListResult(either StockDocListEither) StockDocListResult {
 		),
 	)
 }
-
-const (
-	georgeFilter = `FILTER s.depositor == 'george@costanza.com'`
-	pfilterTwo   = `FILTER s.depositor == 'george@costanza.com' AND s.depositor == 'rg@gmail.com'`
-	pfilterThree = `LET x = (
-				FILTER '1348970' IN s.publications
-				RETURN 1
-			)`
-	pfilterFour  = `FILTER s.created_at <= DATE_ISO8601('2019')`
-	pfilterFive  = `FILTER stock_prop.sequence =~ 'ttttt'`
-	pfilterSix   = `FILTER s.summary =~ 'test'`
-	pfilterSeven = `FILTER s.depositor == 'george@costanza.com' OR stock_prop.name == 'gammaS13'`
-
-	// Ontology term constants for testing
-	OntologyTermCloningVector = "cloning vector"
-	OntologyTermREMIVector    = "REMI vector"
-	OntologyTermGFPMarker     = "GFP marker"
-	OntologyTermGatewayVector = "Gateway vector"
-	OntologyTermAct15Promoter = "act15 promoter"
-	OntologyTermTetOFFVector  = "tetOFF vector"
-	OntologyTermDoxONVector   = "doxON vector"
-)
 
 // assertPlasmidBasicFields asserts basic plasmid document fields
 func assertPlasmidBasicFields(
