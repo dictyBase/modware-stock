@@ -7,8 +7,11 @@ import (
 	"testing"
 
 	IOE "github.com/IBM/fp-go/ioeither"
+	E "github.com/IBM/fp-go/v2/either"
+	F "github.com/IBM/fp-go/v2/function"
 	IOEV2 "github.com/IBM/fp-go/v2/ioeither"
 	manager "github.com/dictyBase/arangomanager"
+	ioeutils "github.com/dictyBase/fp-go-loom/ioeitherutils"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/go-obograph/storage"
 	"github.com/dictyBase/modware-stock/internal/model"
@@ -313,4 +316,76 @@ func TestAutocompleteEntityFilterRejectsUnknown(t *testing.T) {
 	assert := require.New(t)
 	_, err := autocompleteEntityFilter(stock.StockEntity(7))
 	assert.Error(err, "expect an error for an undefined stock entity")
+}
+
+// forcedValidation runs the lazy validation pipeline of one request.
+func forcedValidation(
+	r *stock.StockAutocompleteParameters,
+) (autocompleteSearch, error) {
+	return E.UnwrapError(F.Pipe2(
+		r,
+		validateAutocompleteRequest,
+		ioeutils.ToEither[error, autocompleteSearch],
+	))
+}
+
+func TestValidateAutocompleteRequestBuildsSearchState(t *testing.T) {
+	assert := require.New(t)
+	state, err := forcedValidation(autocompleteRequest(
+		"  ys1  ", 0, stock.StockEntity_STOCK_ENTITY_STRAIN,
+	))
+	assert.NoError(err, "expect no error for a valid request")
+	assert.Equal("ys1", state.query.Query, "expect the trimmed query")
+	assert.Equal(defaultAutocompleteLimit, state.query.Limit,
+		"expect the default limit for a limit of 0")
+	assert.Equal(repository.EntityStrain, state.query.Entity,
+		"expect the mapped entity filter")
+	assert.Nil(state.rows, "expect no suggestion before the search")
+}
+
+func TestValidateAutocompleteRequestClassesRejectedRequest(t *testing.T) {
+	assert := require.New(t)
+	_, err := forcedValidation(&stock.StockAutocompleteParameters{})
+	assert.Error(err, "expect an error for nil data")
+	assert.True(isInvalidAutocomplete(err),
+		"expect a boundary fault to carry the rejected request class")
+	_, err = forcedValidation(autocompleteRequest(
+		"   ", 5, stock.StockEntity_STOCK_ENTITY_UNSPECIFIED,
+	))
+	assert.Error(err, "expect an error for a whitespace-only query")
+	assert.True(isInvalidAutocomplete(err),
+		"expect a guard fault to carry the rejected request class")
+	assert.Equal(msgEmptyAutocompleteQuery, err.Error(),
+		"expect the class to keep the sentinel message")
+}
+
+func TestAutocompleteStatusMapsFaultClasses(t *testing.T) {
+	assert := require.New(t)
+	ctx := context.Background()
+	rejected := newInvalidAutocompleteError(
+		errors.New(msgEmptyAutocompleteQuery),
+	)
+	failed := errors.New("database failure")
+	rejectedStatus := autocompleteStatus(ctx, rejected)
+	failedStatus := autocompleteStatus(ctx, failed)
+	assert.Equal(codes.InvalidArgument, status.Code(rejectedStatus),
+		"a rejected request reports an invalid parameter")
+	assert.Equal(msgEmptyAutocompleteQuery,
+		status.Convert(rejectedStatus).Message(),
+		"expect the status to carry the sentinel message")
+	assert.Equal(codes.Internal, status.Code(failedStatus),
+		"a repository fault reports a server error")
+	assert.Equal("database failure",
+		status.Convert(failedStatus).Message(),
+		"expect the status to carry the repository message")
+}
+
+func TestEffectiveLimit(t *testing.T) {
+	assert := require.New(t)
+	assert.Equal(int64(defaultAutocompleteLimit), effectiveLimit(0),
+		"expect the default for a limit of 0")
+	assert.Equal(int64(1), effectiveLimit(1),
+		"expect a positive limit to pass through")
+	assert.Equal(int64(50), effectiveLimit(50),
+		"expect the cap to pass through")
 }
