@@ -407,34 +407,6 @@ func (ar *arangorepository) executeAutocompleteQuery(
 	)
 }
 
-// scanAutocompleteRows drains the cursor into projection rows. The
-// go-driver cursor is a pull iterator, so the raw callback keeps the
-// scan loop and the defer close.
-//
-// fp-go:allow-trycatch-iferr the go-driver cursor reports a read
-// error only inside the scan loop
-func scanAutocompleteRows(rows dbRows) IOE.IOEither[error, []suggestionRow] {
-	return F.Pipe1(
-		IOE.TryCatchError(
-			func() ([]suggestionRow, error) {
-				defer func() { _ = rows.Close() }()
-				matches := []suggestionRow{}
-				for rows.Scan() {
-					var row suggestionRow
-					if err := rows.Read(&row); err != nil {
-						return nil, err
-					}
-					matches = append(matches, row)
-				}
-				return matches, nil
-			},
-		),
-		IOE.MapLeft[[]suggestionRow](
-			fperrors.OnError("error in reading autocomplete row"),
-		),
-	)
-}
-
 // AutocompleteStock returns suggestions for a partial stock
 // identifier, name or attribute value. The repository normalizes the
 // query, clamps the limit, and validates the entity filter before any
@@ -447,7 +419,9 @@ func (ar *arangorepository) AutocompleteStock(
 		validateAutocompleteRequest,
 		IOE.Map[error](ar.buildAutocompleteQueryParams),
 		IOE.Chain(ar.executeAutocompleteQuery),
-		IOE.Chain(scanAutocompleteRows),
+		IOE.Chain(
+			scanSearchRows[suggestionRow]("error in reading autocomplete row"),
+		),
 		IOE.Map[error](toSuggestions),
 	)
 }
