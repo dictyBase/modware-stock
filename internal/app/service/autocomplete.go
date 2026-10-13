@@ -23,49 +23,130 @@ import (
 	"github.com/dictyBase/modware-stock/internal/repository"
 )
 
-// msgEmptyAutocompleteQuery is the sentinel message of a
-// whitespace-only autocomplete query.
-const msgEmptyAutocompleteQuery = "expect a non-empty autocomplete query"
+type (
+	// autocompleteParams accumulates the validated fields of one
+	// autocomplete request step by step: the normalized query, the
+	// effective limit, the raw proto entity and the mapped repository
+	// filter.
+	autocompleteParams struct {
+		query     string
+		limit     int64
+		rawEntity stock.StockEntity
+		entity    repository.StockEntityFilter
+	}
 
-// defaultAutocompleteLimit is the effective limit for a request limit
-// of 0. It mirrors the repository clamp.
-const defaultAutocompleteLimit = 5
+	// autocompleteSearch carries the validated repository query and the
+	// suggestions it returned. The query stays on the state because the
+	// response meta reports its effective limit.
+	autocompleteSearch struct {
+		query *repository.AutocompleteQuery
+		rows  []*repository.Suggestion
+	}
 
-// unspecifiedSearchField is the proto search field of a repository
-// label that the field map does not cover.
-const unspecifiedSearchField = stock.StockSearchField_STOCK_SEARCH_FIELD_UNSPECIFIED
+	// autocompleteReply is the boundary record of one autocomplete call:
+	// the proto collection and the gRPC error, exactly one of which the
+	// handler returns.
+	autocompleteReply struct {
+		collection *stock.StockSuggestionCollection
+		err        error
+	}
 
-// autocompleteParams accumulates the validated fields of one
-// autocomplete request step by step: the normalized query, the
-// effective limit, the raw proto entity and the mapped repository
-// filter.
-type autocompleteParams struct {
-	query     string
-	limit     int64
-	rawEntity stock.StockEntity
-	entity    repository.StockEntityFilter
-}
+	// invalidAutocompleteError classes a fault as a rejected request.
+	// The handler reports it as an invalid parameter; every other fault
+	// of the pipeline is a server error.
+	invalidAutocompleteError struct{ err error }
+)
 
-// autocompleteSearch carries the validated repository query and the
-// suggestions it returned. The query stays on the state because the
-// response meta reports its effective limit.
-type autocompleteSearch struct {
-	query *repository.AutocompleteQuery
-	rows  []*repository.Suggestion
-}
+const (
+	// msgEmptyAutocompleteQuery is the sentinel message of a
+	// whitespace-only autocomplete query.
+	msgEmptyAutocompleteQuery = "expect a non-empty autocomplete query"
 
-// autocompleteReply is the boundary record of one autocomplete call:
-// the proto collection and the gRPC error, exactly one of which the
-// handler returns.
-type autocompleteReply struct {
-	collection *stock.StockSuggestionCollection
-	err        error
-}
+	// defaultAutocompleteLimit is the effective limit for a request
+	// limit of 0. It mirrors the repository clamp.
+	defaultAutocompleteLimit = 5
 
-// invalidAutocompleteError classes a fault as a rejected request. The
-// handler reports it as an invalid parameter; every other fault of the
-// pipeline is a server error.
-type invalidAutocompleteError struct{ err error }
+	// unspecifiedSearchField is the proto search field of a repository
+	// label that the field map does not cover.
+	unspecifiedSearchField = stock.StockSearchField_STOCK_SEARCH_FIELD_UNSPECIFIED
+)
+
+var (
+	// entityLens focuses the repository entity filter of the params.
+	entityLens = L.MakeLens(
+		func(p autocompleteParams) repository.StockEntityFilter {
+			return p.entity
+		},
+		func(
+			p autocompleteParams,
+			entity repository.StockEntityFilter,
+		) autocompleteParams {
+			p.entity = entity
+			return p
+		},
+	)
+
+	// queryLens focuses the repository query of a search.
+	queryLens = L.MakeLens(
+		func(s autocompleteSearch) *repository.AutocompleteQuery {
+			return s.query
+		},
+		func(
+			s autocompleteSearch,
+			query *repository.AutocompleteQuery,
+		) autocompleteSearch {
+			s.query = query
+			return s
+		},
+	)
+
+	// rowsLens focuses the suggestions of a search.
+	rowsLens = L.MakeLens(
+		func(s autocompleteSearch) []*repository.Suggestion {
+			return s.rows
+		},
+		func(
+			s autocompleteSearch,
+			rows []*repository.Suggestion,
+		) autocompleteSearch {
+			s.rows = rows
+			return s
+		},
+	)
+
+	// limitEq is the equality instance of the int64 request limit.
+	limitEq = EQ.FromStrictEquals[int64]()
+
+	// isDefaultLimit reports whether a zero limit asks for the default.
+	isDefaultLimit = EQ.Equals(limitEq)(0)
+
+	// queryText lifts a predicate of the normalized query onto the
+	// params.
+	queryText = P.ContraMap(
+		func(param autocompleteParams) string { return param.query },
+	)
+
+	// hasQueryText reports whether the normalized query has content.
+	// The proto rule counts characters, so a whitespace-only query
+	// reaches this guard.
+	hasQueryText = F.Pipe1(S.IsNonEmpty, queryText)
+
+	// repositoryFieldMap maps the repository field label to the proto
+	// search field enum. The map covers the 8 identifier labels of the
+	// autocomplete feature and the 2 prose labels of the full search.
+	repositoryFieldMap = map[string]stock.StockSearchField{
+		autocompleteFieldStockID: stock.StockSearchField_STOCK_SEARCH_FIELD_STOCK_ID,
+		searchFieldGenes:         stock.StockSearchField_STOCK_SEARCH_FIELD_GENES,
+		searchFieldDbxrefs:       stock.StockSearchField_STOCK_SEARCH_FIELD_DBXREFS,
+		autocompleteFieldLabel:   stock.StockSearchField_STOCK_SEARCH_FIELD_LABEL,
+		searchFieldNames:         stock.StockSearchField_STOCK_SEARCH_FIELD_NAMES,
+		searchFieldSpecies:       stock.StockSearchField_STOCK_SEARCH_FIELD_SPECIES,
+		searchFieldPlasmid:       stock.StockSearchField_STOCK_SEARCH_FIELD_PLASMID,
+		autocompleteFieldName:    stock.StockSearchField_STOCK_SEARCH_FIELD_NAME,
+		fullSearchFieldSummary:   stock.StockSearchField_STOCK_SEARCH_FIELD_SUMMARY,
+		fullSearchFieldDepositor: stock.StockSearchField_STOCK_SEARCH_FIELD_DEPOSITOR,
+	}
+)
 
 // Error renders the message of the wrapped fault, so the gRPC status
 // carries the reason the request was rejected.
@@ -77,54 +158,6 @@ func (e invalidAutocompleteError) Error() string {
 func (e invalidAutocompleteError) Unwrap() error {
 	return e.err
 }
-
-// entityLens focuses the repository entity filter of the params.
-var entityLens = L.MakeLens(
-	func(p autocompleteParams) repository.StockEntityFilter {
-		return p.entity
-	},
-	func(
-		p autocompleteParams,
-		entity repository.StockEntityFilter,
-	) autocompleteParams {
-		p.entity = entity
-		return p
-	},
-)
-
-// queryLens focuses the repository query of a search.
-var queryLens = L.MakeLens(
-	func(s autocompleteSearch) *repository.AutocompleteQuery {
-		return s.query
-	},
-	func(
-		s autocompleteSearch,
-		query *repository.AutocompleteQuery,
-	) autocompleteSearch {
-		s.query = query
-		return s
-	},
-)
-
-// rowsLens focuses the suggestions of a search.
-var rowsLens = L.MakeLens(
-	func(s autocompleteSearch) []*repository.Suggestion {
-		return s.rows
-	},
-	func(
-		s autocompleteSearch,
-		rows []*repository.Suggestion,
-	) autocompleteSearch {
-		s.rows = rows
-		return s
-	},
-)
-
-// limitEq is the equality instance of the int64 request limit.
-var limitEq = EQ.FromStrictEquals[int64]()
-
-// isDefaultLimit reports whether a zero limit asks for the default.
-var isDefaultLimit = EQ.Equals(limitEq)(0)
 
 // effectiveLimit replaces a default limit request with the default and
 // keeps every other limit as-is. protovalidate bounds the raw limit
@@ -139,13 +172,6 @@ func effectiveLimit(limit int64) int64 {
 			F.Constant1[int64, int64](defaultAutocompleteLimit),
 		),
 	)
-}
-
-// hasQueryText reports whether the normalized query has content. The
-// proto rule counts characters, so a whitespace-only query reaches this
-// guard.
-func hasQueryText(p autocompleteParams) bool {
-	return S.IsNonEmpty(p.query)
 }
 
 // newAutocompleteParams accumulates the normalized query and the
@@ -318,22 +344,6 @@ func autocompleteEntityFilter(
 			entity,
 		)
 	}
-}
-
-// repositoryFieldMap maps the repository field label to the proto
-// search field enum. The map covers the 8 identifier labels of the
-// autocomplete feature and the 2 prose labels of the full search.
-var repositoryFieldMap = map[string]stock.StockSearchField{
-	autocompleteFieldStockID: stock.StockSearchField_STOCK_SEARCH_FIELD_STOCK_ID,
-	searchFieldGenes:         stock.StockSearchField_STOCK_SEARCH_FIELD_GENES,
-	searchFieldDbxrefs:       stock.StockSearchField_STOCK_SEARCH_FIELD_DBXREFS,
-	autocompleteFieldLabel:   stock.StockSearchField_STOCK_SEARCH_FIELD_LABEL,
-	searchFieldNames:         stock.StockSearchField_STOCK_SEARCH_FIELD_NAMES,
-	searchFieldSpecies:       stock.StockSearchField_STOCK_SEARCH_FIELD_SPECIES,
-	searchFieldPlasmid:       stock.StockSearchField_STOCK_SEARCH_FIELD_PLASMID,
-	autocompleteFieldName:    stock.StockSearchField_STOCK_SEARCH_FIELD_NAME,
-	fullSearchFieldSummary:   stock.StockSearchField_STOCK_SEARCH_FIELD_SUMMARY,
-	fullSearchFieldDepositor: stock.StockSearchField_STOCK_SEARCH_FIELD_DEPOSITOR,
 }
 
 // mapRepositoryField maps the repository field label to the proto
