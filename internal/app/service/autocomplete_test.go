@@ -11,7 +11,6 @@ import (
 	F "github.com/IBM/fp-go/v2/function"
 	IOEV2 "github.com/IBM/fp-go/v2/ioeither"
 	manager "github.com/dictyBase/arangomanager"
-	ioeutils "github.com/dictyBase/fp-go-loom/ioeitherutils"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/go-obograph/storage"
 	"github.com/dictyBase/modware-stock/internal/model"
@@ -318,20 +317,19 @@ func TestAutocompleteEntityFilterRejectsUnknown(t *testing.T) {
 	assert.Error(err, "expect an error for an undefined stock entity")
 }
 
-// forcedValidation runs the lazy validation pipeline of one request.
-func forcedValidation(
+// validatedSearch runs the pure request validation of one request.
+func validatedSearch(
 	r *stock.StockAutocompleteParameters,
 ) (autocompleteSearch, error) {
-	return E.UnwrapError(F.Pipe2(
-		r,
-		validateAutocompleteRequest,
-		ioeutils.ToEither[error, autocompleteSearch],
+	return E.UnwrapError(F.Pipe1(
+		autocompleteInput{request: r},
+		validatedAutocompleteSearch,
 	))
 }
 
-func TestValidateAutocompleteRequestBuildsSearchState(t *testing.T) {
+func TestValidatedAutocompleteSearchBuildsState(t *testing.T) {
 	assert := require.New(t)
-	state, err := forcedValidation(autocompleteRequest(
+	state, err := validatedSearch(autocompleteRequest(
 		"  ys1  ", 0, stock.StockEntity_STOCK_ENTITY_STRAIN,
 	))
 	assert.NoError(err, "expect no error for a valid request")
@@ -341,42 +339,37 @@ func TestValidateAutocompleteRequestBuildsSearchState(t *testing.T) {
 	assert.Equal(repository.EntityStrain, state.query.Entity,
 		"expect the mapped entity filter")
 	assert.Nil(state.rows, "expect no suggestion before the search")
+	assert.Nil(state.repo, "expect no repository for a validation only run")
 }
 
-func TestValidateAutocompleteRequestClassesRejectedRequest(t *testing.T) {
+func TestValidatedAutocompleteSearchReportsInvalidArgument(t *testing.T) {
 	assert := require.New(t)
-	_, err := forcedValidation(&stock.StockAutocompleteParameters{})
+	_, err := validatedSearch(&stock.StockAutocompleteParameters{})
 	assert.Error(err, "expect an error for nil data")
-	assert.True(isInvalidAutocomplete(err),
-		"expect a boundary fault to carry the rejected request class")
-	_, err = forcedValidation(autocompleteRequest(
+	assert.Equal(codes.InvalidArgument, status.Code(err),
+		"expect a boundary fault to report an invalid parameter")
+	_, err = validatedSearch(autocompleteRequest(
 		"   ", 5, stock.StockEntity_STOCK_ENTITY_UNSPECIFIED,
 	))
 	assert.Error(err, "expect an error for a whitespace-only query")
-	assert.True(isInvalidAutocomplete(err),
-		"expect a guard fault to carry the rejected request class")
-	assert.Equal(msgEmptyAutocompleteQuery, err.Error(),
-		"expect the class to keep the sentinel message")
+	assert.Equal(codes.InvalidArgument, status.Code(err),
+		"expect a guard fault to report an invalid parameter")
+	assert.Equal(msgEmptyAutocompleteQuery, status.Convert(err).Message(),
+		"expect the status to carry the sentinel message")
 }
 
-func TestAutocompleteStatusMapsFaultClasses(t *testing.T) {
+func TestStatusMappersAssignCodes(t *testing.T) {
 	assert := require.New(t)
-	ctx := context.Background()
-	rejected := newInvalidAutocompleteError(
-		errors.New(msgEmptyAutocompleteQuery),
-	)
-	failed := errors.New("database failure")
-	rejectedStatus := autocompleteStatus(ctx, rejected)
-	failedStatus := autocompleteStatus(ctx, failed)
-	assert.Equal(codes.InvalidArgument, status.Code(rejectedStatus),
+	rejected := invalidParamStatus(errors.New(msgEmptyAutocompleteQuery))
+	failed := serverErrorStatus(errors.New("database failure"))
+	assert.Equal(codes.InvalidArgument, status.Code(rejected),
 		"a rejected request reports an invalid parameter")
 	assert.Equal(msgEmptyAutocompleteQuery,
-		status.Convert(rejectedStatus).Message(),
+		status.Convert(rejected).Message(),
 		"expect the status to carry the sentinel message")
-	assert.Equal(codes.Internal, status.Code(failedStatus),
+	assert.Equal(codes.Internal, status.Code(failed),
 		"a repository fault reports a server error")
-	assert.Equal("database failure",
-		status.Convert(failedStatus).Message(),
+	assert.Equal("database failure", status.Convert(failed).Message(),
 		"expect the status to carry the repository message")
 }
 

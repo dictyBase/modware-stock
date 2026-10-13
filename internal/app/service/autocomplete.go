@@ -16,14 +16,22 @@ import (
 	S "github.com/IBM/fp-go/v2/string"
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/cockroachdb/errors"
-	"github.com/dictyBase/aphgrpc"
 	eithererr "github.com/dictyBase/fp-go-loom/eithererr"
 	ioeutils "github.com/dictyBase/fp-go-loom/ioeitherutils"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/repository"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type (
+	// autocompleteInput is the boundary input of one autocomplete call:
+	// the proto request and the repository it searches.
+	autocompleteInput struct {
+		request *stock.StockAutocompleteParameters
+		repo    repository.StockRepository
+	}
+
 	// autocompleteParams accumulates the validated fields of one
 	// autocomplete request step by step: the normalized query, the
 	// effective limit, the raw proto entity and the mapped repository
@@ -35,26 +43,22 @@ type (
 		entity    repository.StockEntityFilter
 	}
 
-	// autocompleteSearch carries the validated repository query and the
-	// suggestions it returned. The query stays on the state because the
-	// response meta reports its effective limit.
+	// autocompleteSearch carries the repository, the validated query and
+	// the suggestions that query returned. The query stays on the state
+	// because the response meta reports its effective limit.
 	autocompleteSearch struct {
+		repo  repository.StockRepository
 		query *repository.AutocompleteQuery
 		rows  []*repository.Suggestion
 	}
 
-	// autocompleteReply is the boundary record of one autocomplete call:
-	// the proto collection and the gRPC error, exactly one of which the
-	// handler returns.
-	autocompleteReply struct {
+	// autocompleteResult is the boundary record of one autocomplete
+	// call: the proto collection and the gRPC status error, exactly one
+	// of which the handler returns.
+	autocompleteResult struct {
 		collection *stock.StockSuggestionCollection
 		err        error
 	}
-
-	// invalidAutocompleteError classes a fault as a rejected request.
-	// The handler reports it as an invalid parameter; every other fault
-	// of the pipeline is a server error.
-	invalidAutocompleteError struct{ err error }
 )
 
 const (
@@ -83,20 +87,6 @@ var (
 		) autocompleteParams {
 			p.entity = entity
 			return p
-		},
-	)
-
-	// queryLens focuses the repository query of a search.
-	queryLens = L.MakeLens(
-		func(s autocompleteSearch) *repository.AutocompleteQuery {
-			return s.query
-		},
-		func(
-			s autocompleteSearch,
-			query *repository.AutocompleteQuery,
-		) autocompleteSearch {
-			s.query = query
-			return s
 		},
 	)
 
@@ -148,17 +138,6 @@ var (
 	}
 )
 
-// Error renders the message of the wrapped fault, so the gRPC status
-// carries the reason the request was rejected.
-func (e invalidAutocompleteError) Error() string {
-	return e.err.Error()
-}
-
-// Unwrap keeps the wrapped fault reachable for errors.Is.
-func (e invalidAutocompleteError) Unwrap() error {
-	return e.err
-}
-
 // effectiveLimit replaces a default limit request with the default and
 // keeps every other limit as-is. protovalidate bounds the raw limit
 // from zero through the cap. The None branch of the fold keeps the
@@ -201,11 +180,15 @@ func mapEntityFilter(
 	)
 }
 
-// toAutocompleteSearch lifts the validated params into the search
-// state: the repository query of the autocomplete search, with no
-// suggestion yet.
-func toAutocompleteSearch(p autocompleteParams) autocompleteSearch {
+// newAutocompleteSearch lifts the validated params into the search
+// state: the repository of the call and its query, with no suggestion
+// yet.
+func newAutocompleteSearch(
+	repo repository.StockRepository,
+	p autocompleteParams,
+) autocompleteSearch {
 	return autocompleteSearch{
+		repo: repo,
 		query: &repository.AutocompleteQuery{
 			Query:  p.query,
 			Entity: p.entity,
@@ -214,41 +197,53 @@ func toAutocompleteSearch(p autocompleteParams) autocompleteSearch {
 	}
 }
 
-// newInvalidAutocompleteError classes one validation fault as a
-// rejected request.
-func newInvalidAutocompleteError(err error) error {
-	return invalidAutocompleteError{err: err}
+// invalidParamStatus is the gRPC status of a request that the boundary
+// rejected. It replaces aphgrpc.HandleInvalidParamError and reports the
+// code alone, without a trailer.
+func invalidParamStatus(err error) error {
+	return status.Error(codes.InvalidArgument, err.Error())
 }
 
-// isInvalidAutocomplete reports whether a fault came from the request
-// boundary.
-func isInvalidAutocomplete(err error) bool {
-	var invalid invalidAutocompleteError
-	return errors.As(err, &invalid)
+// serverErrorStatus is the gRPC status of a fault that the repository
+// search raised. It replaces aphgrpc.HandleGetError and reports the
+// code alone, without a trailer.
+func serverErrorStatus(err error) error {
+	return status.Error(codes.Internal, err.Error())
 }
 
-// validateAutocompleteRequest guards the proto request step by step and
+// validatedAutocompleteSearch guards the proto request step by step and
 // builds the search state: the generated proto rules, the normalized
 // query, the effective limit and the entity filter. The proto rules
 // reject nil data, nil attributes, a short query and an out-of-range
 // limit; this server has no recovery interceptor, so the boundary
 // validation also protects the process from a nil dereference. Every
-// fault leaves as a rejected request, so the handler reports it as an
-// invalid parameter.
-func validateAutocompleteRequest(
-	r *stock.StockAutocompleteParameters,
-) IOE.IOEither[error, autocompleteSearch] {
-	return F.Pipe6(
-		E.TryCatchError(r, protovalidate.Validate(r)),
+// fault leaves as an invalid-parameter status, decided here, where the
+// class of the fault is known.
+func validatedAutocompleteSearch(
+	in autocompleteInput,
+) E.Either[error, autocompleteSearch] {
+	return F.Pipe5(
+		E.TryCatchError(in.request, protovalidate.Validate(in.request)),
 		E.Map[error](newAutocompleteParams),
 		E.Chain(E.FromPredicate(
 			hasQueryText,
 			eithererr.ConstErr[autocompleteParams](msgEmptyAutocompleteQuery),
 		)),
 		E.Bind(entityLens.Set, mapEntityFilter),
-		E.Map[error](toAutocompleteSearch),
-		E.MapLeft[autocompleteSearch](newInvalidAutocompleteError),
-		IOE.FromEither[error, autocompleteSearch],
+		E.Map[error](F.Bind1st(newAutocompleteSearch, in.repo)),
+		E.MapLeft[autocompleteSearch](invalidParamStatus),
+	)
+}
+
+// searchSuggestions runs the lazy repository search of the validated
+// query. A repository fault leaves as a server-error status, decided
+// here, where the class of the fault is known.
+func searchSuggestions(
+	s autocompleteSearch,
+) IOE.IOEither[error, []*repository.Suggestion] {
+	return F.Pipe1(
+		s.repo.AutocompleteStock(s.query),
+		IOE.MapLeft[[]*repository.Suggestion](serverErrorStatus),
 	)
 }
 
@@ -268,60 +263,55 @@ func toSuggestionCollection(
 	}
 }
 
-// autocompleteStatus maps one fault to its gRPC status: a request the
-// boundary rejected reports an invalid parameter, every other fault
-// reports a server error. predicate.Fold selects the aphgrpc mapper
-// purely by fault class, so the selected mapper runs once, here.
-func autocompleteStatus(ctx context.Context, err error) error {
-	selectMapper := P.Fold(
-		F.Bind1st(aphgrpc.HandleGetError, ctx),
-		F.Bind1st(aphgrpc.HandleInvalidParamError, ctx),
-	)
-	return F.Pipe1(err, selectMapper(isInvalidAutocomplete))
+// failedAutocompleteResult is the failure arm of the terminal fold. The
+// fault already carries its status code, so the arm only pairs it with
+// an absent collection.
+func failedAutocompleteResult(err error) autocompleteResult {
+	return autocompleteResult{err: err}
 }
 
-// failedAutocompleteReply is the failure arm of the terminal fold and
-// the only step that turns a fault into a gRPC status. The collection
-// stays absent.
-func failedAutocompleteReply(
-	ctx context.Context,
-	err error,
-) autocompleteReply {
-	return autocompleteReply{err: autocompleteStatus(ctx, err)}
-}
-
-// successfulAutocompleteReply is the success arm of the terminal fold:
-// the collection becomes the reply and no error is reported.
-func successfulAutocompleteReply(
+// successfulAutocompleteResult is the success arm of the terminal fold:
+// the collection becomes the result and no error is reported.
+func successfulAutocompleteResult(
 	collection *stock.StockSuggestionCollection,
-) autocompleteReply {
-	return autocompleteReply{collection: collection}
+) autocompleteResult {
+	return autocompleteResult{collection: collection}
+}
+
+// toAutocompleteResult forces the lazy program at the edge and folds it
+// into the boundary record of the handler.
+func toAutocompleteResult(
+	program IOE.IOEither[error, *stock.StockSuggestionCollection],
+) autocompleteResult {
+	return F.Pipe2(
+		program,
+		ioeutils.ToEither[error, *stock.StockSuggestionCollection],
+		E.Fold(failedAutocompleteResult, successfulAutocompleteResult),
+	)
 }
 
 // AutocompleteStock returns short suggestions for a partial stock
-// identifier, name or attribute value. The program is lazy until the
-// edge: the request validation, the repository search and the proto
-// mapping are one pipeline, and the terminal fold is the only step
-// that turns the outcome into a gRPC reply.
+// identifier, name or attribute value. The program is an IOEither from
+// the boundary input to the edge: the pure request validation enters it
+// through ChainEitherK, the repository search and the proto mapping
+// follow, and the last step forces it into the collection and the
+// status error. Every fault carries its own status code from the step
+// that knows its class, so no fault classification happens at the edge.
+// The request context stays unused: status.Error is pure, and the
+// repository search takes no context.
 func (s *StockService) AutocompleteStock(
-	ctx context.Context,
+	_ context.Context,
 	r *stock.StockAutocompleteParameters,
 ) (*stock.StockSuggestionCollection, error) {
-	reply := F.Pipe5(
-		r,
-		validateAutocompleteRequest,
-		IOE.Bind(
-			rowsLens.Set,
-			F.Flow2(queryLens.Get, s.repo.AutocompleteStock),
-		),
+	result := F.Pipe5(
+		IOE.Of[error](autocompleteInput{request: r, repo: s.repo}),
+		IOE.ChainEitherK(validatedAutocompleteSearch),
+		IOE.Bind(rowsLens.Set, searchSuggestions),
 		IOE.Map[error](toSuggestionCollection),
 		ioeutils.ToEither[error, *stock.StockSuggestionCollection],
-		E.Fold(
-			F.Bind1st(failedAutocompleteReply, ctx),
-			successfulAutocompleteReply,
-		),
+		E.Fold(failedAutocompleteResult, successfulAutocompleteResult),
 	)
-	return reply.collection, reply.err
+	return result.collection, result.err
 }
 
 // autocompleteEntityFilter maps the proto entity enum to the repository
