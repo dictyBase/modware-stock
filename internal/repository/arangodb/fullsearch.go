@@ -2,7 +2,6 @@ package arangodb
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	A "github.com/IBM/fp-go/v2/array"
@@ -19,7 +18,6 @@ import (
 	"github.com/dictyBase/fp-go-loom/eithererr"
 	predarrays "github.com/dictyBase/fp-go-loom/predicate/array"
 	"github.com/dictyBase/modware-stock/internal/repository"
-	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 )
 
 type (
@@ -38,6 +36,15 @@ type (
 	}
 	fullSearchColl    int
 	fullSearchDisplay int
+
+	// fullSearchField is one indexed search field. The label names the
+	// field in the AQL, the collection selects the branch template and
+	// the display selects the display expression.
+	fullSearchField struct {
+		label   string
+		coll    fullSearchColl
+		display fullSearchDisplay
+	}
 
 	// fullSearchRequest is the validated and normalized input of one
 	// full search.
@@ -115,11 +122,7 @@ var (
 	// that the view indexes with both custom analyzers. The first three
 	// live on the stock collection, the last five on the stock property
 	// collection. Each field serves one prefix branch and one fuzzy branch.
-	fullSearchIdentifierFields = []struct {
-		label   string
-		coll    fullSearchColl
-		display fullSearchDisplay
-	}{
+	fullSearchIdentifierFields = []fullSearchField{
 		{label: paramStockID, coll: fullSearchCollStock, display: fullSearchScalar},
 		{label: fieldGenes, coll: fullSearchCollStock, display: fullSearchArray},
 		{label: fieldDbxrefs, coll: fullSearchCollStock, display: fullSearchArray},
@@ -135,11 +138,7 @@ var (
 	// editable_summary: an n-gram index over long prose grows fast and
 	// returns weak matches. Each field serves one token branch, and the
 	// summary field serves the single phrase branch.
-	fullSearchProseFields = []struct {
-		label   string
-		coll    fullSearchColl
-		display fullSearchDisplay
-	}{
+	fullSearchProseFields = []fullSearchField{
 		{label: fieldSummary, coll: fullSearchCollStock, display: fullSearchScalar},
 		{label: fieldDepositor, coll: fullSearchCollStock, display: fullSearchScalar},
 	}
@@ -158,10 +157,6 @@ var (
 		"very": {}, "was": {}, "were": {}, "what": {}, "when": {},
 		"which": {}, "while": {}, "who": {}, "will": {}, "with": {},
 	}
-
-	// fullSearchQuery is the full 19-branch statement, built once per
-	// process.
-	fullSearchQuery = buildFullSearchQuery()
 
 	// fullSearchEntityLens focuses the entity filter of a validated
 	// request.
@@ -371,135 +366,6 @@ func fullSearchLimit(limit int) int {
 		return maxFullSearchLimit
 	}
 	return limit
-}
-
-// buildFullSearchQuery assembles the statement from the two branch
-// templates and the merge template. It emits a prefix branch and a
-// fuzzy branch per identifier field, a token branch per prose field,
-// the single phrase branch over summary, and appends the merge.
-func buildFullSearchQuery() string {
-	branches := make([]string, 0, len(fullSearchIdentifierFields)*2+3)
-	names := make([]string, 0, len(fullSearchIdentifierFields)*2+3)
-	for i, f := range fullSearchIdentifierFields {
-		display := fullSearchDisplayExpr(f)
-		tpl := statement.FullSearchStockBranch
-		if f.coll == fullSearchCollProp {
-			tpl = statement.FullSearchPropBranch
-		}
-		branches = append(branches,
-			fmt.Sprintf(
-				tpl,
-				fmt.Sprintf("p%d", i),
-				fullSearchPrefixExpr(f.label),
-				f.label,
-				display,
-				fullSearchPrefixBand,
-			),
-			fmt.Sprintf(
-				tpl,
-				fmt.Sprintf("n%d", i),
-				fullSearchFuzzyExpr(f.label),
-				f.label,
-				display,
-				fullSearchFuzzyBand,
-			),
-		)
-		names = append(names, fmt.Sprintf("p%d", i), fmt.Sprintf("n%d", i))
-	}
-	for i, f := range fullSearchProseFields {
-		display := fullSearchDisplayExpr(f)
-		branches = append(branches, fmt.Sprintf(
-			statement.FullSearchStockBranch,
-			fmt.Sprintf("t%d", i),
-			fullSearchTokenExpr(f.label),
-			f.label,
-			display,
-			fullSearchProseBand,
-		))
-		names = append(names, fmt.Sprintf("t%d", i))
-	}
-	// The single phrase branch runs over summary only.
-	branches = append(branches, fmt.Sprintf(
-		statement.FullSearchStockBranch,
-		"h0",
-		fullSearchPhraseExpr(fieldSummary),
-		fieldSummary,
-		fullSearchDisplayExpr(fullSearchProseFields[0]),
-		fullSearchPhraseBand,
-	))
-	names = append(names, "h0")
-	return fmt.Sprintf(
-		"%s\n%s",
-		strings.Join(branches, "\n"),
-		fmt.Sprintf(statement.FullSearchMerge, strings.Join(names, ", ")),
-	)
-}
-
-// fullSearchPrefixExpr is the SEARCH expression of a prefix branch.
-// STARTS_WITH inside SEARCH needs the ANALYZER wrapper: without it the
-// comparison uses the identity analyzer and matches nothing.
-func fullSearchPrefixExpr(field string) string {
-	return fmt.Sprintf(
-		"ANALYZER(STARTS_WITH(d.%s, @q), %q)",
-		field,
-		fullSearchNormAnalyzer,
-	)
-}
-
-// fullSearchFuzzyExpr is the SEARCH expression of a fuzzy branch.
-// NGRAM_MATCH takes the analyzer as its fourth argument.
-func fullSearchFuzzyExpr(field string) string {
-	return fmt.Sprintf(
-		"NGRAM_MATCH(d.%s, @q, @th, %q)",
-		field,
-		fullSearchNgramAnalyzer,
-	)
-}
-
-// fullSearchTokenExpr is the SEARCH expression of a token branch. The
-// IN TOKENS form needs the ANALYZER wrapper, because the comparison of
-// the indexed value against the token list must run under the same
-// analyzer that produced the index.
-func fullSearchTokenExpr(field string) string {
-	return fmt.Sprintf(
-		"ANALYZER(d.%s IN TOKENS(@q, %q), %q)",
-		field,
-		fullSearchTextAnalyzer,
-		fullSearchTextAnalyzer,
-	)
-}
-
-// fullSearchPhraseExpr is the SEARCH expression of the phrase branch.
-// PHRASE takes the analyzer as its last argument.
-func fullSearchPhraseExpr(field string) string {
-	return fmt.Sprintf(
-		"PHRASE(d.%s, @q, %q)",
-		field,
-		fullSearchTextAnalyzer,
-	)
-}
-
-// fullSearchDisplayExpr returns the display expression of a field.
-// A scalar field returns its value; an array field returns the first
-// element that contains the query, or the joined list as a fallback.
-// The expressions run only on the rows that survive the branch LIMIT,
-// never inside the index.
-func fullSearchDisplayExpr(f struct {
-	label   string
-	coll    fullSearchColl
-	display fullSearchDisplay
-},
-) string {
-	if f.display == fullSearchScalar {
-		return fmt.Sprintf(`NOT_NULL(d.%s, "")`, f.label)
-	}
-	return fmt.Sprintf(
-		`NOT_NULL(FIRST(FOR item IN NOT_NULL(d.%s, []) `+
-			`FILTER CONTAINS(LOWER(item), @q) RETURN item), `+
-			`CONCAT_SEPARATOR(", ", NOT_NULL(d.%s, [])))`,
-		f.label,
-		f.label,
-	)
 }
 
 // ensureFullSearch creates both custom analyzers and the view. It is
