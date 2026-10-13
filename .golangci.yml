@@ -1,24 +1,13 @@
-version: 2
+version: "2"
+
 run:
   timeout: 5m
   allow-parallel-runners: true
   go: "1.26"
-linters-settings:
-  gosec:
-    excludes:
-      - G402
-  staticcheck:
-    checks: ["all", "-SA5001"]
-  funlen:
-    lines: 80
-    statements: 70
-  revive:
-    rules:
-      - name: var-naming
-        arguments: [["ID"]]
+
 linters:
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
-  disable-all: true
+  default: none
   enable:
     - asciicheck
     - bodyclose
@@ -32,6 +21,7 @@ linters:
     - gocyclo
     - gosec
     - govet
+    - grouper
     - ineffassign
     - lll
     - misspell
@@ -42,21 +32,58 @@ linters:
     - unparam
     - unused
     - whitespace
+  settings:
+    gosec:
+      excludes:
+        - G402
+    staticcheck:
+      checks:
+        - all
+        - -SA5001
+    decorder:
+      # Declaration order only: types, then constants, then variables,
+      # then functions. The count check stays off (its default), so a
+      # file may still hold more than one declaration of a kind as long
+      # as grouper's single-group rules are met.
+      dec-order:
+        - type
+        - const
+        - var
+        - func
+      disable-dec-order-check: false
+    grouper:
+      const-require-single-const: true
+      var-require-single-var: true
+      type-require-single-type: true
+      import-require-single-import: true
+    funlen:
+      lines: 80
+      statements: 70
+    revive:
+      rules:
+        - name: var-naming
+          arguments:
+            - - ID
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - typecheck
+        text: "file requires newer Go version"
+      - path: "_test\\.go"
+        linters:
+          - funlen
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclude-rules:
-    - linters:
-        - typecheck
-      text: "file requires newer Go version"
-    - path: "_test\\.go"
-      linters:
-        - funlen
 
-  # don't enable:
-  # - godox
-  # - maligned,prealloc
-  # - gochecknoglobals
-  # - golint
-  # - gochecknoinits
+# Not enabled:
+# - godox
+# - gochecknoglobals
+# - gochecknoinits
