@@ -16,7 +16,6 @@ import (
 	S "github.com/IBM/fp-go/v2/string"
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/cockroachdb/errors"
-	eithererr "github.com/dictyBase/fp-go-loom/eithererr"
 	ioeutils "github.com/dictyBase/fp-go-loom/ioeitherutils"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/repository"
@@ -199,9 +198,24 @@ func newAutocompleteSearch(
 
 // invalidParamStatus is the gRPC status of a request that the boundary
 // rejected. It replaces aphgrpc.HandleInvalidParamError and reports the
-// code alone, without a trailer.
+// code alone, without a trailer. status.Convert keeps the message of a
+// fault that already carries a status, so a guard status is never
+// nested inside a second one.
 func invalidParamStatus(err error) error {
-	return status.Error(codes.InvalidArgument, err.Error())
+	return status.Error(
+		codes.InvalidArgument,
+		status.Convert(err).Message(),
+	)
+}
+
+// invalidParamStatusOf is the error factory of one request guard: it
+// reports the invalid-parameter status of a fixed message and drops the
+// rejected value. It replaces eithererr.ConstErr where the fault must
+// reach the client as a gRPC status.
+func invalidParamStatusOf[A any](msg string) func(A) error {
+	return func(A) error {
+		return status.Error(codes.InvalidArgument, msg)
+	}
 }
 
 // serverErrorStatus is the gRPC status of a fault that the repository
@@ -227,7 +241,7 @@ func validatedAutocompleteSearch(
 		E.Map[error](newAutocompleteParams),
 		E.Chain(E.FromPredicate(
 			hasQueryText,
-			eithererr.ConstErr[autocompleteParams](msgEmptyAutocompleteQuery),
+			invalidParamStatusOf[autocompleteParams](msgEmptyAutocompleteQuery),
 		)),
 		E.Bind(entityLens.Set, mapEntityFilter),
 		E.Map[error](F.Bind1st(newAutocompleteSearch, in.repo)),
@@ -276,18 +290,6 @@ func successfulAutocompleteResult(
 	collection *stock.StockSuggestionCollection,
 ) autocompleteResult {
 	return autocompleteResult{collection: collection}
-}
-
-// toAutocompleteResult forces the lazy program at the edge and folds it
-// into the boundary record of the handler.
-func toAutocompleteResult(
-	program IOE.IOEither[error, *stock.StockSuggestionCollection],
-) autocompleteResult {
-	return F.Pipe2(
-		program,
-		ioeutils.ToEither[error, *stock.StockSuggestionCollection],
-		E.Fold(failedAutocompleteResult, successfulAutocompleteResult),
-	)
 }
 
 // AutocompleteStock returns short suggestions for a partial stock
