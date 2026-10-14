@@ -5,12 +5,47 @@ import (
 
 	A "github.com/IBM/fp-go/v2/array"
 	F "github.com/IBM/fp-go/v2/function"
+	L "github.com/IBM/fp-go/v2/optics/lens"
 	P "github.com/IBM/fp-go/v2/predicate"
 	S "github.com/IBM/fp-go/v2/string"
 	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
 )
 
+type (
+	// branchSpec is everything one branch of the statement needs: the AQL
+	// variable name, the indexed field, the SEARCH expression and the
+	// score band. The build pipeline resolves the display expression and
+	// the branch template from the field and writes both back here, so
+	// the render step reads one value and nothing else.
+	branchSpec struct {
+		name     string
+		field    fullSearchField
+		search   string
+		band     string
+		display  string
+		template string
+	}
+)
+
 var (
+	// specDisplayLens focuses the resolved display expression of a spec.
+	specDisplayLens = L.MakeLens(
+		func(spec branchSpec) string { return spec.display },
+		func(spec branchSpec, display string) branchSpec {
+			spec.display = display
+			return spec
+		},
+	)
+
+	// specTemplateLens focuses the resolved branch template of a spec.
+	specTemplateLens = L.MakeLens(
+		func(spec branchSpec) string { return spec.template },
+		func(spec branchSpec, template string) branchSpec {
+			spec.template = template
+			return spec
+		},
+	)
+
 	// fullSearchScalarOrArray selects the display expression of one
 	// field: a scalar field shows its value, an array field shows the
 	// element that matched or the joined list.
@@ -70,111 +105,139 @@ func propBranchTemplate(fullSearchField) string {
 	return statement.FullSearchPropBranch
 }
 
-// fullSearchBranch fills one branch of the statement. The template of
-// the collection takes the branch name, the SEARCH expression, the field
-// label, the display expression and the score band, in that order.
-func fullSearchBranch(
-	name string,
-	f fullSearchField,
-	search string,
-	band string,
-) queryBranch {
+// withDisplay resolves the display expression of the field of one spec
+// into that spec.
+func withDisplay(spec branchSpec) branchSpec {
+	display := fullSearchScalarOrArray(spec.field)
+	return F.Pipe1(spec, specDisplayLens.Set(display))
+}
+
+// withTemplate resolves the branch template of the collection of the
+// field of one spec into that spec.
+func withTemplate(spec branchSpec) branchSpec {
+	template := fullSearchBranchTemplate(spec.field)
+	return F.Pipe1(spec, specTemplateLens.Set(template))
+}
+
+// renderBranch is the terminal projection of one spec: the template over
+// the name, the SEARCH expression, the field label, the display
+// expression and the score band, in template order.
+func renderBranch(spec branchSpec) queryBranch {
 	parts := A.From[any](
-		name,
-		search,
-		f.label,
-		fullSearchScalarOrArray(f),
-		band,
+		spec.name,
+		spec.search,
+		spec.field.label,
+		spec.display,
+		spec.band,
 	)
-	tpl := fullSearchBranchTemplate(f)
 	return queryBranch{
-		name: name,
-		body: fmt.Sprintf(tpl, parts...),
+		name: spec.name,
+		body: fmt.Sprintf(spec.template, parts...),
 	}
 }
 
-// fullSearchPrefixBranch fills the prefix branch of the identifier field
-// at position i: the variable p<i> with the prefix band.
-func fullSearchPrefixBranch(i int, f fullSearchField) queryBranch {
-	return fullSearchBranch(
-		fmt.Sprintf("p%d", i),
-		f,
-		fullSearchPrefixExpr(f.label),
-		fullSearchPrefixBand,
+// fullSearchBranch builds one branch of the statement from its spec:
+// resolve the display expression, resolve the collection template, then
+// render.
+func fullSearchBranch(spec branchSpec) queryBranch {
+	return F.Pipe3(
+		spec,
+		withDisplay,
+		withTemplate,
+		renderBranch,
 	)
 }
 
-// fullSearchFuzzyBranch fills the fuzzy branch of the identifier field
-// at position i: the variable n<i> with the fuzzy band.
-func fullSearchFuzzyBranch(i int, f fullSearchField) queryBranch {
-	return fullSearchBranch(
-		fmt.Sprintf("n%d", i),
-		f,
-		fullSearchFuzzyExpr(f.label),
-		fullSearchFuzzyBand,
-	)
+// fullSearchPrefixSpec is the spec of the prefix branch of the
+// identifier field at position i: the variable p<i> with the prefix
+// band.
+func fullSearchPrefixSpec(i int, f fullSearchField) branchSpec {
+	return branchSpec{
+		name:   fmt.Sprintf("p%d", i),
+		field:  f,
+		search: fullSearchPrefixExpr(f.label),
+		band:   fullSearchPrefixBand,
+	}
 }
 
-// fullSearchTokenBranch fills the token branch of the prose field at
-// position i: the variable t<i> with the prose band.
-func fullSearchTokenBranch(i int, f fullSearchField) queryBranch {
-	return fullSearchBranch(
-		fmt.Sprintf("t%d", i),
-		f,
-		fullSearchTokenExpr(f.label),
-		fullSearchProseBand,
-	)
+// fullSearchFuzzySpec is the spec of the fuzzy branch of the identifier
+// field at position i: the variable n<i> with the fuzzy band.
+func fullSearchFuzzySpec(i int, f fullSearchField) branchSpec {
+	return branchSpec{
+		name:   fmt.Sprintf("n%d", i),
+		field:  f,
+		search: fullSearchFuzzyExpr(f.label),
+		band:   fullSearchFuzzyBand,
+	}
 }
 
-// fullSearchPhraseBranch fills the single phrase branch over summary:
-// the variable h0 with the phrase band.
-func fullSearchPhraseBranch(f fullSearchField) queryBranch {
-	return fullSearchBranch(
-		"h0",
-		f,
-		fullSearchPhraseExpr(f.label),
-		fullSearchPhraseBand,
-	)
+// fullSearchTokenSpec is the spec of the token branch of the prose field
+// at position i: the variable t<i> with the prose band.
+func fullSearchTokenSpec(i int, f fullSearchField) branchSpec {
+	return branchSpec{
+		name:   fmt.Sprintf("t%d", i),
+		field:  f,
+		search: fullSearchTokenExpr(f.label),
+		band:   fullSearchProseBand,
+	}
 }
 
-// fullSearchIdentifierPair makes both stages of one identifier field in
-// statement order: the prefix branch, then the fuzzy branch.
-func fullSearchIdentifierPair(i int, f fullSearchField) []queryBranch {
-	prefix := fullSearchPrefixBranch(i, f)
-	fuzzy := fullSearchFuzzyBranch(i, f)
+// fullSearchPhraseSpec is the spec of the single phrase branch over
+// summary: the variable h0 with the phrase band.
+func fullSearchPhraseSpec(f fullSearchField) branchSpec {
+	return branchSpec{
+		name:   "h0",
+		field:  f,
+		search: fullSearchPhraseExpr(f.label),
+		band:   fullSearchPhraseBand,
+	}
+}
+
+// fullSearchIdentifierSpecPair makes the specs of both stages of one
+// identifier field in statement order: the prefix branch, then the fuzzy
+// branch.
+func fullSearchIdentifierSpecPair(i int, f fullSearchField) []branchSpec {
+	prefix := fullSearchPrefixSpec(i, f)
+	fuzzy := fullSearchFuzzySpec(i, f)
 	return A.From(prefix, fuzzy)
 }
 
-// fullSearchIdentifierBranches makes the prefix branch and the fuzzy
-// branch of every identifier field.
-func fullSearchIdentifierBranches() []queryBranch {
+// fullSearchIdentifierSpecs makes the prefix spec and the fuzzy spec of
+// every identifier field.
+func fullSearchIdentifierSpecs() []branchSpec {
 	return F.Pipe2(
 		fullSearchIdentifierFields,
-		A.MapWithIndex(fullSearchIdentifierPair),
-		A.Flatten[queryBranch],
+		A.MapWithIndex(fullSearchIdentifierSpecPair),
+		A.Flatten[branchSpec],
 	)
 }
 
-// fullSearchProseBranches makes the token branch of every prose field.
-func fullSearchProseBranches() []queryBranch {
+// fullSearchProseSpecs makes the token spec of every prose field.
+func fullSearchProseSpecs() []branchSpec {
 	return F.Pipe1(
 		fullSearchProseFields,
-		A.MapWithIndex(fullSearchTokenBranch),
+		A.MapWithIndex(fullSearchTokenSpec),
 	)
 }
 
-// fullSearchBranches makes all 19 branches of the statement in statement
-// order: both stages of every identifier field, then the token branch of
-// every prose field, then the single phrase branch.
-func fullSearchBranches() []queryBranch {
-	identifiers := fullSearchIdentifierBranches()
-	prose := fullSearchProseBranches()
-	phraseBranch := fullSearchPhraseBranch(fullSearchProseFields[0])
-	phrase := A.Of(phraseBranch)
+// fullSearchSpecs makes the specs of all 19 branches in statement order:
+// both stages of every identifier field, then the token branch of every
+// prose field, then the single phrase branch.
+func fullSearchSpecs() []branchSpec {
+	identifiers := fullSearchIdentifierSpecs()
+	prose := fullSearchProseSpecs()
+	phraseSpec := fullSearchPhraseSpec(fullSearchProseFields[0])
+	phrase := A.Of(phraseSpec)
 	return F.Pipe1(
 		A.From(identifiers, prose, phrase),
-		A.Flatten[queryBranch],
+		A.Flatten[branchSpec],
 	)
+}
+
+// fullSearchBranches renders every spec of the statement.
+func fullSearchBranches() []queryBranch {
+	specs := fullSearchSpecs()
+	return F.Pipe1(specs, A.Map(fullSearchBranch))
 }
 
 // fullSearchMergeBlock makes the merge of the statement. It keeps one
