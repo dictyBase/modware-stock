@@ -212,12 +212,13 @@ func fullSearchPhraseSpecSlice(i int, f fullSearchField) []branchSpec {
 
 // fullSearchIdentifierSpecPair makes the specs of both stages of one
 // identifier field in statement order: the prefix branch, then the fuzzy
-// branch.
+// branch. Both stage specs are bound before the pair is built, because
+// fp-go house style forbids a call expression as an argument to another
+// call. The pair is then assembled with A.From.
 func fullSearchIdentifierSpecPair(i int, f fullSearchField) []branchSpec {
-	return A.From(
-		fullSearchPrefixSpec(i, f),
-		fullSearchFuzzySpec(i, f),
-	)
+	prefix := fullSearchPrefixSpec(i, f)
+	fuzzy := fullSearchFuzzySpec(i, f)
+	return A.From(prefix, fuzzy)
 }
 
 // specsFromSet expands one spec set into its branch specs in statement
@@ -243,12 +244,15 @@ func fullSearchMergeBlock(branches []queryBranch) string {
 }
 
 // appendFullSearchMerge extracts the rendered LET bodies of the branches
-// and appends the trailing merge block.
+// and appends the trailing merge block. The merge block is bound before
+// the pipe starts, because fp-go house style forbids a call expression as
+// an argument to another call.
 func appendFullSearchMerge(branches []queryBranch) []string {
+	merge := fullSearchMergeBlock(branches)
 	return F.Pipe2(
 		branches,
 		A.Map(bodyLens.Get),
-		F.Bind2nd(A.Append, fullSearchMergeBlock(branches)),
+		F.Bind2nd(A.Append, merge),
 	)
 }
 
