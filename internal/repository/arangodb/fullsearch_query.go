@@ -241,7 +241,7 @@ func appendFullSearchMerge(branches []queryBranch) []string {
 	return F.Pipe2(
 		branches,
 		A.Map(bodyLens.Get),
-		F.Bind2nd(A.Append, merge),
+		A.Push(merge),
 	)
 }
 

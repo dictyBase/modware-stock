@@ -133,14 +133,17 @@ func mergeBlock(branches []queryBranch) string {
 }
 
 // buildAutocompleteQuery generates the full statement: the LET blocks
-// of the branches and the merge block.
+// of the branches and the merge block. The merge block is bound before
+// the pipe starts, because fp-go house style forbids a call expression as
+// an argument to another call.
 func buildAutocompleteQuery() string {
 	branches := autocompleteBranches()
+	merge := mergeBlock(branches)
 
 	return F.Pipe3(
 		branches,
 		A.Map(bodyLens.Get),
-		F.Bind2nd(A.Append, mergeBlock(branches)),
+		A.Push(merge),
 		S.Join("\n"),
 	)
 }
