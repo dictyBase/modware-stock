@@ -310,6 +310,41 @@ func TestBuildFullSearchQueryBranchCount(t *testing.T) {
 		"the statement must not name editable_summary")
 }
 
+func TestBuildFullSearchQueryBranchOrder(t *testing.T) {
+	assert := require.New(t)
+	q := buildFullSearchQuery()
+	found := regexp.MustCompile(`LET ([pnth]\d+) = \(`).FindAllStringSubmatch(q, -1)
+	got := make([]string, 0, len(found))
+	for _, match := range found {
+		got = append(got, match[1])
+	}
+	assert.Equal(
+		[]string{
+			"p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7",
+			"n0", "n1", "n2", "n3", "n4", "n5", "n6", "n7",
+			"t0", "t1", "h0",
+		},
+		got,
+		"expect the 19 branch variables grouped by band, in statement order",
+	)
+}
+
+func TestBuildFullSearchQueryBandCounts(t *testing.T) {
+	assert := require.New(t)
+	q := buildFullSearchQuery()
+	// The score band of a branch decides its rank, so a branch that
+	// changes band changes results. One band per branch kind, eight
+	// identifier prefixes, eight identifier fuzzies, two prose tokens
+	// and the single summary phrase. Each band is counted in its `s:`
+	// slot, because the fuzzy band is the bare BM25 term and would
+	// otherwise also match the other bands and every SORT clause.
+	bandSlot := func(band string) string { return "s: " + band + "\n" }
+	assert.Equal(8, strings.Count(q, bandSlot(fullSearchPrefixBand)), "prefix branches")
+	assert.Equal(8, strings.Count(q, bandSlot(fullSearchFuzzyBand)), "fuzzy branches")
+	assert.Equal(2, strings.Count(q, bandSlot(fullSearchProseBand)), "token branches")
+	assert.Equal(1, strings.Count(q, bandSlot(fullSearchPhraseBand)), "phrase branches")
+}
+
 func TestBuildFullSearchQueryHasNoNgramOnProse(t *testing.T) {
 	assert := require.New(t)
 	q := buildFullSearchQuery()

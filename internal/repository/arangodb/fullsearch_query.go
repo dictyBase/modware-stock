@@ -27,10 +27,10 @@ type (
 	}
 
 	// fullSearchSpecSet pairs a group of indexed fields with the indexed
-	// builder that produces one or more branch specs per field.
+	// builder that produces one branch spec per field.
 	fullSearchSpecSet struct {
 		fields  []fullSearchField
-		builder func(int, fullSearchField) []branchSpec
+		builder func(int, fullSearchField) branchSpec
 	}
 )
 
@@ -68,13 +68,14 @@ var (
 		P.Fold(stockBranchTemplate, propBranchTemplate),
 	)
 
-	// fullSearchSpecSets lists the three groups of branch specs in
-	// statement order: identifier prefix+fuzzy pairs, prose token
-	// branches, and the summary phrase branch.
+	// fullSearchSpecSets lists the four groups of branch specs in
+	// statement order: identifier prefix branches, identifier fuzzy
+	// branches, prose token branches, and the summary phrase branch.
 	fullSearchSpecSets = []fullSearchSpecSet{
-		{fullSearchIdentifierFields, fullSearchIdentifierSpecPair},
-		{fullSearchProseFields, fullSearchTokenSpecSlice},
-		{A.Of(fullSearchProseFields[0]), fullSearchPhraseSpecSlice},
+		{fullSearchIdentifierFields, fullSearchPrefixSpec},
+		{fullSearchIdentifierFields, fullSearchFuzzySpec},
+		{fullSearchProseFields, fullSearchTokenSpec},
+		{A.Of(fullSearchProseFields[0]), fullSearchPhraseSpec},
 	}
 )
 
@@ -187,47 +188,35 @@ func fullSearchFuzzySpec(i int, f fullSearchField) branchSpec {
 	}
 }
 
-// fullSearchTokenSpecSlice is the single-element spec slice of the token
-// branch of the prose field at position i: the variable t<i> with the
-// prose band.
-func fullSearchTokenSpecSlice(i int, f fullSearchField) []branchSpec {
-	return A.Of(branchSpec{
+// fullSearchTokenSpec is the spec of the token branch of the prose field
+// at position i: the variable t<i> with the prose band.
+func fullSearchTokenSpec(i int, f fullSearchField) branchSpec {
+	return branchSpec{
 		name:   fmt.Sprintf("t%d", i),
 		field:  f,
 		search: fullSearchTokenExpr(f.label),
 		band:   fullSearchProseBand,
-	})
+	}
 }
 
-// fullSearchPhraseSpecSlice is the single-element spec slice of the
-// phrase branch at position i: the variable h<i> with the phrase band.
-func fullSearchPhraseSpecSlice(i int, f fullSearchField) []branchSpec {
-	return A.Of(branchSpec{
+// fullSearchPhraseSpec is the spec of the phrase branch at position i:
+// the variable h<i> with the phrase band.
+func fullSearchPhraseSpec(i int, f fullSearchField) branchSpec {
+	return branchSpec{
 		name:   fmt.Sprintf("h%d", i),
 		field:  f,
 		search: fullSearchPhraseExpr(f.label),
 		band:   fullSearchPhraseBand,
-	})
-}
-
-// fullSearchIdentifierSpecPair makes the specs of both stages of one
-// identifier field in statement order: the prefix branch, then the fuzzy
-// branch. Both stage specs are bound before the pair is built, because
-// fp-go house style forbids a call expression as an argument to another
-// call. The pair is then assembled with A.From.
-func fullSearchIdentifierSpecPair(i int, f fullSearchField) []branchSpec {
-	prefix := fullSearchPrefixSpec(i, f)
-	fuzzy := fullSearchFuzzySpec(i, f)
-	return A.From(prefix, fuzzy)
+	}
 }
 
 // specsFromSet expands one spec set into its branch specs in statement
-// order.
+// order. Each builder produces exactly one branch spec per field, so the
+// mapped slice is already flat and needs no Flatten step.
 func specsFromSet(set fullSearchSpecSet) []branchSpec {
-	return F.Pipe2(
+	return F.Pipe1(
 		set.fields,
 		A.MapWithIndex(set.builder),
-		A.Flatten[branchSpec],
 	)
 }
 
