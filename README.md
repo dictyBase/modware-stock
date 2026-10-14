@@ -24,6 +24,7 @@ On every create, update, or delete mutation the service publishes a protobuf-ser
   - [Get a Strain](#get-a-strain)
   - [Stock Autocomplete](#stock-autocomplete)
   - [Stock Full Search](#stock-full-search)
+    - [How the Full Search AQL Statement Is Built](docs/FULL_SEARCH_AQL.md)
   - [Update a Strain](#update-a-strain)
   - [Update a Plasmid](#update-a-plasmid)
   - [List Strains with Pagination and Filters](#list-strains-with-pagination-and-filters)
@@ -255,6 +256,8 @@ resp, err := client.SearchStock(ctx, &stock.StockSearchParameters{
     },
 })
 ```
+
+The server runs one generated AQL statement per search: 19 `LET` search branches over the `stock_full_search` view, plus a merge block that keeps the best-scoring hit per stock. [How the Full Search AQL Statement Is Built](docs/FULL_SEARCH_AQL.md) walks through that statement step by step, from the field definitions to the rendered AQL.
 
 ### Update a Strain
 

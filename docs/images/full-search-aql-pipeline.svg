@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1160" width="1200" height="1160" role="img" aria-label="The four steps that build the full search AQL statement">
+  <title>How buildFullSearchQuery assembles the full search AQL statement</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#57606a"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1200" height="1160" fill="#ffffff"/>
+  <text x="600" y="42" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21" fill="#1f2328" font-weight="bold" text-anchor="middle">How buildFullSearchQuery() builds the full search AQL statement</text>
+  <text x="600" y="68" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="12.5" fill="#57606a" font-weight="normal" text-anchor="middle">fullSearchSpecSets  →  A.Chain(specsFromSet)  →  A.Map(fullSearchBranch)  →  appendFullSearchMerge  →  S.Join("\n")</text>
+  <rect x="24" y="92" width="1152" height="172" rx="10" fill="#f6f8fa" stroke="#d8dee4" stroke-width="1"/>
+  <text x="40" y="116" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#0969da" font-weight="bold" text-anchor="start">STEP 1 — Four field sets (Go data, no AQL text yet)</text>
+  <rect x="40" y="132" width="262" height="116" rx="8" fill="#ffffff" stroke="#54aeff" stroke-width="1"/>
+  <path d="M40 158 V140 Q40 132 48 132 H294 Q302 132 302 140 V158 Z" fill="#ddf4ff"/>
+  <line x1="40" y1="158" x2="302" y2="158" stroke="#54aeff" stroke-width="1"/>
+  <text x="52" y="150" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2328" font-weight="bold" text-anchor="start">Set 1 · prefix</text>
+  <text x="52" y="177" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">fullSearchIdentifierFields</text>
+  <text x="52" y="196" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#57606a" font-weight="normal" text-anchor="start">8 fields · stock + stockprop</text>
+  <text x="52" y="215" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">builder: fullSearchPrefixSpec</text>
+  <text x="52" y="237" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="12" fill="#0969da" font-weight="bold" text-anchor="start">→ p0 … p7  (8 branches)</text>
+  <rect x="326" y="132" width="262" height="116" rx="8" fill="#ffffff" stroke="#afb8c1" stroke-width="1"/>
+  <path d="M326 158 V140 Q326 132 334 132 H580 Q588 132 588 140 V158 Z" fill="#eaeef2"/>
+  <line x1="326" y1="158" x2="588" y2="158" stroke="#afb8c1" stroke-width="1"/>
+  <text x="338" y="150" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2328" font-weight="bold" text-anchor="start">Set 2 · fuzzy</text>
+  <text x="338" y="177" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">fullSearchIdentifierFields</text>
+  <text x="338" y="196" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#57606a" font-weight="normal" text-anchor="start">the same 8 fields</text>
+  <text x="338" y="215" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">builder: fullSearchFuzzySpec</text>
+  <text x="338" y="237" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="12" fill="#0969da" font-weight="bold" text-anchor="start">→ n0 … n7  (8 branches)</text>
+  <rect x="612" y="132" width="262" height="116" rx="8" fill="#ffffff" stroke="#4ac26b" stroke-width="1"/>
+  <path d="M612 158 V140 Q612 132 620 132 H866 Q874 132 874 140 V158 Z" fill="#dafbe1"/>
+  <line x1="612" y1="158" x2="874" y2="158" stroke="#4ac26b" stroke-width="1"/>
+  <text x="624" y="150" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2328" font-weight="bold" text-anchor="start">Set 3 · token</text>
+  <text x="624" y="177" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">fullSearchProseFields</text>
+  <text x="624" y="196" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#57606a" font-weight="normal" text-anchor="start">2 fields: summary, depositor</text>
+  <text x="624" y="215" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">builder: fullSearchTokenSpec</text>
+  <text x="624" y="237" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="12" fill="#0969da" font-weight="bold" text-anchor="start">→ t0, t1  (2 branches)</text>
+  <rect x="898" y="132" width="262" height="116" rx="8" fill="#ffffff" stroke="#c297ff" stroke-width="1"/>
+  <path d="M898 158 V140 Q898 132 906 132 H1152 Q1160 132 1160 140 V158 Z" fill="#fbefff"/>
+  <line x1="898" y1="158" x2="1160" y2="158" stroke="#c297ff" stroke-width="1"/>
+  <text x="910" y="150" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2328" font-weight="bold" text-anchor="start">Set 4 · phrase</text>
+  <text x="910" y="177" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">A.Of(fullSearchProseFields[0])</text>
+  <text x="910" y="196" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#57606a" font-weight="normal" text-anchor="start">1 field: summary</text>
+  <text x="910" y="215" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">builder: fullSearchPhraseSpec</text>
+  <text x="910" y="237" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="12" fill="#0969da" font-weight="bold" text-anchor="start">→ h0  (1 branch)</text>
+  <line x1="600" y1="264" x2="600" y2="298" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="616" y="287" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="12.5" fill="#57606a" font-weight="normal" text-anchor="start">A.Chain(specsFromSet)</text>
+  <rect x="24" y="300" width="1152" height="224" rx="10" fill="#f6f8fa" stroke="#d8dee4" stroke-width="1"/>
+  <text x="40" y="324" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#0969da" font-weight="bold" text-anchor="start">STEP 2 — 19 branchSpec values, grouped by score band in statement order</text>
+  <text x="286" y="358" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2328" font-weight="normal" text-anchor="end">prefix branches</text>
+  <rect x="302" y="338" width="52" height="30" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1"/>
+  <text x="328" y="358" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">p0</text>
+  <rect x="364" y="338" width="52" height="30" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1"/>
+  <text x="390" y="358" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">p1</text>
+  <rect x="426" y="338" width="52" height="30" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1"/>
+  <text x="452" y="358" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">p2</text>
+  <rect x="488" y="338" width="52" height="30" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1"/>
+  <text x="514" y="358" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">p3</text>
+  <rect x="550" y="338" width="52" height="30" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1"/>
+  <text x="576" y="358" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">p4</text>
+  <rect x="612" y="338" width="52" height="30" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1"/>
+  <text x="638" y="358" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">p5</text>
+  <rect x="674" y="338" width="52" height="30" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1"/>
+  <text x="700" y="358" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">p6</text>
+  <rect x="736" y="338" width="52" height="30" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1"/>
+  <text x="762" y="358" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">p7</text>
+  <text x="806" y="358" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="normal" text-anchor="start">1000 + BM25(d)</text>
+  <text x="950" y="358" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a" font-weight="normal" text-anchor="start">the 8 identifier fields</text>
+  <text x="286" y="396" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2328" font-weight="normal" text-anchor="end">fuzzy branches</text>
+  <rect x="302" y="376" width="52" height="30" rx="6" fill="#eaeef2" stroke="#afb8c1" stroke-width="1"/>
+  <text x="328" y="396" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">n0</text>
+  <rect x="364" y="376" width="52" height="30" rx="6" fill="#eaeef2" stroke="#afb8c1" stroke-width="1"/>
+  <text x="390" y="396" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">n1</text>
+  <rect x="426" y="376" width="52" height="30" rx="6" fill="#eaeef2" stroke="#afb8c1" stroke-width="1"/>
+  <text x="452" y="396" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">n2</text>
+  <rect x="488" y="376" width="52" height="30" rx="6" fill="#eaeef2" stroke="#afb8c1" stroke-width="1"/>
+  <text x="514" y="396" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">n3</text>
+  <rect x="550" y="376" width="52" height="30" rx="6" fill="#eaeef2" stroke="#afb8c1" stroke-width="1"/>
+  <text x="576" y="396" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">n4</text>
+  <rect x="612" y="376" width="52" height="30" rx="6" fill="#eaeef2" stroke="#afb8c1" stroke-width="1"/>
+  <text x="638" y="396" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">n5</text>
+  <rect x="674" y="376" width="52" height="30" rx="6" fill="#eaeef2" stroke="#afb8c1" stroke-width="1"/>
+  <text x="700" y="396" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">n6</text>
+  <rect x="736" y="376" width="52" height="30" rx="6" fill="#eaeef2" stroke="#afb8c1" stroke-width="1"/>
+  <text x="762" y="396" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">n7</text>
+  <text x="806" y="396" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="normal" text-anchor="start">BM25(d)</text>
+  <text x="950" y="396" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a" font-weight="normal" text-anchor="start">the same 8 fields</text>
+  <text x="286" y="434" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2328" font-weight="normal" text-anchor="end">token branches</text>
+  <rect x="302" y="414" width="52" height="30" rx="6" fill="#dafbe1" stroke="#4ac26b" stroke-width="1"/>
+  <text x="328" y="434" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">t0</text>
+  <rect x="364" y="414" width="52" height="30" rx="6" fill="#dafbe1" stroke="#4ac26b" stroke-width="1"/>
+  <text x="390" y="434" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">t1</text>
+  <text x="806" y="434" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="normal" text-anchor="start">250 + BM25(d)</text>
+  <text x="950" y="434" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a" font-weight="normal" text-anchor="start">summary, depositor</text>
+  <text x="286" y="472" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2328" font-weight="normal" text-anchor="end">phrase branch</text>
+  <rect x="302" y="452" width="52" height="30" rx="6" fill="#fbefff" stroke="#c297ff" stroke-width="1"/>
+  <text x="328" y="472" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="bold" text-anchor="middle">h0</text>
+  <text x="806" y="472" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="13" fill="#1f2328" font-weight="normal" text-anchor="start">500 + BM25(d)</text>
+  <text x="950" y="472" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a" font-weight="normal" text-anchor="start">summary only</text>
+  <text x="40" y="503" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a" font-weight="normal" text-anchor="start">Every builder returns one branchSpec per field, so A.MapWithIndex gives a flat slice. A.Chain joins the four groups into one 19-item slice.</text>
+  <line x1="600" y1="524" x2="600" y2="558" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="616" y="547" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="12.5" fill="#57606a" font-weight="normal" text-anchor="start">A.Map(fullSearchBranch)</text>
+  <rect x="24" y="560" width="1152" height="216" rx="10" fill="#f6f8fa" stroke="#d8dee4" stroke-width="1"/>
+  <text x="40" y="584" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#0969da" font-weight="bold" text-anchor="start">STEP 3 — One branchSpec becomes one rendered LET block</text>
+  <rect x="40" y="598" width="346" height="116" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+  <path d="M40 624 V606 Q40 598 48 598 H378 Q386 598 386 606 V624 Z" fill="#eef2f5"/>
+  <line x1="40" y1="624" x2="386" y2="624" stroke="#d0d7de" stroke-width="1"/>
+  <text x="52" y="616" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2328" font-weight="bold" text-anchor="start">withDisplay — the v: attribute</text>
+  <text x="52" y="639" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">scalar → NOT_NULL(d.label, "")</text>
+  <text x="52" y="655" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">array  → FIRST(FOR item IN … )</text>
+  <text x="52" y="706" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" fill="#57606a" font-weight="normal" text-anchor="start">The display runs after the branch LIMIT, never inside the index.</text>
+  <line x1="390" y1="656" x2="423" y2="656" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="427" y="598" width="346" height="116" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+  <path d="M427 624 V606 Q427 598 435 598 H765 Q773 598 773 606 V624 Z" fill="#eef2f5"/>
+  <line x1="427" y1="624" x2="773" y2="624" stroke="#d0d7de" stroke-width="1"/>
+  <text x="439" y="616" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2328" font-weight="bold" text-anchor="start">withTemplate — the LET body</text>
+  <text x="439" y="639" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">stock     → FullSearchStockBranch</text>
+  <text x="439" y="655" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">            1..1 OUTBOUND d</text>
+  <text x="439" y="671" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">stockprop → FullSearchPropBranch</text>
+  <text x="439" y="687" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">            1..1 INBOUND d</text>
+  <text x="439" y="706" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" fill="#57606a" font-weight="normal" text-anchor="start">The collection of the field picks the traversal direction.</text>
+  <line x1="777" y1="656" x2="810" y2="656" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="814" y="598" width="346" height="116" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+  <path d="M814 624 V606 Q814 598 822 598 H1152 Q1160 598 1160 606 V624 Z" fill="#eef2f5"/>
+  <line x1="814" y1="624" x2="1160" y2="624" stroke="#d0d7de" stroke-width="1"/>
+  <text x="826" y="616" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2328" font-weight="bold" text-anchor="start">renderBranch — fills 5 slots</text>
+  <text x="826" y="639" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">%s name · %s SEARCH · %q label</text>
+  <text x="826" y="655" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="11.5" fill="#1f2328" font-weight="normal" text-anchor="start">%s display · %s band</text>
+  <text x="826" y="706" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" fill="#57606a" font-weight="normal" text-anchor="start">Returns queryBranch{name, body}; %q quotes the field label.</text>
+  <rect x="40" y="726" width="1120" height="36" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+  <text x="56" y="749" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="12" fill="#1f2328" font-weight="normal" text-anchor="start">19 queryBranch values:  LET p0 = ( … )   LET p1 = ( … )   …   LET n0 = ( … )   …   LET t0 = ( … )   LET t1 = ( … )   LET h0 = ( … )</text>
+  <line x1="600" y1="776" x2="600" y2="810" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="616" y="799" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="12.5" fill="#57606a" font-weight="normal" text-anchor="start">appendFullSearchMerge</text>
+  <rect x="24" y="812" width="1152" height="192" rx="10" fill="#f6f8fa" stroke="#d8dee4" stroke-width="1"/>
+  <text x="40" y="836" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#0969da" font-weight="bold" text-anchor="start">STEP 4 — The merge tail keeps one best row per stock</text>
+  <rect x="40" y="850" width="208" height="104" rx="8" fill="#ffffff" stroke="#afb8c1" stroke-width="1"/>
+  <path d="M40 874 V858 Q40 850 48 850 H240 Q248 850 248 858 V874 Z" fill="#eef2f5"/>
+  <line x1="40" y1="874" x2="248" y2="874" stroke="#afb8c1" stroke-width="1"/>
+  <text x="50" y="867" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2328" font-weight="bold" text-anchor="start">1 · FLATTEN</text>
+  <text x="50" y="892" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="10.5" fill="#1f2328" font-weight="normal" text-anchor="start">LET hits = FLATTEN(</text>
+  <text x="50" y="908" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="10.5" fill="#1f2328" font-weight="normal" text-anchor="start">  [p0..p7, n0..n7,</text>
+  <text x="50" y="924" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="10.5" fill="#1f2328" font-weight="normal" text-anchor="start">   t0, t1, h0])</text>
+  <text x="50" y="946" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#57606a" font-weight="normal" text-anchor="start">one flat list of rows</text>
+  <line x1="252" y1="902" x2="264" y2="902" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="268" y="850" width="208" height="104" rx="8" fill="#ffffff" stroke="#afb8c1" stroke-width="1"/>
+  <path d="M268 874 V858 Q268 850 276 850 H468 Q476 850 476 858 V874 Z" fill="#eef2f5"/>
+  <line x1="268" y1="874" x2="476" y2="874" stroke="#afb8c1" stroke-width="1"/>
+  <text x="278" y="867" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2328" font-weight="bold" text-anchor="start">2 · COLLECT</text>
+  <text x="278" y="892" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="10.5" fill="#1f2328" font-weight="normal" text-anchor="start">COLLECT stkey = x.k</text>
+  <text x="278" y="908" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="10.5" fill="#1f2328" font-weight="normal" text-anchor="start">  INTO grp = x</text>
+  <text x="278" y="946" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#57606a" font-weight="normal" text-anchor="start">group the rows of one stock</text>
+  <line x1="480" y1="902" x2="492" y2="902" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="496" y="850" width="208" height="104" rx="8" fill="#ffffff" stroke="#afb8c1" stroke-width="1"/>
+  <path d="M496 874 V858 Q496 850 504 850 H696 Q704 850 704 858 V874 Z" fill="#eef2f5"/>
+  <line x1="496" y1="874" x2="704" y2="874" stroke="#afb8c1" stroke-width="1"/>
+  <text x="506" y="867" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2328" font-weight="bold" text-anchor="start">3 · best row</text>
+  <text x="506" y="892" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="10.5" fill="#1f2328" font-weight="normal" text-anchor="start">FIRST(FOR m IN grp</text>
+  <text x="506" y="908" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="10.5" fill="#1f2328" font-weight="normal" text-anchor="start">  SORT m.s DESC,</text>
+  <text x="506" y="924" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="10.5" fill="#1f2328" font-weight="normal" text-anchor="start">       m.f ASC)</text>
+  <text x="506" y="946" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#57606a" font-weight="normal" text-anchor="start">one row per stock key</text>
+  <line x1="708" y1="902" x2="720" y2="902" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="724" y="850" width="208" height="104" rx="8" fill="#ffffff" stroke="#afb8c1" stroke-width="1"/>
+  <path d="M724 874 V858 Q724 850 732 850 H924 Q932 850 932 858 V874 Z" fill="#eef2f5"/>
+  <line x1="724" y1="874" x2="932" y2="874" stroke="#afb8c1" stroke-width="1"/>
+  <text x="734" y="867" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2328" font-weight="bold" text-anchor="start">4 · rank + cut</text>
+  <text x="734" y="892" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="10.5" fill="#1f2328" font-weight="normal" text-anchor="start">SORT x.s DESC, x.k ASC</text>
+  <text x="734" y="908" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="10.5" fill="#1f2328" font-weight="normal" text-anchor="start">LIMIT @limit</text>
+  <text x="734" y="946" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#57606a" font-weight="normal" text-anchor="start">cut to the asked length</text>
+  <line x1="936" y1="902" x2="948" y2="902" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="952" y="850" width="208" height="104" rx="8" fill="#ffffff" stroke="#afb8c1" stroke-width="1"/>
+  <path d="M952 874 V858 Q952 850 960 850 H1152 Q1160 850 1160 858 V874 Z" fill="#eef2f5"/>
+  <line x1="952" y1="874" x2="1160" y2="874" stroke="#afb8c1" stroke-width="1"/>
+  <text x="962" y="867" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2328" font-weight="bold" text-anchor="start">5 · summary</text>
+  <text x="962" y="892" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="10.5" fill="#1f2328" font-weight="normal" text-anchor="start">LET stk = DOCUMENT(</text>
+  <text x="962" y="908" font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="10.5" fill="#1f2328" font-weight="normal" text-anchor="start">  @stock_collection, x.k)</text>
+  <text x="962" y="946" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#57606a" font-weight="normal" text-anchor="start">reads at most @limit docs</text>
+  <text x="40" y="983" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a" font-weight="normal" text-anchor="start">appendFullSearchMerge adds the merge block with A.Push(merge). S.Join("\n") then joins the 19 bodies and the merge into one statement.</text>
+  <line x1="600" y1="1004" x2="600" y2="1034" stroke="#57606a" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="40" y="1036" width="1120" height="48" rx="8" fill="#ddf4ff" stroke="#0969da" stroke-width="1"/>
+  <text x="600" y="1066" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#0a3069" font-weight="bold" text-anchor="middle">One 539-line AQL statement: 19 LET search branches, then the merge tail. The text is the same for every search; only the bind parameters change.</text>
+  <rect x="40" y="1104" width="16" height="16" rx="4" fill="#ddf4ff" stroke="#54aeff" stroke-width="1"/>
+  <text x="64" y="1117" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a" font-weight="normal" text-anchor="start">prefix · band 1000</text>
+  <rect x="270" y="1104" width="16" height="16" rx="4" fill="#fbefff" stroke="#c297ff" stroke-width="1"/>
+  <text x="294" y="1117" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a" font-weight="normal" text-anchor="start">phrase · band 500</text>
+  <rect x="500" y="1104" width="16" height="16" rx="4" fill="#dafbe1" stroke="#4ac26b" stroke-width="1"/>
+  <text x="524" y="1117" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a" font-weight="normal" text-anchor="start">token · band 250</text>
+  <rect x="730" y="1104" width="16" height="16" rx="4" fill="#eaeef2" stroke="#afb8c1" stroke-width="1"/>
+  <text x="754" y="1117" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a" font-weight="normal" text-anchor="start">fuzzy · no offset</text>
+  <text x="1160" y="1117" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a" font-weight="normal" text-anchor="end">Higher band = higher rank in the merge</text>
+</svg>
