@@ -144,6 +144,115 @@ const (
 							}
 						)
 	`
+	// StrainListOntologyFilter is the ontology-first template for a filtered
+	// strain list whose filter does not reference stock_prop. The sort and the
+	// limit run before the stock_prop_type traversal, so that traversal runs at
+	// most @limit times instead of once per matched strain.
+	//
+	// It relies on every strain having exactly one outgoing 'strain' typed
+	// property edge. The write path inserts the stock document, the property
+	// document and the edge in one AQL query, so the limit remains a strain
+	// count and the limit+1 page probe of the caller stays exact.
+	//
+	// Required bind variables: @@cvterm_collection, @@cv_collection,
+	// @stock_cvterm_graph, @stock_prop_graph, @limit (+ @cursor).
+	StrainListOntologyFilter = `
+		FOR cvterm in @@cvterm_collection
+			FOR cv IN @@cv_collection
+				FILTER cvterm.graph_id == cv._id
+				FOR s IN 1..1 INBOUND cvterm GRAPH @stock_cvterm_graph
+					%s
+					SORT s.created_at DESC
+					LIMIT @limit
+					FOR stock_prop,etype IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
+						FILTER etype.type == 'strain'
+						RETURN MERGE(s,{
+								strain_properties: {
+									label: stock_prop.label,
+									species: stock_prop.species,
+									plasmid: stock_prop.plasmid,
+									names: stock_prop.names
+								}
+							}
+						)
+	`
+	// StrainListOntologyFilterWithCursor is StrainListOntologyFilter with the
+	// inclusive created_at cursor page filter.
+	//
+	// Required bind variables: @@cvterm_collection, @@cv_collection,
+	// @stock_cvterm_graph, @stock_prop_graph, @limit, @cursor.
+	StrainListOntologyFilterWithCursor = `
+		FOR cvterm in @@cvterm_collection
+			FOR cv IN @@cv_collection
+				FILTER cvterm.graph_id == cv._id
+				FOR s IN 1..1 INBOUND cvterm GRAPH @stock_cvterm_graph
+					%s
+					FILTER s.created_at <= DATE_ISO8601(@cursor)
+					SORT s.created_at DESC
+					LIMIT @limit
+					FOR stock_prop,etype IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
+						FILTER etype.type == 'strain'
+						RETURN MERGE(s,{
+								strain_properties: {
+									label: stock_prop.label,
+									species: stock_prop.species,
+									plasmid: stock_prop.plasmid,
+									names: stock_prop.names
+								}
+							}
+						)
+	`
+	// StrainListStockFilter is the stock-first template for a filtered strain
+	// list whose filter references neither cv. nor cvterm. The cv, cvterm and
+	// stock_cvterm_graph collections stay out of the query, and the property
+	// traversal runs before the filter so that a stock_prop. reference still
+	// resolves. FILTER etype.type == 'strain' runs before the limit because
+	// @@stock_collection holds plasmids too, and a plasmid row must not consume
+	// a limit slot. The traversal before the limit keeps the limit+1 page probe
+	// of the caller exact.
+	//
+	// Required bind variables: @@stock_collection, @stock_prop_graph, @limit
+	// (+ @cursor).
+	StrainListStockFilter = `
+		FOR s IN @@stock_collection
+			FOR stock_prop,etype IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
+				FILTER etype.type == 'strain'
+				%s
+				SORT s.created_at DESC
+				LIMIT @limit
+				RETURN MERGE(s,{
+						strain_properties: {
+							label: stock_prop.label,
+							species: stock_prop.species,
+							plasmid: stock_prop.plasmid,
+							names: stock_prop.names
+						}
+					}
+				)
+	`
+	// StrainListStockFilterWithCursor is StrainListStockFilter with the
+	// inclusive created_at cursor page filter.
+	//
+	// Required bind variables: @@stock_collection, @stock_prop_graph, @limit,
+	// @cursor.
+	StrainListStockFilterWithCursor = `
+		FOR s IN @@stock_collection
+			FOR stock_prop,etype IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
+				FILTER etype.type == 'strain'
+				%s
+				FILTER s.created_at <= DATE_ISO8601(@cursor)
+				SORT s.created_at DESC
+				LIMIT @limit
+				RETURN MERGE(s,{
+						strain_properties: {
+							label: stock_prop.label,
+							species: stock_prop.species,
+							plasmid: stock_prop.plasmid,
+							names: stock_prop.names
+						}
+					}
+				)
+	`
 	StrainList = `
 		FOR s IN @@stock_collection
 			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH @stock_prop_graph

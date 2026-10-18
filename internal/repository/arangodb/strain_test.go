@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/arangodb/go-driver"
 	"github.com/dictyBase/aphgrpc"
 	"github.com/dictyBase/arangomanager"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
@@ -48,6 +49,26 @@ const (
 				)
 	`
 	filterBad = `FILTER borat.acting == 'funny`
+
+	// filterOntologyAndProp is the joined ontology route: the filter compares
+	// both an ontology term and a strain property.
+	filterOntologyAndProp = `FILTER stock_prop.label =~ 'axe'
+				AND cv.metadata.namespace == 'dicty_strain_property'
+				AND cvterm.label == 'general strain'
+	`
+
+	// filterQuotedCvLiteral keeps a cv. string inside a value, so that route
+	// classification must ignore the text of filter values.
+	filterQuotedCvLiteral = `FILTER s.depositor == 'cv.user@example.com'`
+
+	// planNodeTraversal is the AQL execution plan node of a graph traversal.
+	planNodeTraversal = "TraversalNode"
+
+	// planNodeLimit is the AQL execution plan node of a limit.
+	planNodeLimit = "LimitNode"
+
+	// planNodeSort is the AQL execution plan node of a sort.
+	planNodeSort = "SortNode"
 )
 
 func createTestStrainsWithParent(
@@ -1261,4 +1282,218 @@ func TestEditStrainWithoutOntologyUpdate(t *testing.T) {
 		gm.Summary,
 		"summary should be updated",
 	)
+}
+
+// strainListExplain returns the execution plan of one strain list request.
+func strainListExplain(
+	assert *require.Assertions,
+	ar *arangorepository,
+	param *stock.StockParameters,
+) driver.ExplainQueryResultPlan {
+	page := strainListPageOf(param, ar.strainListNames())
+	res, err := ar.database.Handler().ExplainQuery(
+		context.Background(), page.statement, page.bindParams, nil,
+	)
+	assert.NoErrorf(
+		err, "expect no error from explaining the strain list query, received %s", err,
+	)
+	return res.Plan
+}
+
+// planNodeIndex returns the index of the first plan node of one type that
+// satisfies match, or -1 when no node matches.
+func planNodeIndex(
+	plan driver.ExplainQueryResultPlan,
+	nodeType string,
+	match func(driver.ExplainQueryResultExecutionNodeRaw) bool,
+) int {
+	for index, node := range plan.NodesRaw {
+		if node["type"] != nodeType {
+			continue
+		}
+		if match == nil || match(node) {
+			return index
+		}
+	}
+	return -1
+}
+
+// planGraphTraversalIndex returns the index of the traversal node of one graph,
+// or -1 when the plan does not traverse that graph.
+func planGraphTraversalIndex(
+	plan driver.ExplainQueryResultPlan,
+	graph string,
+) int {
+	return planNodeIndex(
+		plan,
+		planNodeTraversal,
+		func(node driver.ExplainQueryResultExecutionNodeRaw) bool {
+			return node["graph"] == graph
+		},
+	)
+}
+
+// planCollections returns the names of the collections one execution plan
+// reads.
+func planCollections(plan driver.ExplainQueryResultPlan) []string {
+	names := make([]string, 0, len(plan.Collections))
+	for _, readCollection := range plan.Collections {
+		names = append(names, readCollection.Name)
+	}
+	return names
+}
+
+// TestStrainListRouteExplain asserts the execution plan shape of the three
+// strain list routes against a live ArangoDB. The node order is the
+// optimization: the ontology-only route limits before the property traversal,
+// the stock-only route reads no ontology collection, and the joined route must
+// keep the property traversal before the limit.
+func TestStrainListRouteExplain(t *testing.T) {
+	t.Parallel()
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	ar := repo.(*arangorepository)
+	names := ar.strainListNames()
+
+	t.Run("ontology-only route limits before the property traversal", func(t *testing.T) {
+		plan := strainListExplain(
+			assert,
+			ar,
+			&stock.StockParameters{Limit: 10, Filter: filterRegularStrain},
+		)
+
+		limitIndex := planNodeIndex(plan, planNodeLimit, nil)
+		propIndex := planGraphTraversalIndex(plan, names.stockPropGraph)
+		assert.NotEqual(-1, limitIndex, "plan should have a limit node")
+		assert.NotEqual(
+			-1, propIndex, "plan should traverse the strain property graph",
+		)
+		assert.Less(
+			limitIndex,
+			propIndex,
+			"the limit must run before the property traversal",
+		)
+	})
+
+	t.Run("stock-only route reads no ontology collection", func(t *testing.T) {
+		for _, filter := range []string{filterGene, filterOne, filterFive} {
+			plan := strainListExplain(
+				assert,
+				ar,
+				&stock.StockParameters{Limit: 10, Filter: filter},
+			)
+
+			collections := planCollections(plan)
+			assert.NotContains(
+				collections, names.cv, "plan should not read the cv collection",
+			)
+			assert.NotContains(
+				collections,
+				names.cvterm,
+				"plan should not read the cvterm collection",
+			)
+			assert.Equal(
+				-1,
+				planGraphTraversalIndex(plan, names.stockCvtermGraph),
+				"plan should not traverse the ontology graph",
+			)
+		}
+	})
+
+	t.Run("joined route traverses the property graph before the limit", func(t *testing.T) {
+		plan := strainListExplain(
+			assert,
+			ar,
+			&stock.StockParameters{Limit: 10, Filter: filterOntologyAndProp},
+		)
+
+		propIndex := planGraphTraversalIndex(plan, names.stockPropGraph)
+		sortIndex := planNodeIndex(plan, planNodeSort, nil)
+		assert.NotEqual(
+			-1, propIndex, "plan should traverse the strain property graph",
+		)
+		assert.NotEqual(-1, sortIndex, "plan should have a sort node")
+		assert.Less(
+			propIndex,
+			sortIndex,
+			"the property traversal must run before the sort on this route",
+		)
+	})
+}
+
+// TestStrainListRoutePagination walks the pages of every route and asserts that
+// the pages stay ordered, repeat no strain, and cover the same strain set as
+// one large page. The walk mirrors the service: the repository returns one row
+// more than the limit, the caller keeps the first limit rows and takes the
+// cursor of the extra row.
+func TestStrainListRoutePagination(t *testing.T) {
+	t.Parallel()
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	err := createTestStrains(12, Gwdi, repo)
+	assert.NoErrorf(err, "expect no error from adding strains, received %s", err)
+
+	pageLimit := int64(5)
+	for _, filter := range []string{filterGwdiStrain, filterOne, filterFive} {
+		full, err := repo.ListStrains(
+			context.Background(),
+			&stock.StockParameters{Limit: 100, Filter: filter},
+		)
+		assert.NoErrorf(err, "expect no error from the full page, received %s", err)
+		assert.Lenf(full, 12, "expect twelve strains of the filter %s", filter)
+
+		walked := make([]string, 0, len(full))
+		cursor := int64(0)
+		for range len(full) {
+			rows, err := repo.ListStrains(
+				context.Background(),
+				&stock.StockParameters{
+					Limit:  pageLimit,
+					Filter: filter,
+					Cursor: cursor,
+				},
+			)
+			assert.NoErrorf(err, "expect no error from a page, received %s", err)
+			if len(rows) <= int(pageLimit) {
+				walked = append(walked, stockIDs(rows)...)
+				break
+			}
+
+			walked = append(walked, stockIDs(rows[:len(rows)-1])...)
+			cursor = toTimestamp(rows[len(rows)-1].CreatedAt)
+		}
+
+		assert.ElementsMatch(
+			collection.Map(full, stockToID),
+			walked,
+			"the pages of the filter %s should cover the full strain set",
+			filter,
+		)
+		assert.Len(
+			walked,
+			len(collection.Map(full, stockToID)),
+			"the pages should repeat no strain",
+		)
+		assert.True(
+			orderByCreatedAtDesc(full),
+			"the full page of the filter %s should be ordered",
+			filter,
+		)
+	}
+}
+
+// stockIDs returns the stock identifiers of a strain list.
+func stockIDs(docs []*model.StockDoc) []string {
+	return collection.Map(docs, stockToID)
+}
+
+// orderByCreatedAtDesc reports whether a strain list is sorted by created_at in
+// descending order.
+func orderByCreatedAtDesc(docs []*model.StockDoc) bool {
+	for index := 1; index < len(docs); index++ {
+		if docs[index-1].CreatedAt.Before(docs[index].CreatedAt) {
+			return false
+		}
+	}
+	return true
 }

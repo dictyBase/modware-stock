@@ -21,6 +21,7 @@ const (
 	paramStockID  = "stock_id"
 	paramOntology = "ontology"
 	paramLimit    = "limit"
+	paramCursor   = "cursor"
 	paramKey      = "key"
 	paramName     = "name"
 	paramParent   = "parent"
