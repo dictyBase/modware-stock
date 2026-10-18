@@ -191,16 +191,19 @@ Currently, every filtered `ListStrains` call uses `statement.StrainListFilter` (
   rg -n '\)\([a-z]' internal/repository/arangodb/strain_read.go
   go test -count=1 ./...
   ```
-- [ ] **Step 4.2: Performance acceptance check**
+- [x] **Step 4.2: Performance acceptance check**
   - Ontology-only `StrainTypeAll` query scans `<= 60,000` index entries (down from `114,310`) and completes `>= 2x` faster than the `0.768s` baseline (`~0.22s`).
   - Stock-only `gene@==...` query executes zero `cv`/`cvterm` scans.
+
+**Measured 2026-10-18** against a production copy: ArangoDB 3.11.6 community, database
+`stock`, `limit = 10`, 10 runs per query. Both acceptance targets pass.
 
 ---
 
 ## Execution Notes
 
-**Status:** Tasks 1–4.1 are complete on the branch `feat/strain-list-aql-routes`. Task 4.2
-is not measured, because the local test database holds a few dozen strains (see below).
+**Status:** All tasks are complete on the branch `feat/strain-list-aql-routes`. Task 4.2 was
+measured against a production copy (see below).
 
 ### Deviations from the plan
 
@@ -227,18 +230,72 @@ is not measured, because the local test database holds a few dozen strains (see 
    the route relies on every strain having exactly one `type: 'strain'` property edge, so
    the limit stays a strain count and the limit+1 page probe of the caller stays exact.
 
-### Task 4.2: not measured
+### Task 4.2: measured against a production copy
 
-The plan asks for an index scan count of `<= 60,000` (down from `114,310`) and a runtime of
-`>= 2x` better than `0.768s`. The local ArangoDB test database holds a few dozen strains, so
-those numbers are not reproducible here. What the tests assert instead is the mechanism,
-against ArangoDB 3.12.12:
+Database `stock` on ArangoDB 3.11.6 community: `stock` 29,841 documents, `stock_type`
+28,576 strain edges and 1,265 plasmid edges, `stockprop` 29,841, `cvterm` 2,306, `cv` 15.
+Every query ran 10 times; the table reports the median, with `limit = 10`.
 
-- The ontology-only route explains to `SortNode` → `LimitNode` → `TraversalNode`
-  (`stockprop_type`), so the limit runs before the property traversal.
-- The stock-only route explains with no `cv` and no `cvterm` collection and no `stockonto`
-  traversal node.
-- The joined route explains to `TraversalNode` (`stockprop_type`) → `SortNode` →
-  `LimitNode`, the join-before-limit order it must keep.
+| filter | route | index scans | full scans | matched | page rows | median | speedup |
+|---|---|---|---|---|---|---|---|
+| `StrainTypeAll` (ontology) | old, join before limit | 114,314 | 0 | 28,576 | 10 | 737.8 ms | — |
+| `StrainTypeAll` (ontology) | new, deferred property | **57,182** | 0 | 28,576 | 10 | **210.9 ms** | **3.5×** |
+| `general strain` (ontology) | old | 28,222 | 0 | 7,055 | 10 | 178.2 ms | — |
+| `general strain` (ontology) | new, deferred property | 14,132 | 0 | 7,055 | 10 | 52.7 ms | 3.4× |
+| `gene@== DDB_G0287317` | old | 64,303 | 2,306 | 3 | 3 | 230.8 ms | — |
+| `gene@== DDB_G0287317` | new, stock first | 6 | 29,841 | 3 | 3 | 12.8 ms | 18× |
+| `summary =~ mutant` | old | 136,040 | 2,306 | 23,880 | 10 | 935.6 ms | — |
+| `summary =~ mutant` | new, stock first | 47,813 | 29,841 | 23,880 | 10 | 509.4 ms | 1.8× |
+| `stock_prop.label =~ yS` | old | 151,514 | 2,306 | 3 | 3 | 902.3 ms | — |
+| `stock_prop.label =~ yS` | new, stock first | 89,526 | 29,841 | 3 | 3 | 695.0 ms | 1.3× |
 
-Run the acceptance measurement against a database of production size before release.
+Acceptance targets:
+
+- Ontology-only `StrainTypeAll` scans `57,182 <= 60,000` index entries. **Pass**
+  (down from `114,314`, a 50% reduction).
+- Ontology-only `StrainTypeAll` runs in `210.9 ms`, against the `768 ms` baseline.
+  **Pass** at 3.5×.
+- Stock-only `gene@==` reads no `cv`, no `cvterm` and no `stockonto` collection. **Pass**:
+  the plan collections are `stock`, `stock_type` and `stockprop` only.
+
+### Correctness on the same data
+
+- **Route 1 invariant holds.** No strain holds more than one `type: 'strain'` edge
+  (`duplicate_strain_edges = 0`), and 28,576 strain edges map to 28,576 strain documents.
+  No plasmid reaches the `dicty_strain_property` namespace: all 1,265 plasmid term edges
+  reach `plasmid_keywords`. So the deferred-property route cannot lose a limit slot to a
+  plasmid under this filter shape.
+- **Result parity.** At `limit = 50` the old and the new template return the same key
+  sequence for the ontology match-all, gene and property-label filters. The `summary =~
+  'mutant'` filter returns the same 23,880 keys but in a different order inside groups of
+  equal `created_at`. The templates sort on `created_at` alone, so the order of equal
+  timestamps is unspecified.
+- **Pagination duplicates rows on ties.** The cursor clause is inclusive
+  (`created_at <= peek.created_at`). When a page boundary falls inside a group of equal
+  timestamps, the next page repeats the rows of that group already delivered. The defect
+  is pre-existing and identical on the old and the new route. Counted on this data, with a
+  model that reproduces the measured `limit = 500` walk exactly:
+
+  | page limit | rows walked | duplicates |
+  |---|---|---|
+  | 20 | 23,924 | 44 |
+  | 50 | 23,904 | 24 |
+  | 100 | 23,887 | 7 |
+  | 500 | 23,882 | 2 |
+
+  A keyset cursor removes the defect completely. Sort on `created_at DESC, _key ASC` and
+  filter with `created_at < peek.created_at OR (created_at == peek.created_at AND _key >=
+  peek._key)`. That form returns 23,880 rows with zero duplicates and zero missing rows at
+  every page size from 20 to 1,000.
+
+### Follow-up work, not part of this plan
+
+1. **Fix the tie behaviour of the cursor.** Add `_key` to the sort and switch the cursor
+   clause to the keyset form above, in all cursor templates of both strain and plasmid
+   lists. This is a separate change with its own tests.
+2. **The stock-first route still scans the whole `stock` collection** (29,841 documents)
+   for filters with no supporting index (`genes`, `summary`, `label`). The gain comes from
+   dropping the ontology collections and graph, not from an index. A filter that matches
+   few rows gains little (1.3× for the label filter). Consider indexes for the property
+   fields if those filters are common.
+3. **Repeat this measurement after any index or graph change.**
