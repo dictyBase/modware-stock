@@ -17,6 +17,7 @@ import (
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/cockroachdb/errors"
 	ioeutils "github.com/dictyBase/fp-go-loom/ioeitherutils"
+	MO "github.com/dictyBase/fp-go-loom/matchopt"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/repository"
 	"google.golang.org/grpc/codes"
@@ -25,8 +26,9 @@ import (
 
 type (
 	// autocompleteInput is the boundary input of one autocomplete call:
-	// the proto request and the repository it searches.
+	// the caller context, the proto request and the repository it searches.
 	autocompleteInput struct {
+		ctx     context.Context
 		request *stock.StockAutocompleteParameters
 		repo    repository.StockRepository
 	}
@@ -42,10 +44,11 @@ type (
 		entity    repository.StockEntityFilter
 	}
 
-	// autocompleteSearch carries the repository, the validated query and
-	// the suggestions that query returned. The query stays on the state
-	// because the response meta reports its effective limit.
+	// autocompleteSearch carries the caller context, the repository, the
+	// validated query and the suggestions that query returned. The query
+	// stays on the state because the response meta reports its effective limit.
 	autocompleteSearch struct {
+		ctx   context.Context
 		repo  repository.StockRepository
 		query *repository.AutocompleteQuery
 		rows  []*repository.Suggestion
@@ -120,6 +123,20 @@ var (
 	// reaches this guard.
 	hasQueryText = F.Pipe1(S.IsNonEmpty, queryText)
 
+	isCanceledError = func(err error) bool {
+		return errors.Is(err, context.Canceled)
+	}
+	isDeadlineExceededError = func(err error) bool {
+		return errors.Is(err, context.DeadlineExceeded)
+	}
+	serverErrorCode = MO.Match(
+		codes.Internal,
+		[]O.Kleisli[error, codes.Code]{
+			MO.Const(isCanceledError, codes.Canceled),
+			MO.Const(isDeadlineExceededError, codes.DeadlineExceeded),
+		},
+	)
+
 	// repositoryFieldMap maps the repository field label to the proto
 	// search field enum. The map covers the 8 identifier labels of the
 	// autocomplete feature and the 2 prose labels of the full search.
@@ -180,14 +197,15 @@ func mapEntityFilter(
 }
 
 // newAutocompleteSearch lifts the validated params into the search
-// state: the repository of the call and its query, with no suggestion
-// yet.
+// state: the caller context, the repository of the call and its query,
+// with no suggestion yet.
 func newAutocompleteSearch(
-	repo repository.StockRepository,
+	in autocompleteInput,
 	p autocompleteParams,
 ) autocompleteSearch {
 	return autocompleteSearch{
-		repo: repo,
+		ctx:  in.ctx,
+		repo: in.repo,
 		query: &repository.AutocompleteQuery{
 			Query:  p.query,
 			Entity: p.entity,
@@ -222,7 +240,8 @@ func invalidParamStatusOf[A any](msg string) func(A) error {
 // search raised. It replaces aphgrpc.HandleGetError and reports the
 // code alone, without a trailer.
 func serverErrorStatus(err error) error {
-	return status.Error(codes.Internal, err.Error())
+	code := serverErrorCode(err)
+	return status.Error(code, err.Error())
 }
 
 // validatedAutocompleteSearch guards the proto request step by step and
@@ -244,7 +263,7 @@ func validatedAutocompleteSearch(
 			invalidParamStatusOf[autocompleteParams](msgEmptyAutocompleteQuery),
 		)),
 		E.Bind(entityLens.Set, mapEntityFilter),
-		E.Map[error](F.Bind1st(newAutocompleteSearch, in.repo)),
+		E.Map[error](F.Bind1st(newAutocompleteSearch, in)),
 		E.MapLeft[autocompleteSearch](invalidParamStatus),
 	)
 }
@@ -256,7 +275,7 @@ func searchSuggestions(
 	s autocompleteSearch,
 ) IOE.IOEither[error, []*repository.Suggestion] {
 	return F.Pipe1(
-		s.repo.AutocompleteStock(s.query),
+		s.repo.AutocompleteStock(s.ctx, s.query),
 		IOE.MapLeft[[]*repository.Suggestion](serverErrorStatus),
 	)
 }
@@ -302,11 +321,11 @@ func successfulAutocompleteResult(
 // The request context stays unused: status.Error is pure, and the
 // repository search takes no context.
 func (s *StockService) AutocompleteStock(
-	_ context.Context,
+	ctx context.Context,
 	r *stock.StockAutocompleteParameters,
 ) (*stock.StockSuggestionCollection, error) {
 	result := F.Pipe5(
-		IOE.Of[error](autocompleteInput{request: r, repo: s.repo}),
+		IOE.Of[error](autocompleteInput{ctx: ctx, request: r, repo: s.repo}),
 		IOE.ChainEitherK(validatedAutocompleteSearch),
 		IOE.Bind(rowsLens.Set, searchSuggestions),
 		IOE.Map[error](toSuggestionCollection),

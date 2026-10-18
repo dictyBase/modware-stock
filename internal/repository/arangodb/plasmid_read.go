@@ -1,6 +1,8 @@
 package arangodb
 
 import (
+	"context"
+
 	fperrors "github.com/IBM/fp-go/errors"
 	F "github.com/IBM/fp-go/function"
 	IOE "github.com/IBM/fp-go/ioeither"
@@ -10,11 +12,15 @@ import (
 
 // ListPlasmids provides a list of all plasmids returning IOEither monad
 func (ar *arangorepository) ListPlasmids(
+	ctx context.Context,
 	params *stock.StockParameters,
 ) IOE.IOEither[error, []*model.StockDoc] {
-	return F.Pipe4(
+	baseCtx := normalizeQueryContext(ctx)
+	withCtx := withPlasmidListQueryCtx(baseCtx)
+	return F.Pipe5(
 		IOE.Right[error](params),
 		IOE.Map[error](ar.buildPlasmidListQueryParams),
+		IOE.Map[error](withCtx),
 		IOE.Chain(ar.executePlasmidListQuery),
 		IOE.Chain(ar.scanPlasmidRows),
 		IOE.MapLeft[[]*model.StockDoc](

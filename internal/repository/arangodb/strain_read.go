@@ -1,6 +1,7 @@
 package arangodb
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cockroachdb/errors"
@@ -37,6 +38,7 @@ func (ar *arangorepository) GetStrain(id string) (*model.StockDoc, error) {
 
 // ListStrains provides a list of all strains
 func (ar *arangorepository) ListStrains(
+	ctx context.Context,
 	param *stock.StockParameters,
 ) ([]*model.StockDoc, error) {
 	omd := make([]*model.StockDoc, 0)
@@ -44,10 +46,11 @@ func (ar *arangorepository) ListStrains(
 	if len(param.Filter) > 0 {
 		stmt, paramsBind = ar.strainStmtWithFilter(param)
 	}
-	rs, err := ar.database.SearchRows(stmt, paramsBind)
+	rs, err := ar.searchRows(ctx, stmt, paramsBind)
 	if err != nil {
 		return omd, err
 	}
+	defer func() { _ = rs.Close() }()
 	if rs.IsEmpty() {
 		return omd, nil
 	}
@@ -62,10 +65,12 @@ func (ar *arangorepository) ListStrains(
 }
 
 func (ar *arangorepository) ListStrainsByIDs(
+	ctx context.Context,
 	p *stock.StockIdList,
 ) ([]*model.StockDoc, error) {
 	ms := make([]*model.StockDoc, 0)
-	rs, err := ar.database.SearchRows(
+	rs, err := ar.searchRows(
+		ctx,
 		statement.StrainListFromIDs,
 		map[string]any{
 			"ids":                p.Id,
@@ -81,6 +86,7 @@ func (ar *arangorepository) ListStrainsByIDs(
 	if err != nil {
 		return ms, err
 	}
+	defer func() { _ = rs.Close() }()
 	if rs.IsEmpty() {
 		return ms, nil
 	}

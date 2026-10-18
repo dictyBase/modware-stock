@@ -2,6 +2,7 @@
 package repository
 
 import (
+	"context"
 	"io"
 
 	IOE "github.com/IBM/fp-go/ioeither"
@@ -88,9 +89,9 @@ type (
 		AddPlasmid(ns *stock.NewPlasmid) IOE.IOEither[error, *model.StockDoc]
 		EditStrain(us *stock.StrainUpdate) (*model.StockDoc, error)
 		EditPlasmid(us *stock.PlasmidUpdate) IOE.IOEither[error, *model.StockDoc]
-		ListStrains(s *stock.StockParameters) ([]*model.StockDoc, error)
-		ListStrainsByIDs(s *stock.StockIdList) ([]*model.StockDoc, error)
-		ListPlasmids(s *stock.StockParameters) IOE.IOEither[error, []*model.StockDoc]
+		ListStrains(ctx context.Context, s *stock.StockParameters) ([]*model.StockDoc, error)
+		ListStrainsByIDs(ctx context.Context, s *stock.StockIdList) ([]*model.StockDoc, error)
+		ListPlasmids(ctx context.Context, s *stock.StockParameters) IOE.IOEither[error, []*model.StockDoc]
 		LoadStrain(id string, es *stock.ExistingStrain) (*model.StockDoc, error)
 		LoadPlasmid(id string, ep *stock.ExistingPlasmid) IOE.IOEither[error, *model.StockDoc]
 		RemoveStock(id string) error
@@ -98,11 +99,13 @@ type (
 		// the normalized query of params as a lazy IOEither pipeline. An
 		// empty result is not an error.
 		SearchStock(
+			ctx context.Context,
 			params *FullSearchQuery,
 		) IOEV2.IOEither[error, []*FullSearchResult]
 		// AutocompleteStock returns at most Limit short suggestions for the
 		// normalized query of params as a lazy IOEither pipeline.
 		AutocompleteStock(
+			ctx context.Context,
 			params *AutocompleteQuery,
 		) IOEV2.IOEither[error, []*Suggestion]
 		Dbh() *manager.Database

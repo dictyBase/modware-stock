@@ -136,7 +136,7 @@ func (s *StockService) ListStrainsByIDs(
 	if err := r.Validate(); err != nil {
 		return sl, aphgrpc.HandleInvalidParamError(ctx, err)
 	}
-	mc, err := s.repo.ListStrainsByIDs(r)
+	mc, err := s.repo.ListStrainsByIDs(ctx, r)
 	if err != nil {
 		return sl, aphgrpc.HandleGetError(ctx, err)
 	}

@@ -23,9 +23,10 @@ import (
 // autocompleteStubRepo implements every method of
 // repository.StockRepository for the handler unit tests.
 type autocompleteStubRepo struct {
-	sugs []*repository.Suggestion
-	err  error
-	got  *repository.AutocompleteQuery
+	sugs   []*repository.Suggestion
+	err    error
+	got    *repository.AutocompleteQuery
+	gotCtx context.Context
 }
 
 func (sr *autocompleteStubRepo) GetStrain(string) (*model.StockDoc, error) {
@@ -46,13 +47,22 @@ func (sr *autocompleteStubRepo) EditStrain(*stock.StrainUpdate) (*model.StockDoc
 func (sr *autocompleteStubRepo) EditPlasmid(*stock.PlasmidUpdate) IOE.IOEither[error, *model.StockDoc] {
 	return IOE.Left[*model.StockDoc](errors.New("not used"))
 }
-func (sr *autocompleteStubRepo) ListStrains(*stock.StockParameters) ([]*model.StockDoc, error) {
+func (sr *autocompleteStubRepo) ListStrains(
+	context.Context,
+	*stock.StockParameters,
+) ([]*model.StockDoc, error) {
 	return nil, nil
 }
-func (sr *autocompleteStubRepo) ListStrainsByIDs(*stock.StockIdList) ([]*model.StockDoc, error) {
+func (sr *autocompleteStubRepo) ListStrainsByIDs(
+	context.Context,
+	*stock.StockIdList,
+) ([]*model.StockDoc, error) {
 	return nil, nil
 }
-func (sr *autocompleteStubRepo) ListPlasmids(*stock.StockParameters) IOE.IOEither[error, []*model.StockDoc] {
+func (sr *autocompleteStubRepo) ListPlasmids(
+	context.Context,
+	*stock.StockParameters,
+) IOE.IOEither[error, []*model.StockDoc] {
 	return IOE.Left[[]*model.StockDoc](errors.New("not used"))
 }
 func (sr *autocompleteStubRepo) LoadStrain(string, *stock.ExistingStrain) (*model.StockDoc, error) {
@@ -63,13 +73,16 @@ func (sr *autocompleteStubRepo) LoadPlasmid(string, *stock.ExistingPlasmid) IOE.
 }
 func (sr *autocompleteStubRepo) RemoveStock(string) error { return nil }
 func (sr *autocompleteStubRepo) SearchStock(
-	_ *repository.FullSearchQuery,
+	context.Context,
+	*repository.FullSearchQuery,
 ) IOEV2.IOEither[error, []*repository.FullSearchResult] {
 	return IOEV2.Left[[]*repository.FullSearchResult](errors.New("not used"))
 }
 func (sr *autocompleteStubRepo) AutocompleteStock(
+	ctx context.Context,
 	params *repository.AutocompleteQuery,
 ) IOEV2.IOEither[error, []*repository.Suggestion] {
+	sr.gotCtx = ctx
 	sr.got = params
 	if sr.err != nil {
 		return IOEV2.Left[[]*repository.Suggestion](sr.err)
@@ -381,4 +394,18 @@ func TestEffectiveLimit(t *testing.T) {
 		"expect a positive limit to pass through")
 	assert.Equal(int64(50), effectiveLimit(50),
 		"expect the cap to pass through")
+}
+
+func TestAutocompleteStockHandlerForwardsContextToRepository(t *testing.T) {
+	assert := require.New(t)
+	stub := &autocompleteStubRepo{}
+	svc := setupTestService(stub)
+	ctx := t.Context()
+
+	_, err := svc.AutocompleteStock(
+		ctx,
+		autocompleteRequest("ys1", 5, stock.StockEntity_STOCK_ENTITY_UNSPECIFIED),
+	)
+	assert.NoError(err)
+	assert.Equal(ctx, stub.gotCtx, "expect handler to forward caller context to AutocompleteStock")
 }
