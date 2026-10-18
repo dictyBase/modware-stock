@@ -22,6 +22,7 @@ import (
 )
 
 type arangorepository struct {
+	connP       *manager.ConnectParams
 	ontoc       *ontoarango.OntoCollection
 	sess        *manager.Session
 	database    *manager.Database
@@ -52,6 +53,7 @@ func NewStockRepo(connP *manager.ConnectParams,
 	ontoP *ontoarango.CollectionParams,
 ) (repository.StockRepository, error) {
 	ar := &arangorepository{
+		connP:       connP,
 		strainOnto:  collP.StrainOntology,
 		plasmidOnto: collP.PlasmidOntology,
 	}

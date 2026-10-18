@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"google.golang.org/grpc/codes"
@@ -24,9 +25,11 @@ import (
 // repository.StockRepository with no-ops, so the handler tests run
 // without a database.
 type fullSearchStubRepo struct {
-	hits []*repository.FullSearchResult
-	err  error
-	got  *repository.FullSearchQuery
+	hits   []*repository.FullSearchResult
+	docs   []*model.StockDoc
+	err    error
+	got    *repository.FullSearchQuery
+	gotCtx context.Context
 }
 
 func (sr *fullSearchStubRepo) GetStrain(string) (*model.StockDoc, error) {
@@ -47,14 +50,29 @@ func (sr *fullSearchStubRepo) EditStrain(*stock.StrainUpdate) (*model.StockDoc, 
 func (sr *fullSearchStubRepo) EditPlasmid(*stock.PlasmidUpdate) IOE.IOEither[error, *model.StockDoc] {
 	return IOE.Left[*model.StockDoc](errors.New("not used"))
 }
-func (sr *fullSearchStubRepo) ListStrains(*stock.StockParameters) ([]*model.StockDoc, error) {
-	return nil, nil
+func (sr *fullSearchStubRepo) ListStrains(
+	ctx context.Context,
+	_ *stock.StockParameters,
+) ([]*model.StockDoc, error) {
+	sr.gotCtx = ctx
+	return sr.docs, sr.err
 }
-func (sr *fullSearchStubRepo) ListStrainsByIDs(*stock.StockIdList) ([]*model.StockDoc, error) {
-	return nil, nil
+func (sr *fullSearchStubRepo) ListStrainsByIDs(
+	ctx context.Context,
+	_ *stock.StockIdList,
+) ([]*model.StockDoc, error) {
+	sr.gotCtx = ctx
+	return sr.docs, sr.err
 }
-func (sr *fullSearchStubRepo) ListPlasmids(*stock.StockParameters) IOE.IOEither[error, []*model.StockDoc] {
-	return IOE.Left[[]*model.StockDoc](errors.New("not used"))
+func (sr *fullSearchStubRepo) ListPlasmids(
+	ctx context.Context,
+	_ *stock.StockParameters,
+) IOE.IOEither[error, []*model.StockDoc] {
+	sr.gotCtx = ctx
+	if sr.err != nil {
+		return IOE.Left[[]*model.StockDoc](sr.err)
+	}
+	return IOE.Of[error](sr.docs)
 }
 func (sr *fullSearchStubRepo) LoadStrain(string, *stock.ExistingStrain) (*model.StockDoc, error) {
 	return nil, nil
@@ -64,8 +82,10 @@ func (sr *fullSearchStubRepo) LoadPlasmid(string, *stock.ExistingPlasmid) IOE.IO
 }
 func (sr *fullSearchStubRepo) RemoveStock(string) error { return nil }
 func (sr *fullSearchStubRepo) SearchStock(
+	ctx context.Context,
 	params *repository.FullSearchQuery,
 ) IOEV2.IOEither[error, []*repository.FullSearchResult] {
+	sr.gotCtx = ctx
 	sr.got = params
 	if sr.err != nil {
 		return IOEV2.Left[[]*repository.FullSearchResult](sr.err)
@@ -73,8 +93,10 @@ func (sr *fullSearchStubRepo) SearchStock(
 	return IOEV2.Of[error](sr.hits)
 }
 func (sr *fullSearchStubRepo) AutocompleteStock(
+	ctx context.Context,
 	_ *repository.AutocompleteQuery,
 ) IOEV2.IOEither[error, []*repository.Suggestion] {
+	sr.gotCtx = ctx
 	return IOEV2.Of[error]([]*repository.Suggestion(nil))
 }
 func (sr *fullSearchStubRepo) Dbh() *manager.Database { return nil }
@@ -354,4 +376,74 @@ func TestFullSearchFieldMapping(t *testing.T) {
 		mapRepositoryField("nosuchfield"),
 		"an unknown label maps to UNSPECIFIED",
 	)
+}
+
+func TestSearchStockHandlerForwardsContextToRepository(t *testing.T) {
+	assert := require.New(t)
+	stub := &fullSearchStubRepo{}
+	svc := setupTestService(stub)
+	ctx := t.Context()
+
+	_, err := svc.SearchStock(
+		ctx,
+		fullSearchRequest("culminants", 10, stock.StockEntity_STOCK_ENTITY_UNSPECIFIED),
+	)
+	assert.NoError(err)
+	assert.Equal(ctx, stub.gotCtx, "expect handler to forward caller context to SearchStock")
+
+	canceledSvc := setupTestService(&fullSearchStubRepo{
+		err: fmt.Errorf("wrapped: %w", context.Canceled),
+	})
+	_, err = canceledSvc.SearchStock(
+		ctx,
+		fullSearchRequest("culminants", 10, stock.StockEntity_STOCK_ENTITY_UNSPECIFIED),
+	)
+	assert.Equal(
+		codes.Canceled,
+		status.Code(err),
+		"expect Canceled status code for context.Canceled",
+	)
+
+	deadlineSvc := setupTestService(&fullSearchStubRepo{
+		err: fmt.Errorf("wrapped: %w", context.DeadlineExceeded),
+	})
+	_, err = deadlineSvc.SearchStock(
+		ctx,
+		fullSearchRequest("culminants", 10, stock.StockEntity_STOCK_ENTITY_UNSPECIFIED),
+	)
+	assert.Equal(
+		codes.DeadlineExceeded,
+		status.Code(err),
+		"expect DeadlineExceeded status code for context.DeadlineExceeded",
+	)
+}
+
+func TestListHandlersForwardContextToRepository(t *testing.T) {
+	doc := &model.StockDoc{
+		StrainProperties:  &model.StrainProperties{Label: testStrainLabel},
+		PlasmidProperties: &model.PlasmidProperties{Name: testPlasmidID},
+	}
+	stub := &fullSearchStubRepo{docs: []*model.StockDoc{doc}}
+	svc := setupTestService(stub)
+
+	t.Run("ListStrains", func(t *testing.T) {
+		ctx := t.Context()
+		_, err := svc.ListStrains(ctx, &stock.StockParameters{Limit: 5})
+		require.NoError(t, err)
+		require.Equal(t, ctx, stub.gotCtx, "expect ListStrains to forward caller context")
+	})
+
+	t.Run("ListStrainsByIDs", func(t *testing.T) {
+		ctx := t.Context()
+		_, err := svc.ListStrainsByIDs(ctx, &stock.StockIdList{Id: []string{testStockID}})
+		require.NoError(t, err)
+		require.Equal(t, ctx, stub.gotCtx, "expect ListStrainsByIDs to forward caller context")
+	})
+
+	t.Run("ListPlasmids", func(t *testing.T) {
+		ctx := t.Context()
+		_, err := svc.ListPlasmids(ctx, &stock.StockParameters{Limit: 5})
+		require.NoError(t, err)
+		require.Equal(t, ctx, stub.gotCtx, "expect ListPlasmids to forward caller context")
+	})
 }

@@ -1,6 +1,7 @@
 package arangodb
 
 import (
+	"context"
 	"fmt"
 
 	F "github.com/IBM/fp-go/function"
@@ -35,6 +36,7 @@ type (
 
 	// plasmidListQueryParams encapsulates parameters for plasmid list query
 	plasmidListQueryParams struct {
+		ctx        context.Context
 		statement  string
 		bindParams map[string]any
 	}
@@ -290,13 +292,23 @@ func (ar *arangorepository) buildPlasmidListQueryParams(
 	}
 }
 
+func withPlasmidListQueryCtx(
+	ctx context.Context,
+) func(plasmidListQueryParams) plasmidListQueryParams {
+	return func(params plasmidListQueryParams) plasmidListQueryParams {
+		params.ctx = ctx
+		return params
+	}
+}
+
 // executePlasmidListQuery executes the query and returns rows
 func (ar *arangorepository) executePlasmidListQuery(
 	queryParams plasmidListQueryParams,
 ) IOE.IOEither[error, dbRows] {
 	return IOE.TryCatchError(
 		func() (dbRows, error) {
-			rows, err := ar.database.SearchRows(
+			rows, err := ar.searchRows(
+				queryParams.ctx,
 				queryParams.statement,
 				queryParams.bindParams,
 			)
@@ -314,6 +326,7 @@ func (ar *arangorepository) scanPlasmidRows(
 ) IOE.IOEither[error, []*model.StockDoc] {
 	return IOE.TryCatchError(
 		func() ([]*model.StockDoc, error) {
+			defer func() { _ = rows.Close() }()
 			if rows.IsEmpty() {
 				return []*model.StockDoc{}, nil
 			}

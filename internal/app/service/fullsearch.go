@@ -22,8 +22,9 @@ import (
 
 type (
 	// fullSearchInput is the boundary input of one full stock search:
-	// the proto request and the repository it searches.
+	// the caller context, the proto request and the repository it searches.
 	fullSearchInput struct {
+		ctx     context.Context
 		request *stock.StockSearchParameters
 		repo    repository.StockRepository
 	}
@@ -38,10 +39,11 @@ type (
 		entity    repository.StockEntityFilter
 	}
 
-	// fullSearch carries the repository, the validated query and the
-	// hits that query returned. The query stays on the state because the
-	// response meta reports its effective limit.
+	// fullSearch carries the caller context, the repository, the validated
+	// query and the hits that query returned. The query stays on the state
+	// because the response meta reports its effective limit.
 	fullSearch struct {
+		ctx   context.Context
 		repo  repository.StockRepository
 		query *repository.FullSearchQuery
 		hits  []*repository.FullSearchResult
@@ -123,7 +125,10 @@ var (
 	isDefaultFullSearchLimit = EQ.Equals(fullSearchLimitEq)(0)
 
 	// isAboveFullSearchCap reports whether a limit is above the hard cap.
-	isAboveFullSearchCap = ORD.Gt(fullSearchLimitOrd)(maxFullSearchLimit)
+	isAboveFullSearchCap = F.Pipe1(
+		maxFullSearchLimit,
+		ORD.Gt(fullSearchLimitOrd),
+	)
 )
 
 // defaultedFullSearchLimit replaces a default limit request with the
@@ -188,13 +193,14 @@ func mapFullSearchEntityFilter(
 }
 
 // newFullSearch lifts the validated params into the search state: the
-// repository of the call and its query, with no hits yet.
+// caller context, the repository of the call and its query, with no hits yet.
 func newFullSearch(
-	repo repository.StockRepository,
+	in fullSearchInput,
 	p fullSearchParams,
 ) fullSearch {
 	return fullSearch{
-		repo: repo,
+		ctx:  in.ctx,
+		repo: in.repo,
 		query: &repository.FullSearchQuery{
 			Query:  p.query,
 			Entity: p.entity,
@@ -222,7 +228,7 @@ func validatedFullSearch(
 			invalidParamStatusOf[fullSearchParams](msgEmptySearchQuery),
 		)),
 		E.Bind(fullSearchEntityLens.Set, mapFullSearchEntityFilter),
-		E.Map[error](F.Bind1st(newFullSearch, in.repo)),
+		E.Map[error](F.Bind1st(newFullSearch, in)),
 		E.MapLeft[fullSearch](invalidParamStatus),
 	)
 }
@@ -234,7 +240,7 @@ func searchStockHits(
 	s fullSearch,
 ) IOE.IOEither[error, []*repository.FullSearchResult] {
 	return F.Pipe1(
-		s.repo.SearchStock(s.query),
+		s.repo.SearchStock(s.ctx, s.query),
 		IOE.MapLeft[[]*repository.FullSearchResult](serverErrorStatus),
 	)
 }
@@ -280,11 +286,11 @@ func successfulFullSearchResult(
 // context stays unused: status.Error is pure, and the repository search
 // takes no context.
 func (s *StockService) SearchStock(
-	_ context.Context,
+	ctx context.Context,
 	r *stock.StockSearchParameters,
 ) (*stock.StockSearchResultCollection, error) {
 	result := F.Pipe5(
-		IOE.Of[error](fullSearchInput{request: r, repo: s.repo}),
+		IOE.Of[error](fullSearchInput{ctx: ctx, request: r, repo: s.repo}),
 		IOE.ChainEitherK(validatedFullSearch),
 		IOE.Bind(fullSearchHitsLens.Set, searchStockHits),
 		IOE.Map[error](toSearchResultCollection),

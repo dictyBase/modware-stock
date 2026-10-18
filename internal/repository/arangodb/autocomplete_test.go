@@ -323,7 +323,7 @@ func autocompleteResult(
 	repo repository.StockRepository,
 	params *repository.AutocompleteQuery,
 ) ([]*repository.Suggestion, error) {
-	suggestions := repo.AutocompleteStock(params)
+	suggestions := repo.AutocompleteStock(context.Background(), params)
 	either := suggestions()
 	return E.UnwrapError(either)
 }

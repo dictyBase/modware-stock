@@ -27,7 +27,7 @@ import (
 )
 
 type (
-	listFn          func(*stock.StockParameters) ([]*model.StockDoc, error)
+	listFn          func(context.Context, *stock.StockParameters) ([]*model.StockDoc, error)
 	modelListParams struct {
 		ctx         context.Context
 		stockParams *stock.StockParameters
@@ -199,7 +199,7 @@ func stockModelList(args *modelListParams) ([]*model.StockDoc, error) {
 			err,
 		)
 	}
-	mc, err := args.fn(&stock.StockParameters{
+	mc, err := args.fn(args.ctx, &stock.StockParameters{
 		Cursor: args.stockParams.Cursor,
 		Limit:  args.limit,
 		Filter: astmt,

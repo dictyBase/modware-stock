@@ -1,6 +1,7 @@
 package arangodb
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"testing"
@@ -307,6 +308,7 @@ func TestListStrainsWithType(t *testing.T) {
 	gwids, err := createTestStrainsWithIDs(15, Gwdi, repo)
 	assert.NoError(err, "expect no error from creating gwdi strains")
 	gwStrains, err := repo.ListStrains(
+		context.Background(),
 		&stock.StockParameters{Limit: 100, Filter: filterGwdiStrain},
 	)
 	assert.NoError(err, "expect no error in getting list of strains")
@@ -319,6 +321,7 @@ func TestListStrainsWithType(t *testing.T) {
 	rids, err := createTestStrainsWithIDs(10, General, repo)
 	assert.NoError(err, "expect no error from creating regular strains")
 	regStrains, err := repo.ListStrains(
+		context.Background(),
 		&stock.StockParameters{Limit: 100, Filter: filterRegularStrain},
 	)
 	assert.NoError(err, "expect no error in getting list of strains")
@@ -331,6 +334,7 @@ func TestListStrainsWithType(t *testing.T) {
 	bids, err := createTestStrainsWithIDs(10, Bacterial, repo)
 	assert.NoError(err, "expect no error from creating bacterial strains")
 	bacStrains, err := repo.ListStrains(
+		context.Background(),
 		&stock.StockParameters{Limit: 100, Filter: filterBacterialStrain},
 	)
 	assert.NoError(err, "expect no error in getting list of strains")
@@ -341,6 +345,7 @@ func TestListStrainsWithType(t *testing.T) {
 		len(bacStrains),
 	)
 	allStrains, err := repo.ListStrains(
+		context.Background(),
 		&stock.StockParameters{Limit: 99, Filter: filterAllStrain},
 	)
 	assert.NoError(err, "expect no error in getting list of strains")
@@ -371,7 +376,7 @@ func testStrainListFilterScenario(
 	description string,
 	shouldError bool,
 ) {
-	strains, err := repo.ListStrains(params)
+	strains, err := repo.ListStrains(context.Background(), params)
 	if shouldError {
 		assert.Error(err, description)
 		return
@@ -443,7 +448,7 @@ func TestListStrainsWithFilter(t *testing.T) {
 	err := createTestStrains(10, General, repo)
 	assert.NoError(err, "expect no error from creating strains")
 
-	sf, err := repo.ListStrains(&stock.StockParameters{Limit: 10, Filter: filterOne})
+	sf, err := repo.ListStrains(context.Background(), &stock.StockParameters{Limit: 10, Filter: filterOne})
 	assert.NoError(err, "expect no error in getting list of strains")
 	assert.Len(sf, 10, "should list ten strains")
 	for _, m := range sf {
@@ -462,7 +467,7 @@ func TestListStrains(t *testing.T) {
 	err := createTestStrains(10, General, repo)
 	assert.NoError(err, "expect no error from creating strains")
 	// get first five results
-	ls, err := repo.ListStrains(&stock.StockParameters{Limit: 4})
+	ls, err := repo.ListStrains(context.Background(), &stock.StockParameters{Limit: 4})
 	assert.NoError(err, "expect no error in getting first five stocks")
 	assert.Len(ls, 5, "should match the provided limit number + 1")
 	for _, stock := range ls {
@@ -488,7 +493,7 @@ func TestListStrains(t *testing.T) {
 	ti := toTimestamp(ls[4].CreatedAt)
 
 	// get next five results (5-9)
-	ls2, err := repo.ListStrains(&stock.StockParameters{Cursor: ti, Limit: 4})
+	ls2, err := repo.ListStrains(context.Background(), &stock.StockParameters{Cursor: ti, Limit: 4})
 	assert.NoError(err, "expect no error in getting stocks 5-9")
 	assert.Len(ls2, 5, "should match the provided limit number + 1")
 	assert.Exactly(
@@ -505,7 +510,7 @@ func TestListStrains(t *testing.T) {
 	// convert ninth result to numeric timestamp
 	ti2 := toTimestamp(ls2[len(ls2)-1].CreatedAt)
 	// get last results (9-10)
-	ls3, err := repo.ListStrains(&stock.StockParameters{Cursor: ti2, Limit: 4})
+	ls3, err := repo.ListStrains(context.Background(), &stock.StockParameters{Cursor: ti2, Limit: 4})
 	assert.NoErrorf(
 		err,
 		"expect no error in getting stocks 9-10, received %s",
@@ -560,7 +565,7 @@ func TestListStrainsByIDs(t *testing.T) {
 	ids, err := createTestStrainsWithIDs(30, General, repo)
 	assert.NoError(err, "expect no error from creating strains")
 
-	ls, err := repo.ListStrainsByIDs(&stock.StockIdList{Id: ids})
+	ls, err := repo.ListStrainsByIDs(context.Background(), &stock.StockIdList{Id: ids})
 	assert.NoError(err, "expect no error in getting strains")
 	assert.Len(ls, 30, "should match the provided limit number")
 	assertStrainListItems(assert, ls, "", testStrainSummary)
@@ -573,12 +578,13 @@ func TestListStrainsByIDs(t *testing.T) {
 	)
 	pids, err := createTestStrainsWithParent(30, General, repo, pm.StockID)
 	assert.NoError(err, "expect no error from creating strains")
-	pls, err := repo.ListStrainsByIDs(&stock.StockIdList{Id: pids})
+	pls, err := repo.ListStrainsByIDs(context.Background(), &stock.StockIdList{Id: pids})
 	assert.NoError(err, "expect no error in getting 30 stocks with parents")
 	assert.Len(pls, 30, "should match the provided limit number")
 	assertStrainListItems(assert, pls, pm.StockID, testStrainSummary)
 
 	els, err := repo.ListStrainsByIDs(
+		context.Background(),
 		&stock.StockIdList{Id: []string{"DBN589343", "DBN48473232"}},
 	)
 	assert.NoErrorf(
@@ -897,7 +903,7 @@ func TestListStrainsWithGeneFilter(t *testing.T) {
 	assert.NoError(err, "expect no error from creating additional strains")
 
 	// Test filtering by gene
-	ls, err := repo.ListStrains(&stock.StockParameters{
+	ls, err := repo.ListStrains(context.Background(), &stock.StockParameters{
 		Limit:  10,
 		Filter: filterGene,
 	})
@@ -908,7 +914,7 @@ func TestListStrainsWithGeneFilter(t *testing.T) {
 		"DDB_G0287317",
 		"returned strain should contain the filtered gene",
 	)
-	ls2, err := repo.ListStrains(&stock.StockParameters{
+	ls2, err := repo.ListStrains(context.Background(), &stock.StockParameters{
 		Limit:  10,
 		Filter: filterGeneMore,
 	})

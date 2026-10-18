@@ -32,6 +32,7 @@ type (
 	// autocompleteRequest is the validated and normalized input of one
 	// autocomplete search.
 	autocompleteRequest struct {
+		ctx    context.Context
 		query  string
 		limit  int
 		entity repository.StockEntityFilter
@@ -40,6 +41,7 @@ type (
 	// autocompleteQueryParams carries the generated statement and its
 	// bind parameters for one autocomplete search.
 	autocompleteQueryParams struct {
+		ctx        context.Context
 		statement  string
 		bindParams map[string]any
 	}
@@ -116,6 +118,15 @@ var (
 		{label: fieldPlasmid, display: autocompleteScalar},
 		{label: fieldName, display: autocompleteScalar},
 	}
+
+	// autocompleteCtxLens focuses the caller context of a validated request.
+	autocompleteCtxLens = L.MakeLens(
+		func(req autocompleteRequest) context.Context { return req.ctx },
+		func(req autocompleteRequest, ctx context.Context) autocompleteRequest {
+			req.ctx = ctx
+			return req
+		},
+	)
 
 	// entityLens focuses the entity filter of a validated request.
 	entityLens = L.MakeLens(
@@ -379,6 +390,7 @@ func (ar *arangorepository) buildAutocompleteQueryParams(
 	req autocompleteRequest,
 ) autocompleteQueryParams {
 	return autocompleteQueryParams{
+		ctx:       req.ctx,
 		statement: buildAutocompleteQuery(),
 		bindParams: map[string]any{
 			"q":                req.query,
@@ -398,7 +410,7 @@ func (ar *arangorepository) executeAutocompleteQuery(
 	return F.Pipe1(
 		IOE.TryCatchError(
 			func() (dbRows, error) {
-				return ar.database.SearchRows(params.statement, params.bindParams)
+				return ar.searchRows(params.ctx, params.statement, params.bindParams)
 			},
 		),
 		IOE.MapLeft[dbRows](
@@ -412,11 +424,15 @@ func (ar *arangorepository) executeAutocompleteQuery(
 // query, clamps the limit, and validates the entity filter before any
 // AQL runs.
 func (ar *arangorepository) AutocompleteStock(
+	ctx context.Context,
 	params *repository.AutocompleteQuery,
 ) IOE.IOEither[error, []*repository.Suggestion] {
-	return F.Pipe5(
+	baseCtx := normalizeQueryContext(ctx)
+	withCtx := autocompleteCtxLens.Set(baseCtx)
+	return F.Pipe6(
 		params,
 		validateAutocompleteRequest,
+		IOE.Map[error](withCtx),
 		IOE.Map[error](ar.buildAutocompleteQueryParams),
 		IOE.Chain(ar.executeAutocompleteQuery),
 		IOE.Chain(

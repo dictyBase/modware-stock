@@ -1,6 +1,7 @@
 package arangodb
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"testing"
@@ -213,7 +214,7 @@ func TestListPlasmidsByTagExactMatch(t *testing.T) {
 
 	// Execute: Query for Gateway vector
 	result := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{
+		repo.ListPlasmids(context.Background(), &stock.StockParameters{
 			Limit:  10,
 			Filter: tagFilterGatewayExact,
 		}),
@@ -253,7 +254,7 @@ func TestListPlasmidsByTagRegexMatch(t *testing.T) {
 
 	// Execute: Query for "vector" (should match all 3)
 	result := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{
+		repo.ListPlasmids(context.Background(), &stock.StockParameters{
 			Limit:  10,
 			Filter: tagFilterVectorRegex,
 		}),
@@ -287,7 +288,7 @@ func TestListPlasmidsByTagWithCursorPagination(t *testing.T) {
 	// Page 1
 	limit := 5
 	res1 := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{
+		repo.ListPlasmids(context.Background(), &stock.StockParameters{
 			Limit:  int64(limit),
 			Filter: tagFilterGatewayExact,
 		}),
@@ -302,7 +303,7 @@ func TestListPlasmidsByTagWithCursorPagination(t *testing.T) {
 	lastItem := page1[len(page1)-1]
 	cursor := toTimestamp(lastItem.CreatedAt)
 	res2 := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{
+		repo.ListPlasmids(context.Background(), &stock.StockParameters{
 			Limit:  int64(limit),
 			Cursor: cursor,
 			Filter: tagFilterGatewayExact,
@@ -338,7 +339,7 @@ func TestListPlasmidsByTagEmptyResults(t *testing.T) {
 
 	// Execute: Query for non-existent tag
 	result := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{
+		repo.ListPlasmids(context.Background(), &stock.StockParameters{
 			Limit:  10,
 			Filter: tagFilterNonExistent,
 		}),
@@ -370,7 +371,7 @@ func TestListPlasmidsByTagMultipleTerms(t *testing.T) {
 
 	// Test Gateway
 	res1 := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{
+		repo.ListPlasmids(context.Background(), &stock.StockParameters{
 			Limit:  10,
 			Filter: tagFilterGatewayExact,
 		}),
@@ -384,7 +385,7 @@ func TestListPlasmidsByTagMultipleTerms(t *testing.T) {
 
 	// Test GFP
 	res2 := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{
+		repo.ListPlasmids(context.Background(), &stock.StockParameters{
 			Limit:  10,
 			Filter: tagFilterGFPExact,
 		}),

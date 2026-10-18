@@ -49,6 +49,7 @@ type (
 	// fullSearchRequest is the validated and normalized input of one
 	// full search.
 	fullSearchRequest struct {
+		ctx    context.Context
 		query  string
 		limit  int
 		entity repository.StockEntityFilter
@@ -57,6 +58,7 @@ type (
 	// fullSearchQueryParams carries the generated statement and its bind
 	// parameters for one full search.
 	fullSearchQueryParams struct {
+		ctx        context.Context
 		statement  string
 		bindParams map[string]any
 	}
@@ -173,6 +175,15 @@ var (
 		},
 	)
 
+	// fullSearchCtxLens focuses the caller context of a validated request.
+	fullSearchCtxLens = L.MakeLens(
+		func(req fullSearchRequest) context.Context { return req.ctx },
+		func(req fullSearchRequest, ctx context.Context) fullSearchRequest {
+			req.ctx = ctx
+			return req
+		},
+	)
+
 	// fullSearchQueryLens focuses the normalized query of a validated
 	// request.
 	fullSearchQueryLens = L.MakeLens(
@@ -260,6 +271,7 @@ func (ar *arangorepository) buildFullSearchQueryParams(
 	req fullSearchRequest,
 ) fullSearchQueryParams {
 	return fullSearchQueryParams{
+		ctx:       req.ctx,
 		statement: buildFullSearchQuery(),
 		bindParams: map[string]any{
 			"q":                 req.query,
@@ -280,7 +292,7 @@ func (ar *arangorepository) executeFullSearchQuery(
 	return F.Pipe1(
 		IOE.TryCatchError(
 			func() (dbRows, error) {
-				return ar.database.SearchRows(params.statement, params.bindParams)
+				return ar.searchRows(params.ctx, params.statement, params.bindParams)
 			},
 		),
 		IOE.MapLeft[dbRows](
@@ -314,11 +326,15 @@ func toFullSearchResults(
 // punctuation-only or all-stopword query, clamps the limit, and validates
 // the entity filter before any AQL runs. An empty result is not an error.
 func (ar *arangorepository) SearchStock(
+	ctx context.Context,
 	params *repository.FullSearchQuery,
 ) IOE.IOEither[error, []*repository.FullSearchResult] {
-	return F.Pipe5(
+	baseCtx := normalizeQueryContext(ctx)
+	withCtx := fullSearchCtxLens.Set(baseCtx)
+	return F.Pipe6(
 		IOE.Of[error](params),
 		IOE.ChainEitherK(validateFullSearchRequest),
+		IOE.Map[error](withCtx),
 		IOE.Map[error](ar.buildFullSearchQueryParams),
 		IOE.Chain(ar.executeFullSearchQuery),
 		IOE.Chain(

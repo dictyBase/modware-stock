@@ -1,6 +1,7 @@
 package arangodb
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"testing"
@@ -224,7 +225,7 @@ func testPlasmidListFilter(
 	params *stock.StockParameters,
 	expectedLen int,
 ) {
-	result := F.Pipe2(repo.ListPlasmids(params), ToEither, toStockDocListResult)
+	result := F.Pipe2(repo.ListPlasmids(context.Background(), params), ToEither, toStockDocListResult)
 	docs, err := result.F1, result.F2
 	assert.NoErrorf(err, "expect no error, received %s", err)
 	assert.Len(docs, expectedLen, "should match expected length")
@@ -256,6 +257,7 @@ func TestListPlasmidsWithFilter(t *testing.T) {
 	createTestPlasmids(assert, repo, 10)
 
 	result4 := F.Pipe2(repo.ListPlasmids(
+		context.Background(),
 		&stock.StockParameters{Limit: 10, Filter: georgeFilter},
 	), ToEither, toStockDocListResult)
 
@@ -284,7 +286,7 @@ func TestListPlasmids(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	result9 := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{Limit: 4}),
+		repo.ListPlasmids(context.Background(), &stock.StockParameters{Limit: 4}),
 		ToEither,
 		toStockDocListResult,
 	)
@@ -342,7 +344,7 @@ func testPaginatedPlasmidList(
 ) []*model.StockDoc {
 	cursor := toTimestamp(previousList[len(previousList)-1].CreatedAt)
 	result := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{Cursor: cursor, Limit: 4}),
+		repo.ListPlasmids(context.Background(), &stock.StockParameters{Cursor: cursor, Limit: 4}),
 		ToEither,
 		toStockDocListResult,
 	)
@@ -364,7 +366,7 @@ func testFilteredPlasmidList(
 	assert *require.Assertions,
 ) {
 	result := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{Limit: 100, Filter: georgeFilter}),
+		repo.ListPlasmids(context.Background(), &stock.StockParameters{Limit: 100, Filter: georgeFilter}),
 		ToEither,
 		toStockDocListResult,
 	)
@@ -374,7 +376,7 @@ func testFilteredPlasmidList(
 	assert.Len(docs, 10, "should list ten plasmids")
 
 	cursorResult := F.Pipe2(
-		repo.ListPlasmids(&stock.StockParameters{
+		repo.ListPlasmids(context.Background(), &stock.StockParameters{
 			Cursor: toTimestamp(docs[4].CreatedAt),
 			Limit:  10,
 		}),

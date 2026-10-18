@@ -384,7 +384,7 @@ func retrievePlasmidsFromRepository(
 	lctx withValidatedFilter,
 ) IOE.IOEither[error, []*model.StockDoc] {
 	return F.Pipe1(
-		lctx.repo.ListPlasmids(&stock.StockParameters{
+		lctx.repo.ListPlasmids(lctx.ctx, &stock.StockParameters{
 			Cursor: lctx.param.Cursor,
 			Limit:  lctx.limit,
 			Filter: lctx.validatedFilter,
