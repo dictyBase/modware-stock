@@ -2,7 +2,6 @@ package arangodb
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/cockroachdb/errors"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
@@ -42,11 +41,8 @@ func (ar *arangorepository) ListStrains(
 	param *stock.StockParameters,
 ) ([]*model.StockDoc, error) {
 	omd := make([]*model.StockDoc, 0)
-	stmt, paramsBind := ar.strainStmtNoFilter(param)
-	if len(param.Filter) > 0 {
-		stmt, paramsBind = ar.strainStmtWithFilter(param)
-	}
-	rs, err := ar.searchRows(ctx, stmt, paramsBind)
+	page := ar.strainListPage(param)
+	rs, err := ar.searchRows(ctx, page.statement, page.bindParams)
 	if err != nil {
 		return omd, err
 	}
@@ -100,38 +96,22 @@ func (ar *arangorepository) ListStrainsByIDs(
 	return ms, nil
 }
 
-func (ar *arangorepository) strainStmtWithFilter(
+// strainListPage resolves the AQL template and the bind parameters of one
+// strain list page. An empty filter and a stock-only filter share the stock
+// collection bindings, but they take different templates.
+func (ar *arangorepository) strainListPage(
 	param *stock.StockParameters,
-) (string, map[string]any) {
-	stmtMap := map[string]any{
-		bindCvtermCollection: ar.ontoc.Term.Name(),
-		bindCVCollection:     ar.ontoc.Cv.Name(),
-		nameStockCvtermGraph: ar.stockc.stockOnto.Name(),
-		nameStockPropGraph:   ar.stockc.stockPropType.Name(),
-		paramLimit:           param.Limit + 1,
-	}
-	if param.Cursor != 0 { // no cursor so return first set of results with filter
-		stmt := fmt.Sprintf(statement.StrainListFilterWithCursor, param.Filter)
-		stmtMap["cursor"] = param.Cursor
-		return stmt, stmtMap
-	}
-	stmt := fmt.Sprintf(statement.StrainListFilter, param.Filter)
-	return stmt, stmtMap
+) strainListPage {
+	return strainListPageOf(param, ar.strainListNames())
 }
 
-func (ar *arangorepository) strainStmtNoFilter(
-	param *stock.StockParameters,
-) (string, map[string]any) {
-	stmt := statement.StrainList
-	stmtMap := map[string]any{
-		bindStockCollection: ar.stockc.stock.Name(),
-		nameStockPropGraph:  ar.stockc.stockPropType.Name(),
-		paramLimit:          param.Limit + 1,
+// strainListNames reads the collection and graph names of the repository.
+func (ar *arangorepository) strainListNames() strainListNames {
+	return strainListNames{
+		stock:            ar.stockc.stock.Name(),
+		stockPropGraph:   ar.stockc.stockPropType.Name(),
+		cvterm:           ar.ontoc.Term.Name(),
+		cv:               ar.ontoc.Cv.Name(),
+		stockCvtermGraph: ar.stockc.stockOnto.Name(),
 	}
-	if param.Cursor != 0 {
-		stmt = statement.StrainListWithCursor
-		stmtMap["cursor"] = param.Cursor
-	}
-
-	return stmt, stmtMap
 }
