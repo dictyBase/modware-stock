@@ -292,8 +292,8 @@ Acceptance targets:
 
 1. **Fix the tie behaviour of the cursor.** Add `_key` to the sort and switch the cursor
    clause to the keyset form above, in all cursor templates of both strain and plasmid
-   lists. This is a separate change with its own tests, and it is not yet tracked by an
-   issue.
+   lists. This is a separate change with its own tests, and the cursor contract change it
+   needs is a decision on its own. **Tracked in dictyBase/modware-stock#448.**
 2. **The stock-first route still reads the whole `stock` collection** (29,841 documents)
    when the filter compares a document attribute (`genes`, `summary`, `label`). The gain
    comes from dropping the ontology collections and graph, not from an index. A filter that
