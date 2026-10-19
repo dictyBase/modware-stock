@@ -293,9 +293,29 @@ Acceptance targets:
 1. **Fix the tie behaviour of the cursor.** Add `_key` to the sort and switch the cursor
    clause to the keyset form above, in all cursor templates of both strain and plasmid
    lists. This is a separate change with its own tests.
-2. **The stock-first route still scans the whole `stock` collection** (29,841 documents)
-   for filters with no supporting index (`genes`, `summary`, `label`). The gain comes from
-   dropping the ontology collections and graph, not from an index. A filter that matches
-   few rows gains little (1.3× for the label filter). Consider indexes for the property
-   fields if those filters are common.
+2. **The stock-first route still reads the whole `stock` collection** (29,841 documents)
+   when the filter compares a document attribute (`genes`, `summary`, `label`). The gain
+   comes from dropping the ontology collections and graph, not from an index. A filter that
+   matches few rows gains little (1.3× for the label filter).
+
+   **Correction to the first version of this note.** That version said those fields have no
+   index and proposed persistent indexes for them. Both statements were wrong. The
+   repository creates two ArangoSearch views, `stock_autocomplete` and `stock_full_search`
+   (`ensureAutocompleteSearch` and `ensureFullSearch` in `internal/repository/arangodb/`).
+   They index `stock_id`, `genes`, `dbxrefs`, `label`, `names`, `species`, `plasmid`,
+   `name`, `summary` and `depositor`. The fields are indexed.
+
+   What is true is narrower: an ArangoSearch view index only serves a `SEARCH` over that
+   view. Both strain list routes use `FILTER` over document attributes, so the view never
+   participates in them, which is why the plan shows a collection read. The autocomplete
+   and full-search statements are the ones that use `SEARCH`, and they already reach these
+   fields efficiently.
+
+   So do **not** add persistent indexes on `genes`, `summary` or `label` for the list
+   routes. That duplicates an index the views already hold and does not serve the search
+   RPCs. The real question is different: `README.md` documents `gene`, `summary` and `label`
+   as `ListStrains` filter keys, while the product searches those fields through
+   `SearchStock`. Use real traffic to decide whether the list endpoint must stay fast for
+   those keys. If it must, the next step is a fourth route that uses `SEARCH` over the
+   existing view, not a new index.
 3. **Repeat this measurement after any index or graph change.**
