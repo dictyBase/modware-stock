@@ -292,7 +292,8 @@ Acceptance targets:
 
 1. **Fix the tie behaviour of the cursor.** Add `_key` to the sort and switch the cursor
    clause to the keyset form above, in all cursor templates of both strain and plasmid
-   lists. This is a separate change with its own tests.
+   lists. This is a separate change with its own tests, and it is not yet tracked by an
+   issue.
 2. **The stock-first route still reads the whole `stock` collection** (29,841 documents)
    when the filter compares a document attribute (`genes`, `summary`, `label`). The gain
    comes from dropping the ontology collections and graph, not from an index. A filter that
@@ -317,5 +318,5 @@ Acceptance targets:
    as `ListStrains` filter keys, while the product searches those fields through
    `SearchStock`. Use real traffic to decide whether the list endpoint must stay fast for
    those keys. If it must, the next step is a fourth route that uses `SEARCH` over the
-   existing view, not a new index.
+   existing view, not a new index. **Tracked in dictyBase/modware-stock#447.**
 3. **Repeat this measurement after any index or graph change.**
