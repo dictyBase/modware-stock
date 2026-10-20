@@ -19,13 +19,13 @@ jobs:
     uses: dictyBase/workflows/.github/workflows/composite-deploy.yaml@develop
     secrets: inherit
     with:
-      app: annotation
-      project: modware-annotation
+      app: stock
+      project: modware-stock
       stack: dcr-kube1
       repository: ${{ github.repository }}
       ref: ${{ github.ref_name }}
       dockerfile: build/package/Dockerfile
-      docker_image: modware-annotation
+      docker_image: modware-stock
       cluster: ${{ vars.PROD_CLUSTER }}
       cluster_state_storage: ${{ vars.PROD_KOPS_STATE_STORAGE }}
       kops_version: ${{ vars.PROD_KOPS_VERSION }}
