@@ -32,6 +32,7 @@ type (
 		Value       string  `json:"v"`
 		Summary     string  `json:"sm"`
 		StrainLabel string  `json:"sl"`
+		StockType   string  `json:"st"`
 		Score       float64 `json:"s"`
 	}
 	fullSearchColl    int
@@ -274,12 +275,16 @@ func (ar *arangorepository) buildFullSearchQueryParams(
 		ctx:       req.ctx,
 		statement: buildFullSearchQuery(),
 		bindParams: map[string]any{
-			"q":                 req.query,
-			"th":                fullSearchNgramThreshold,
-			"limit":             req.limit,
-			"entity":            string(req.entity),
-			nameStockPropGraph:  ar.stockc.stockPropType.Name(),
-			nameStockCollection: ar.stockc.stock.Name(),
+			"q":                  req.query,
+			"th":                 fullSearchNgramThreshold,
+			"limit":              req.limit,
+			"entity":             string(req.entity),
+			nameStockPropGraph:   ar.stockc.stockPropType.Name(),
+			nameStockCollection:  ar.stockc.stock.Name(),
+			nameStockCvtermGraph: ar.stockc.stockOnto.Name(),
+			bindCVCollection:     ar.ontoc.Cv.Name(),
+			paramStrainOntology:  ar.strainOnto,
+			paramPlasmidOntology: ar.plasmidOnto,
 		},
 	}
 }
@@ -352,6 +357,7 @@ func (r searchResultRow) result() *repository.FullSearchResult {
 		DisplayText: r.Value,
 		Summary:     r.Summary,
 		StrainLabel: r.StrainLabel,
+		StockType:   r.StockType,
 		Entity:      repository.StockEntityFilter(r.Entity),
 		Score:       r.Score,
 	}

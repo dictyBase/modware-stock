@@ -88,6 +88,7 @@ func TestSearchStockEndToEnd(t *testing.T) {
 	assert.Equal(stock.StockSearchField_STOCK_SEARCH_FIELD_LABEL, row.Field)
 	assert.Equal(testStrainLabel, row.DisplayText)
 	assert.Equal(testStrainLabel, row.StrainLabel)
+	assert.Equal("general strain", row.StockType)
 	assert.GreaterOrEqual(row.Score, float64(1000))
 	assert.Equal(
 		"the end to end forms culminants summary",

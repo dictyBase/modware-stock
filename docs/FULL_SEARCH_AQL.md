@@ -614,12 +614,13 @@ A reader can check one against the other by eye.
 4. **`FOR x IN best`, `SORT x.s DESC, x.k ASC`, `LIMIT @limit`.** The
    deduplicated rows sort once more. `LIMIT @limit` then cuts the list
    to the requested length.
-5. **`LET stk = DOCUMENT(@stock_collection, x.k)`.** This reads the
-   stock document to get `summary` for the `sm` attribute. The lookup
-   sits **after** the `LIMIT` on purpose. At that point at most 50 rows
-   remain, so the statement reads at most 50 documents per request. A
-   lookup before the `LIMIT` reads up to 950.
-6. **`RETURN { k, id, entity, f, v, s, sm, sl }`.** This is the final
+5. **`LET stk = DOCUMENT(@stock_collection, x.k)` and `LET term = FIRST(...)`.**
+   These read the stock document to get `summary` for `sm` and traverse
+   `@stock_cvterm_graph` to get the ontology term label for `st`. Both
+   sit **after** the `LIMIT` on purpose. At that point at most 50 rows
+   remain, so the statement reads at most 50 documents and traverses at
+   most 50 ontology edges per request.
+6. **`RETURN { k, id, entity, f, v, s, sm, sl, st }`.** This is the final
    row shape. The Go type `searchResultRow` decodes it with the same
    JSON tags.
 
@@ -688,12 +689,16 @@ func (ar *arangorepository) buildFullSearchQueryParams(
 	return fullSearchQueryParams{
 		statement: buildFullSearchQuery(),
 		bindParams: map[string]any{
-			"q":                 req.query,
-			"th":                fullSearchNgramThreshold,
-			"limit":             req.limit,
-			"entity":            string(req.entity),
-			nameStockPropGraph:  ar.stockc.stockPropType.Name(),
-			nameStockCollection: ar.stockc.stock.Name(),
+			"q":                  req.query,
+			"th":                 fullSearchNgramThreshold,
+			"limit":              req.limit,
+			"entity":             string(req.entity),
+			nameStockPropGraph:   ar.stockc.stockPropType.Name(),
+			nameStockCollection:  ar.stockc.stock.Name(),
+			nameStockCvtermGraph: ar.stockc.stockOnto.Name(),
+			bindCVCollection:     ar.ontoc.Cv.Name(),
+			paramStrainOntology:  ar.strainOnto,
+			paramPlasmidOntology: ar.plasmidOnto,
 		},
 	}
 }
@@ -707,6 +712,10 @@ func (ar *arangorepository) buildFullSearchQueryParams(
 | `@entity` | the entity filter, an empty string for no filter | the second `FILTER` of all 19 branches |
 | `@stock_prop_graph` | the live graph name from the repository | the traversal of all 19 branches |
 | `@stock_collection` | the live stock collection name | the `DOCUMENT` lookup in the merge |
+| `@stock_cvterm_graph` | the live stock ontology graph name | the ontology traversal in the merge |
+| `@@cv_collection` | the live ontology graph info collection name | the ontology filter in the merge |
+| `@strain_ontology` | the configured strain ontology namespace | the strain arm of the ontology filter in the merge |
+| `@plasmid_ontology` | the configured plasmid ontology namespace | the plasmid arm of the ontology filter in the merge |
 
 The last two values come from the configured collection names and not
 from a literal. A deployment can rename its collections without a
@@ -929,6 +938,14 @@ FOR x IN best
   SORT x.s DESC, x.k ASC
   LIMIT @limit
   LET stk = DOCUMENT(@stock_collection, x.k)
+  LET term = FIRST(
+    FOR cg IN 1..1 OUTBOUND stk GRAPH @stock_cvterm_graph
+      FOR cv IN @@cv_collection
+        FILTER cg.deprecated == false
+        FILTER cg.graph_id == cv._id
+        FILTER cv.metadata.namespace == (x.entity == "strain" ? @strain_ontology : @plasmid_ontology)
+        RETURN cg.label
+  )
   RETURN {
     k: x.k,
     id: x.id,
@@ -937,7 +954,8 @@ FOR x IN best
     v: x.v,
     s: x.s,
     sm: NOT_NULL(stk.summary, ""),
-    sl: x.sl
+    sl: x.sl,
+    st: NOT_NULL(term, "")
   }
 ```
 
