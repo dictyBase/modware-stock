@@ -18,13 +18,15 @@ const (
 	nameStockKeyGenerator = "stock_key_generator_collection"
 
 	// Query bind parameter names.
-	paramStockID  = "stock_id"
-	paramOntology = "ontology"
-	paramLimit    = "limit"
-	paramCursor   = "cursor"
-	paramKey      = "key"
-	paramName     = "name"
-	paramParent   = "parent"
+	paramStockID         = "stock_id"
+	paramOntology        = "ontology"
+	paramStrainOntology  = "strain_ontology"
+	paramPlasmidOntology = "plasmid_ontology"
+	paramLimit           = "limit"
+	paramCursor          = "cursor"
+	paramKey             = "key"
+	paramName            = "name"
+	paramParent          = "parent"
 
 	// Attribute/field names used in bind params, filter maps and property maps.
 	fieldCreatedAt       = "created_at"

@@ -300,8 +300,10 @@ func TestBuildFullSearchQueryBranchCount(t *testing.T) {
 	)
 	branchVars := regexp.MustCompile(`LET [pnth]\d+ = \(`).FindAllString(q, -1)
 	assert.Len(branchVars, 19, "expect 19 branch variables")
-	assert.Equal(9, strings.Count(q, "OUTBOUND"),
+	assert.Equal(9, strings.Count(q, "OUTBOUND d GRAPH"),
 		"expect one OUTBOUND traversal per stage of the 6 stock fields")
+	assert.Equal(1, strings.Count(q, "OUTBOUND stk GRAPH"),
+		"expect one OUTBOUND ontology traversal in the merge tail")
 	assert.Equal(10, strings.Count(q, "INBOUND"),
 		"expect one INBOUND traversal per stage of the 5 property fields")
 	assert.Equal(8, strings.Count(q, "ANALYZER(STARTS_WITH"))
@@ -394,12 +396,19 @@ func TestBuildFullSearchQueryDocumentLookupIsAfterLimit(t *testing.T) {
 	tail := q[strings.LastIndex(q, "FOR x IN best"):]
 	limit := strings.Index(tail, "LIMIT @limit")
 	doc := strings.Index(tail, "DOCUMENT(@stock_collection")
+	onto := strings.Index(tail, "OUTBOUND stk GRAPH @stock_cvterm_graph")
 	assert.GreaterOrEqual(limit, 0, "the tail must hold the limit")
 	assert.GreaterOrEqual(doc, 0, "the tail must read the stock document")
+	assert.GreaterOrEqual(onto, 0, "the tail must traverse the ontology graph")
 	assert.Less(
 		limit,
 		doc,
 		"the DOCUMENT lookup must run after the tail LIMIT",
+	)
+	assert.Less(
+		limit,
+		onto,
+		"the ontology traversal must run after the tail LIMIT",
 	)
 }
 
@@ -488,6 +497,7 @@ func TestSearchStockTokenMatchInSummary(t *testing.T) {
 	assert.GreaterOrEqual(row.Score, float64(500), "expect the degenerate phrase band")
 	assert.Less(row.Score, float64(1000), "the phrase band ends below 1000")
 	assert.Equal(testStrainLabelY, row.StrainLabel)
+	assert.Equal(testStrainSummary, row.StockType)
 }
 
 func TestSearchStockDoesNotSearchEditableSummary(t *testing.T) {
@@ -641,6 +651,28 @@ func TestSearchStockPlasmidMetadataAndMissingSummary(t *testing.T) {
 	assert.Equal(repository.EntityPlasmid, rows[0].Entity)
 	assert.Empty(rows[0].Summary, "expect an empty summary")
 	assert.Empty(rows[0].StrainLabel, "expect an empty strain label")
+	assert.Equal("cloning vector", rows[0].StockType)
+}
+
+func TestSearchStockReturnsOntologyStockType(t *testing.T) {
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	gwdi := addFullSearchStrain(assert, repo, func(a *stock.NewStrainAttributes) {
+		a.Label = "gwdiuniq"
+		a.DictyStrainProperty = Gwdi.String()
+	})
+	gb := addFullSearchPlasmid(assert, repo, func(a *stock.NewPlasmidAttributes) {
+		a.Name = "pGBxyz"
+		a.DictyPlasmidProperty = "GB vector"
+	})
+	gwdiRows := waitFullSearchRows(assert, repo, "gwdiuniq")
+	assert.Len(gwdiRows, 1, "expect the GWDI strain")
+	assert.Equal(gwdi.Key, gwdiRows[0].ID)
+	assert.Equal(Gwdi.String(), gwdiRows[0].StockType)
+	gbRows := waitFullSearchRows(assert, repo, "pgbxyz")
+	assert.Len(gbRows, 1, "expect the GoldenBraid plasmid")
+	assert.Equal(gb.Key, gbRows[0].ID)
+	assert.Equal("GB vector", gbRows[0].StockType)
 }
 
 func TestSearchStockIdentifierPrefixFields(t *testing.T) {

@@ -73,6 +73,10 @@ type (
 		// StrainLabel is the strain property label shown as Descriptor in the
 		// stock center. It is empty for plasmids and missing labels.
 		StrainLabel string
+		// StockType is the ontology term label of the stock
+		// (dicty_strain_property for strains, dicty_plasmid_keyword for
+		// plasmids). It is empty when the term is absent.
+		StockType string
 		// Entity is the kind of the matched stock. It is never EntityBoth.
 		Entity StockEntityFilter
 		// Score ranks the match. A prefix match scores above a phrase match, a

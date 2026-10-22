@@ -311,5 +311,6 @@ func mapFullSearchResult(row *repository.FullSearchResult) *stock.StockSearchRes
 		Score:       row.Score,
 		Summary:     row.Summary,
 		StrainLabel: row.StrainLabel,
+		StockType:   row.StockType,
 	}
 }

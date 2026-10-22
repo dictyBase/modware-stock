@@ -83,17 +83,19 @@ const (
 )`
 
 	// FullSearchMerge merges the 19 branches of the full search statement
-	// and returns the top rows with their complete stored summaries. The
-	// builder fills it with one verb:
+	// and returns the top rows with their complete stored summaries and
+	// ontology term labels. The builder fills it with one verb:
 	//
 	//  1. %s — the comma-separated list of the 19 branch variables
 	//
-	// It requires the bind parameters limit and stock_collection. The
-	// merge keeps one best row per stock key by score DESC and field label
-	// ASC, then sorts by score DESC and stock key ASC. The DOCUMENT lookup
-	// sits after the tail LIMIT, so it reads at most 50 documents per
-	// request. The variable is named hits, because all is a reserved word
-	// in AQL; the collect variable is stkey.
+	// It requires the bind parameters limit, stock_collection,
+	// stock_cvterm_graph, @cv_collection, strain_ontology, and
+	// plasmid_ontology. The merge keeps one best row per stock key by
+	// score DESC and field label ASC, then sorts by score DESC and stock
+	// key ASC. The DOCUMENT lookup and ontology traversal sit after the
+	// tail LIMIT, so they run at most 50 times per request. The variable
+	// is named hits, because all is a reserved word in AQL; the collect
+	// variable is stkey.
 	FullSearchMerge = `LET hits = FLATTEN([%s])
 LET best = (
   FOR x IN hits
@@ -109,6 +111,14 @@ FOR x IN best
   SORT x.s DESC, x.k ASC
   LIMIT @limit
   LET stk = DOCUMENT(@stock_collection, x.k)
+  LET term = FIRST(
+    FOR cg IN 1..1 OUTBOUND stk GRAPH @stock_cvterm_graph
+      FOR cv IN @@cv_collection
+        FILTER cg.deprecated == false
+        FILTER cg.graph_id == cv._id
+        FILTER cv.metadata.namespace == (x.entity == "strain" ? @strain_ontology : @plasmid_ontology)
+        RETURN cg.label
+  )
   RETURN {
     k: x.k,
     id: x.id,
@@ -117,6 +127,7 @@ FOR x IN best
     v: x.v,
     s: x.s,
     sm: NOT_NULL(stk.summary, ""),
-    sl: x.sl
+    sl: x.sl,
+    st: NOT_NULL(term, "")
   }`
 )
