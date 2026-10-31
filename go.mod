@@ -22,7 +22,7 @@ require (
 	github.com/IBM/fp-go v1.1.84
 	github.com/IBM/fp-go/v2 v2.13.0
 	github.com/bufbuild/protovalidate-go v0.10.0
-	github.com/dictyBase/fp-go-loom v0.0.0-20261010160534-3c971335f51e
+	github.com/dictyBase/fp-go-loom v0.2.0
 	github.com/testcontainers/testcontainers-go/modules/nats v0.44.0
 	golang.org/x/text v0.43.0
 )
