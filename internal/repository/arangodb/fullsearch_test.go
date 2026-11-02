@@ -496,7 +496,7 @@ func TestSearchStockTokenMatchInSummary(t *testing.T) {
 	// stage; the plan's failure behavior table documents this.
 	assert.GreaterOrEqual(row.Score, float64(500), "expect the degenerate phrase band")
 	assert.Less(row.Score, float64(1000), "the phrase band ends below 1000")
-	assert.Equal(testStrainLabelY, row.StrainLabel)
+	assert.Equal(testStrainLabelY, row.StockLabel)
 	assert.Equal(testStrainSummary, row.StockType)
 }
 
@@ -650,7 +650,7 @@ func TestSearchStockPlasmidMetadataAndMissingSummary(t *testing.T) {
 	assert.Equal(fieldName, rows[0].Field)
 	assert.Equal(repository.EntityPlasmid, rows[0].Entity)
 	assert.Empty(rows[0].Summary, "expect an empty summary")
-	assert.Empty(rows[0].StrainLabel, "expect an empty strain label")
+	assert.Equal("pzzzuniq", rows[0].StockLabel, "expect the plasmid name as stock label")
 	assert.Equal("cloning vector", rows[0].StockType)
 }
 
@@ -695,7 +695,7 @@ func TestSearchStockIdentifierPrefixFields(t *testing.T) {
 		{"gammas", fieldNames, strain.Key, testStrainLabelY},
 		{"dictyo", fieldSpecies, strain.Key, testStrainLabelY},
 		{"dbp00", fieldPlasmid, strain.Key, testStrainLabelY},
-		{"p123", fieldName, plasmid.Key, ""},
+		{"p123", fieldName, plasmid.Key, "p123456"},
 	}
 	for _, p := range probes {
 		rows := autocompleteRowsSearch(assert, repo, p.query)
@@ -705,8 +705,8 @@ func TestSearchStockIdentifierPrefixFields(t *testing.T) {
 		assert.Equal(p.id, row.ID, "expect the stock identifier for query %q", p.query)
 		assert.GreaterOrEqual(row.Score, float64(1000),
 			"expect a prefix score for query %q", p.query)
-		assert.Equal(p.label, row.StrainLabel,
-			"expect the strain label for query %q", p.query)
+		assert.Equal(p.label, row.StockLabel,
+			"expect the stock label for query %q", p.query)
 	}
 }
 
@@ -938,7 +938,7 @@ func TestSearchStockHandlesMissingPropertyMetadata(t *testing.T) {
 	)
 	assert.NoError(err, "expect no error for the marker query")
 	assert.Len(rows, 1, "expect the linked strain")
-	assert.Empty(rows[0].StrainLabel, "expect an empty strain label")
+	assert.Empty(rows[0].StockLabel, "expect an empty stock label")
 }
 
 func TestSearchStockArrayDisplayFallback(t *testing.T) {

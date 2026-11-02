@@ -229,7 +229,7 @@ resp, err := client.AutocompleteStock(ctx, &stock.StockAutocompleteParameters{
 
 ### Stock Full Search
 
-The `SearchStock` method gives a ranked list of stocks for a query of 2 characters or more, with stock ID, kind, matched field, display text, score, `summary` and `strain_label` (maximum 50, no pagination).
+The `SearchStock` method gives a ranked list of stocks for a query of 2 characters or more, with stock ID, kind, matched field, display text, score, `summary`, `stock_label`, and `stock_type` (maximum 50, no pagination).
 
 ```go
 resp, err := client.SearchStock(ctx, &stock.StockSearchParameters{
@@ -241,7 +241,7 @@ resp, err := client.SearchStock(ctx, &stock.StockSearchParameters{
     },
 })
 // resp.Data — ranked slice of results
-// Each result has: id, entity, field, display_text, score, summary, strain_label
+// Each result has: id, entity, field, display_text, score, summary, stock_label, stock_type
 // resp.Meta.Total — number of results in this response
 
 // Restrict the results to plasmids and request fewer results

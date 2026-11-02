@@ -18,7 +18,7 @@ const (
 	// The view name stock_full_search is written literally, because
 	// ArangoDB does not accept a bind parameter for a view name in SEARCH.
 	// The row key is the stock key, so one OUTBOUND traversal over the
-	// stock property graph supplies the entity and the strain label.
+	// stock property graph supplies the entity and the stock label.
 	FullSearchStockBranch = `LET %s = (
   FOR d IN stock_full_search
     SEARCH %s
@@ -26,9 +26,9 @@ const (
       FOR prop, edge IN 1..1 OUTBOUND d GRAPH @stock_prop_graph
         RETURN {
           entity: edge.type,
-          strain_label: edge.type == "strain"
+          stock_label: edge.type == "strain"
             ? NOT_NULL(prop.label, "")
-            : ""
+            : NOT_NULL(prop.name, "")
         }
     )
     FILTER meta != null
@@ -39,7 +39,7 @@ const (
       k: d._key,
       id: d.stock_id,
       entity: meta.entity,
-      sl: meta.strain_label,
+      sl: meta.stock_label,
       f: %q,
       v: %s,
       s: %s
@@ -51,8 +51,8 @@ const (
 	// in the same verb order as FullSearchStockBranch. It requires the
 	// same bind parameters. The property _key is auto-generated and
 	// carries no relation to the stock key, so the row resolves its owner
-	// with one INBOUND traversal. A plasmid row carries an empty strain
-	// label.
+	// with one INBOUND traversal. A strain row carries d.label and a
+	// plasmid row carries d.name as the stock label.
 	FullSearchPropBranch = `LET %s = (
   FOR d IN stock_full_search
     SEARCH %s
@@ -62,9 +62,9 @@ const (
           k: v._key,
           id: v.stock_id,
           entity: e.type,
-          strain_label: e.type == "strain"
+          stock_label: e.type == "strain"
             ? NOT_NULL(d.label, "")
-            : ""
+            : NOT_NULL(d.name, "")
         }
     )
     FILTER own != null
@@ -75,7 +75,7 @@ const (
       k: own.k,
       id: own.id,
       entity: own.entity,
-      sl: own.strain_label,
+      sl: own.stock_label,
       f: %q,
       v: %s,
       s: %s

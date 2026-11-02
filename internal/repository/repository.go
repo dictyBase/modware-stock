@@ -70,9 +70,10 @@ type (
 		// Summary is the complete stored summary of the stock document. It is
 		// empty when the attribute is absent.
 		Summary string
-		// StrainLabel is the strain property label shown as Descriptor in the
-		// stock center. It is empty for plasmids and missing labels.
-		StrainLabel string
+		// StockLabel is the strain property label (shown as Descriptor in the
+		// stock center) for strains, or the plasmid name for plasmids. It is
+		// empty when the attribute is absent.
+		StockLabel string
 		// StockType is the ontology term label of the stock
 		// (dicty_strain_property for strains, dicty_plasmid_keyword for
 		// plasmids). It is empty when the term is absent.

@@ -21,4 +21,6 @@ const (
 	testStockID = "DBS0236126"
 	// testPlasmidID is the fixture plasmid identifier.
 	testPlasmidID = "DBP0000027"
+	// testPlasmidName is the fixture plasmid name.
+	testPlasmidName = "pDM304"
 )

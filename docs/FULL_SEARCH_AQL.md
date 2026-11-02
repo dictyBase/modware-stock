@@ -482,7 +482,7 @@ graph traversal that finds the stock.
 
 | Template | Fields | Traversal | Reason |
 |----------|--------|-----------|--------|
-| `FullSearchStockBranch` | `stock_id`, `genes`, `dbxrefs`, `summary`, `depositor` | `1..1 OUTBOUND d` | The matched document **is** the stock. The traversal walks forward to the property document to read the entity type and the strain label. |
+| `FullSearchStockBranch` | `stock_id`, `genes`, `dbxrefs`, `summary`, `depositor` | `1..1 OUTBOUND d` | The matched document **is** the stock. The traversal walks forward to the property document to read the entity type and the stock label. |
 | `FullSearchPropBranch` | `label`, `names`, `species`, `plasmid`, `name` | `1..1 INBOUND d` | The matched document is a property document. Its `_key` is auto-generated and has no relation to the stock key. The traversal walks backward to find the owner stock. |
 
 `withTemplate` stores the template with `specTemplateLens.Set`, in the
@@ -538,8 +538,8 @@ in the source of the row attributes.
    accept a bind parameter for a view name in `SEARCH`.
 2. **`LET meta = FIRST(FOR prop, edge IN 1..1 OUTBOUND d GRAPH @stock_prop_graph ...)`.**
    One hop over the stock property graph reads `edge.type`, which is
-   `strain` or `plasmid`. For a strain it also reads `prop.label` as
-   the strain label. A plasmid row gets an empty strain label.
+   `strain` or `plasmid`. It also reads `prop.label` for a strain or
+   `prop.name` for a plasmid as the stock label.
    `FIRST` keeps one result, because a stock has one property document.
    The property branch uses `INBOUND` here and reads `v._key`,
    `v.stock_id` and `e.type` from the owner stock instead.
@@ -564,7 +564,7 @@ in the source of the row attributes.
 | `k` | The stock `_key`. The merge groups on this value. |
 | `id` | The public stock ID, such as `DBS0370001`. |
 | `entity` | `strain` or `plasmid`, from the edge type. |
-| `sl` | The strain label, or an empty string for a plasmid. |
+| `sl` | The stock label: `prop.label` for a strain or `prop.name` for a plasmid. |
 | `f` | The field label that matched. Slot 3 writes it. |
 | `v` | The display text. Slot 4 writes it. |
 | `s` | The score. Slot 5 writes it. |
@@ -743,9 +743,9 @@ LET p0 = (
       FOR prop, edge IN 1..1 OUTBOUND d GRAPH @stock_prop_graph
         RETURN {
           entity: edge.type,
-          strain_label: edge.type == "strain"
+          stock_label: edge.type == "strain"
             ? NOT_NULL(prop.label, "")
-            : ""
+            : NOT_NULL(prop.name, "")
         }
     )
     FILTER meta != null
@@ -756,7 +756,7 @@ LET p0 = (
       k: d._key,
       id: d.stock_id,
       entity: meta.entity,
-      sl: meta.strain_label,
+      sl: meta.stock_label,
       f: "stock_id",
       v: NOT_NULL(d.stock_id, ""),
       s: 1000 + BM25(d)
@@ -778,9 +778,9 @@ LET n0 = (
       FOR prop, edge IN 1..1 OUTBOUND d GRAPH @stock_prop_graph
         RETURN {
           entity: edge.type,
-          strain_label: edge.type == "strain"
+          stock_label: edge.type == "strain"
             ? NOT_NULL(prop.label, "")
-            : ""
+            : NOT_NULL(prop.name, "")
         }
     )
     FILTER meta != null
@@ -791,7 +791,7 @@ LET n0 = (
       k: d._key,
       id: d.stock_id,
       entity: meta.entity,
-      sl: meta.strain_label,
+      sl: meta.stock_label,
       f: "stock_id",
       v: NOT_NULL(d.stock_id, ""),
       s: BM25(d)
@@ -815,9 +815,9 @@ LET p3 = (
           k: v._key,
           id: v.stock_id,
           entity: e.type,
-          strain_label: e.type == "strain"
+          stock_label: e.type == "strain"
             ? NOT_NULL(d.label, "")
-            : ""
+            : NOT_NULL(d.name, "")
         }
     )
     FILTER own != null
@@ -828,7 +828,7 @@ LET p3 = (
       k: own.k,
       id: own.id,
       entity: own.entity,
-      sl: own.strain_label,
+      sl: own.stock_label,
       f: "label",
       v: NOT_NULL(d.label, ""),
       s: 1000 + BM25(d)
@@ -836,9 +836,9 @@ LET p3 = (
 )
 ```
 
-Note the source of the strain label. The stock branch reads it from the
-traversed property document as `prop.label`. The property branch reads
-it from the matched document itself as `d.label`.
+Note the source of the stock label. The stock branch reads it from the
+traversed property document as `prop.label` or `prop.name`. The property
+branch reads it from the matched document itself as `d.label` or `d.name`.
 
 ### Branch t0, Token on summary
 
@@ -853,9 +853,9 @@ LET t0 = (
       FOR prop, edge IN 1..1 OUTBOUND d GRAPH @stock_prop_graph
         RETURN {
           entity: edge.type,
-          strain_label: edge.type == "strain"
+          stock_label: edge.type == "strain"
             ? NOT_NULL(prop.label, "")
-            : ""
+            : NOT_NULL(prop.name, "")
         }
     )
     FILTER meta != null
@@ -866,7 +866,7 @@ LET t0 = (
       k: d._key,
       id: d.stock_id,
       entity: meta.entity,
-      sl: meta.strain_label,
+      sl: meta.stock_label,
       f: "summary",
       v: NOT_NULL(d.summary, ""),
       s: 250 + BM25(d)
@@ -888,9 +888,9 @@ LET h0 = (
       FOR prop, edge IN 1..1 OUTBOUND d GRAPH @stock_prop_graph
         RETURN {
           entity: edge.type,
-          strain_label: edge.type == "strain"
+          stock_label: edge.type == "strain"
             ? NOT_NULL(prop.label, "")
-            : ""
+            : NOT_NULL(prop.name, "")
         }
     )
     FILTER meta != null
@@ -901,7 +901,7 @@ LET h0 = (
       k: d._key,
       id: d.stock_id,
       entity: meta.entity,
-      sl: meta.strain_label,
+      sl: meta.stock_label,
       f: "summary",
       v: NOT_NULL(d.summary, ""),
       s: 500 + BM25(d)
