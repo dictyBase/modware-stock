@@ -25,15 +25,15 @@ type (
 	// go-driver v1 cannot decode an array row, so the projection returns one
 	// object per row.
 	searchResultRow struct {
-		Key         string  `json:"k"`
-		ID          string  `json:"id"`
-		Entity      string  `json:"entity"`
-		Field       string  `json:"f"`
-		Value       string  `json:"v"`
-		Summary     string  `json:"sm"`
-		StrainLabel string  `json:"sl"`
-		StockType   string  `json:"st"`
-		Score       float64 `json:"s"`
+		Key        string  `json:"k"`
+		ID         string  `json:"id"`
+		Entity     string  `json:"entity"`
+		Field      string  `json:"f"`
+		Value      string  `json:"v"`
+		Summary    string  `json:"sm"`
+		StockLabel string  `json:"sl"`
+		StockType  string  `json:"st"`
+		Score      float64 `json:"s"`
 	}
 	fullSearchColl    int
 	fullSearchDisplay int
@@ -356,7 +356,7 @@ func (r searchResultRow) result() *repository.FullSearchResult {
 		Field:       r.Field,
 		DisplayText: r.Value,
 		Summary:     r.Summary,
-		StrainLabel: r.StrainLabel,
+		StockLabel:  r.StockLabel,
 		StockType:   r.StockType,
 		Entity:      repository.StockEntityFilter(r.Entity),
 		Score:       r.Score,

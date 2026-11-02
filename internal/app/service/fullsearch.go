@@ -310,7 +310,7 @@ func mapFullSearchResult(row *repository.FullSearchResult) *stock.StockSearchRes
 		DisplayText: row.DisplayText,
 		Score:       row.Score,
 		Summary:     row.Summary,
-		StrainLabel: row.StrainLabel,
+		StockLabel:  row.StockLabel,
 		StockType:   row.StockType,
 	}
 }

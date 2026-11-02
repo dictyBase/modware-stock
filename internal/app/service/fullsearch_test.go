@@ -131,17 +131,18 @@ func TestSearchStockHandlerMapsResults(t *testing.T) {
 				Field:       fullSearchFieldSummary,
 				DisplayText: "the mutant forms culminants under starvation",
 				Summary:     "the mutant forms culminants under starvation",
-				StrainLabel: testStrainLabel,
+				StockLabel:  testStrainLabel,
 				StockType:   "REMI-seq",
 				Entity:      repository.EntityStrain,
 				Score:       500.5,
 			},
 			{
-				ID:        testPlasmidID,
-				Field:     autocompleteFieldName,
-				StockType: "GB vector",
-				Entity:    repository.EntityPlasmid,
-				Score:     1000,
+				ID:         testPlasmidID,
+				Field:      autocompleteFieldName,
+				StockLabel: testPlasmidName,
+				StockType:  "GB vector",
+				Entity:     repository.EntityPlasmid,
+				Score:      1000,
 			},
 		},
 	}
@@ -158,13 +159,13 @@ func TestSearchStockHandlerMapsResults(t *testing.T) {
 	assert.Equal(stock.StockEntity_STOCK_ENTITY_STRAIN, first.Entity)
 	assert.Equal("the mutant forms culminants under starvation", first.DisplayText)
 	assert.Equal("the mutant forms culminants under starvation", first.Summary)
-	assert.Equal(testStrainLabel, first.StrainLabel)
+	assert.Equal(testStrainLabel, first.StockLabel)
 	assert.Equal("REMI-seq", first.StockType)
 	assert.Equal(500.5, first.Score)
 	second := res.Data[1]
 	assert.Equal(stock.StockSearchField_STOCK_SEARCH_FIELD_NAME, second.Field)
 	assert.Equal(stock.StockEntity_STOCK_ENTITY_PLASMID, second.Entity)
-	assert.Empty(second.StrainLabel, "a plasmid result keeps an empty label")
+	assert.Equal(testPlasmidName, second.StockLabel, "a plasmid result carries its plasmid name as stock_label")
 	assert.Equal("GB vector", second.StockType)
 	assert.Equal(int64(2), res.Meta.Total)
 	assert.Equal(int64(50), res.Meta.Limit)

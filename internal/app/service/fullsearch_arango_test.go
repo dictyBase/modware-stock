@@ -87,7 +87,7 @@ func TestSearchStockEndToEnd(t *testing.T) {
 	assert.Equal(stock.StockEntity_STOCK_ENTITY_STRAIN, row.Entity)
 	assert.Equal(stock.StockSearchField_STOCK_SEARCH_FIELD_LABEL, row.Field)
 	assert.Equal(testStrainLabel, row.DisplayText)
-	assert.Equal(testStrainLabel, row.StrainLabel)
+	assert.Equal(testStrainLabel, row.StockLabel)
 	assert.Equal("general strain", row.StockType)
 	assert.GreaterOrEqual(row.Score, float64(1000))
 	assert.Equal(
