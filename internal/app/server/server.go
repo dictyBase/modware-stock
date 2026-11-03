@@ -249,26 +249,9 @@ func RunServer(c *cli.Context) error {
 	)
 }
 
-func isNonNilParamsMap(params map[string]string) bool {
-	return params != nil
-}
-
-func emptyServiceParams() map[string]string {
-	return map[string]string{}
-}
-
-func ensureServiceParams(params map[string]string) map[string]string {
-	return F.Pipe2(
-		params,
-		O.FromPredicate(isNonNilParamsMap),
-		O.GetOrElse(emptyServiceParams),
-	)
-}
-
 func setServiceParam(key, term string) aphgrpc.Option {
 	return func(so *aphgrpc.ServiceOptions) {
-		so.Params = ensureServiceParams(so.Params)
-		so.Params[key] = term
+		so.Params = F.Pipe1(so.Params, R.UpsertAt(key, term))
 	}
 }
 
