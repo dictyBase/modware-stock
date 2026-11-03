@@ -89,6 +89,11 @@ func (sr *autocompleteStubRepo) AutocompleteStock(
 	}
 	return IOEV2.Of[error](sr.sugs)
 }
+func (sr *autocompleteStubRepo) CountStocks(
+	context.Context,
+) IOEV2.IOEither[error, *repository.StockCounts] {
+	return IOEV2.Left[*repository.StockCounts](errors.New("not used"))
+}
 func (sr *autocompleteStubRepo) Dbh() *manager.Database { return nil }
 func (sr *autocompleteStubRepo) LoadOboJSON(io.Reader) (*storage.UploadInformation, error) {
 	return nil, nil

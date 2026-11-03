@@ -25,6 +25,7 @@ const (
 	paramLimit           = "limit"
 	paramCursor          = "cursor"
 	paramKey             = "key"
+	nameFrom             = "from"
 	paramName            = "name"
 	paramParent          = "parent"
 

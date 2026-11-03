@@ -30,6 +30,7 @@ type fullSearchStubRepo struct {
 	err    error
 	got    *repository.FullSearchQuery
 	gotCtx context.Context
+	counts *repository.StockCounts
 }
 
 func (sr *fullSearchStubRepo) GetStrain(string) (*model.StockDoc, error) {
@@ -98,6 +99,15 @@ func (sr *fullSearchStubRepo) AutocompleteStock(
 ) IOEV2.IOEither[error, []*repository.Suggestion] {
 	sr.gotCtx = ctx
 	return IOEV2.Of[error]([]*repository.Suggestion(nil))
+}
+func (sr *fullSearchStubRepo) CountStocks(
+	ctx context.Context,
+) IOEV2.IOEither[error, *repository.StockCounts] {
+	sr.gotCtx = ctx
+	if sr.err != nil {
+		return IOEV2.Left[*repository.StockCounts](sr.err)
+	}
+	return IOEV2.Of[error](sr.counts)
 }
 func (sr *fullSearchStubRepo) Dbh() *manager.Database { return nil }
 func (sr *fullSearchStubRepo) LoadOboJSON(io.Reader) (*storage.UploadInformation, error) {
