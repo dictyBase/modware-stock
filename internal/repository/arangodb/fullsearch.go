@@ -239,33 +239,6 @@ func newFullSearchRequest(
 	}
 }
 
-// validateFullSearchRequest guards the request before any AQL runs: the
-// parameters must exist, the normalized query must be non-empty and
-// must keep at least one non-stopword, and the entity filter must be
-// defined.
-func validateFullSearchRequest(
-	params *repository.FullSearchQuery,
-) E.Either[error, fullSearchRequest] {
-	return F.Pipe5(
-		params,
-		E.FromPredicate(
-			nonNilFullSearchParams,
-			eithererr.ConstErr[*repository.FullSearchQuery](
-				msgNilFullSearchQuery,
-			),
-		),
-		E.Map[error](newFullSearchRequest),
-		E.Chain(E.FromPredicate(
-			hasFullSearchQueryText,
-			eithererr.ConstErr[fullSearchRequest](
-				msgEmptyFullSearchQuery,
-			),
-		)),
-		E.Chain(E.FromPredicate(keepsNonStopword, stopwordFullSearchError)),
-		E.BindL(fullSearchEntityLens, E.Eitherize1(autocompleteEntity)),
-	)
-}
-
 // buildFullSearchQueryParams assembles the statement and the bind
 // parameters from the validated request.
 func (ar *arangorepository) buildFullSearchQueryParams(
@@ -312,19 +285,6 @@ func emptyFullSearchResults() []*repository.FullSearchResult {
 	return []*repository.FullSearchResult{}
 }
 
-// toFullSearchResults converts projection rows into full search results.
-// An empty input stays a non-nil empty slice, because the callers report
-// an empty list and not a missing one.
-func toFullSearchResults(
-	rows []searchResultRow,
-) []*repository.FullSearchResult {
-	return F.Pipe2(
-		rows,
-		O.FromPredicate(predarrays.IsNonEmpty[searchResultRow]()),
-		O.Fold(emptyFullSearchResults, A.Map(searchResultRow.result)),
-	)
-}
-
 // SearchStock returns at most 50 ranked results for the normalized query
 // of params as a lazy IOEither pipeline, forced by the caller. The
 // repository trims and lowercases the query, rejects an empty,
@@ -338,14 +298,45 @@ func (ar *arangorepository) SearchStock(
 	withCtx := fullSearchCtxLens.Set(baseCtx)
 	return F.Pipe6(
 		IOE.Of[error](params),
-		IOE.ChainEitherK(validateFullSearchRequest),
+		IOE.ChainEitherK(func(
+			p *repository.FullSearchQuery,
+		) E.Either[error, fullSearchRequest] {
+			return F.Pipe5(
+				p,
+				E.FromPredicate(
+					nonNilFullSearchParams,
+					eithererr.ConstErr[*repository.FullSearchQuery](
+						msgNilFullSearchQuery,
+					),
+				),
+				E.Map[error](newFullSearchRequest),
+				E.Chain(E.FromPredicate(
+					hasFullSearchQueryText,
+					eithererr.ConstErr[fullSearchRequest](
+						msgEmptyFullSearchQuery,
+					),
+				)),
+				E.Chain(E.FromPredicate(
+					keepsNonStopword, stopwordFullSearchError,
+				)),
+				E.BindL(fullSearchEntityLens, E.Eitherize1(autocompleteEntity)),
+			)
+		}),
 		IOE.Map[error](withCtx),
 		IOE.Map[error](ar.buildFullSearchQueryParams),
 		IOE.Chain(ar.executeFullSearchQuery),
 		IOE.Chain(
 			scanSearchRows[searchResultRow]("error in reading full search row"),
 		),
-		IOE.Map[error](toFullSearchResults),
+		IOE.Map[error](func(
+			rows []searchResultRow,
+		) []*repository.FullSearchResult {
+			return F.Pipe2(
+				rows,
+				O.FromPredicate(predarrays.IsNonEmpty[searchResultRow]()),
+				O.Fold(emptyFullSearchResults, A.Map(searchResultRow.result)),
+			)
+		}),
 	)
 }
 

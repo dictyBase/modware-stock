@@ -252,6 +252,10 @@ func serverErrorStatus(err error) error {
 // validation also protects the process from a nil dereference. Every
 // fault leaves as an invalid-parameter status, decided here, where the
 // class of the fault is known.
+//
+// fp-go:allow-trivial-delegate exported as the directly unit-tested
+// pure request validator; TestValidatedAutocompleteSearch* in
+// autocomplete_test.go exercises it in isolation from the repository.
 func validatedAutocompleteSearch(
 	in autocompleteInput,
 ) E.Either[error, autocompleteSearch] {

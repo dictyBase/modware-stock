@@ -131,11 +131,14 @@ var (
 	)
 )
 
-// defaultedFullSearchLimit replaces a default limit request with the
-// default limit. The None branch of the fold keeps the requested limit;
-// the Some branch of a zero limit reports the default.
-func defaultedFullSearchLimit(limit int64) int64 {
-	return F.Pipe2(
+// effectiveFullSearchLimit applies both bounds of the request limit, one
+// fold per bound, so an over-cap limit can never collapse into the
+// default. The first fold replaces a default (zero) limit with the
+// default limit; the second fold brings a limit above the hard cap
+// down to the cap. protovalidate rejects a limit above 100, so the
+// second fold covers 51 to 100.
+func effectiveFullSearchLimit(limit int64) int64 {
+	defaulted := F.Pipe2(
 		limit,
 		O.FromPredicate(isDefaultFullSearchLimit),
 		O.Fold(
@@ -143,26 +146,14 @@ func defaultedFullSearchLimit(limit int64) int64 {
 			F.Constant1[int64, int64](defaultFullSearchLimit),
 		),
 	)
-}
-
-// cappedFullSearchLimit brings a limit above the hard cap down to the
-// cap. protovalidate rejects a limit above 100, so this covers 51 to 100.
-func cappedFullSearchLimit(limit int64) int64 {
 	return F.Pipe2(
-		limit,
+		defaulted,
 		O.FromPredicate(isAboveFullSearchCap),
 		O.Fold(
-			F.Constant(limit),
+			F.Constant(defaulted),
 			F.Constant1[int64, int64](maxFullSearchLimit),
 		),
 	)
-}
-
-// effectiveFullSearchLimit applies both bounds of the request limit, one
-// fold per bound, so an over-cap limit can never collapse into the
-// default.
-func effectiveFullSearchLimit(limit int64) int64 {
-	return F.Pipe2(limit, defaultedFullSearchLimit, cappedFullSearchLimit)
 }
 
 // newFullSearchParams accumulates the normalized query and the
@@ -207,30 +198,6 @@ func newFullSearch(
 			Limit:  int(p.limit),
 		},
 	}
-}
-
-// validatedFullSearch guards the proto request step by step and builds
-// the search state: the generated proto rules, the normalized query,
-// the effective limit and the entity filter. The proto rules reject nil
-// data, nil attributes, a short query and an out-of-range limit; this
-// server has no recovery interceptor, so the boundary validation also
-// protects the process from a nil dereference. Every fault leaves as an
-// invalid-parameter status, decided here, where the class of the fault
-// is known.
-func validatedFullSearch(
-	in fullSearchInput,
-) E.Either[error, fullSearch] {
-	return F.Pipe5(
-		E.TryCatchError(in.request, protovalidate.Validate(in.request)),
-		E.Map[error](newFullSearchParams),
-		E.Chain(E.FromPredicate(
-			hasSearchQueryText,
-			invalidParamStatusOf[fullSearchParams](msgEmptySearchQuery),
-		)),
-		E.Bind(fullSearchEntityLens.Set, mapFullSearchEntityFilter),
-		E.Map[error](F.Bind1st(newFullSearch, in)),
-		E.MapLeft[fullSearch](invalidParamStatus),
-	)
 }
 
 // searchStockHits runs the lazy repository search of the validated
@@ -291,7 +258,21 @@ func (s *StockService) SearchStock(
 ) (*stock.StockSearchResultCollection, error) {
 	result := F.Pipe5(
 		IOE.Of[error](fullSearchInput{ctx: ctx, request: r, repo: s.repo}),
-		IOE.ChainEitherK(validatedFullSearch),
+		IOE.ChainEitherK(func(
+			in fullSearchInput,
+		) E.Either[error, fullSearch] {
+			return F.Pipe5(
+				E.TryCatchError(in.request, protovalidate.Validate(in.request)),
+				E.Map[error](newFullSearchParams),
+				E.Chain(E.FromPredicate(
+					hasSearchQueryText,
+					invalidParamStatusOf[fullSearchParams](msgEmptySearchQuery),
+				)),
+				E.Bind(fullSearchEntityLens.Set, mapFullSearchEntityFilter),
+				E.Map[error](F.Bind1st(newFullSearch, in)),
+				E.MapLeft[fullSearch](invalidParamStatus),
+			)
+		}),
 		IOE.Bind(fullSearchHitsLens.Set, searchStockHits),
 		IOE.Map[error](toSearchResultCollection),
 		ioeutils.ToEither[error, *stock.StockSearchResultCollection],

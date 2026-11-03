@@ -358,32 +358,6 @@ func newAutocompleteRequest(
 	}
 }
 
-// validateAutocompleteRequest guards the request before any AQL runs:
-// the parameters must exist, the normalized query must be non-empty
-// and the entity filter must be defined.
-func validateAutocompleteRequest(
-	params *repository.AutocompleteQuery,
-) IOE.IOEither[error, autocompleteRequest] {
-	return F.Pipe5(
-		params,
-		E.FromPredicate(
-			nonNilQueryParams,
-			eithererr.ConstErr[*repository.AutocompleteQuery](
-				msgNilAutocompleteQuery,
-			),
-		),
-		E.Map[error](newAutocompleteRequest),
-		E.Chain(E.FromPredicate(
-			hasQueryText,
-			eithererr.ConstErr[autocompleteRequest](
-				msgEmptyAutocompleteQuery,
-			),
-		)),
-		E.BindL(entityLens, E.Eitherize1(autocompleteEntity)),
-		IOE.FromEither[error, autocompleteRequest],
-	)
-}
-
 // buildAutocompleteQueryParams assembles the statement and the bind
 // parameters from the validated request.
 func (ar *arangorepository) buildAutocompleteQueryParams(
@@ -431,30 +405,48 @@ func (ar *arangorepository) AutocompleteStock(
 	withCtx := autocompleteCtxLens.Set(baseCtx)
 	return F.Pipe6(
 		params,
-		validateAutocompleteRequest,
+		func(
+			p *repository.AutocompleteQuery,
+		) IOE.IOEither[error, autocompleteRequest] {
+			return F.Pipe5(
+				p,
+				E.FromPredicate(
+					nonNilQueryParams,
+					eithererr.ConstErr[*repository.AutocompleteQuery](
+						msgNilAutocompleteQuery,
+					),
+				),
+				E.Map[error](newAutocompleteRequest),
+				E.Chain(E.FromPredicate(
+					hasQueryText,
+					eithererr.ConstErr[autocompleteRequest](
+						msgEmptyAutocompleteQuery,
+					),
+				)),
+				E.BindL(entityLens, E.Eitherize1(autocompleteEntity)),
+				IOE.FromEither[error, autocompleteRequest],
+			)
+		},
 		IOE.Map[error](withCtx),
 		IOE.Map[error](ar.buildAutocompleteQueryParams),
 		IOE.Chain(ar.executeAutocompleteQuery),
 		IOE.Chain(
 			scanSearchRows[suggestionRow]("error in reading autocomplete row"),
 		),
-		IOE.Map[error](toSuggestions),
+		IOE.Map[error](func(
+			rows []suggestionRow,
+		) []*repository.Suggestion {
+			return F.Pipe2(
+				rows,
+				O.FromPredicate(predarrays.IsNonEmpty[suggestionRow]()),
+				O.Fold(emptySuggestions, A.Map(toSuggestion)),
+			)
+		}),
 	)
 }
 
-// toSuggestions converts projection rows into suggestions. An empty
-// input stays a non-nil empty slice, because the callers report an
-// empty list and not a missing one.
-func toSuggestions(rows []suggestionRow) []*repository.Suggestion {
-	return F.Pipe2(
-		rows,
-		O.FromPredicate(predarrays.IsNonEmpty[suggestionRow]()),
-		O.Fold(emptySuggestions, A.Map(toSuggestion)),
-	)
-}
-
-// emptySuggestions is the None branch of toSuggestions: it reports an
-// empty list, not a missing one.
+// emptySuggestions is the None branch of the suggestion projection: it
+// reports an empty list, not a missing one.
 func emptySuggestions() []*repository.Suggestion {
 	return []*repository.Suggestion{}
 }
