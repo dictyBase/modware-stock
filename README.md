@@ -25,6 +25,7 @@ On every create, update, or delete mutation the service publishes a protobuf-ser
   - [Stock Autocomplete](#stock-autocomplete)
   - [Stock Full Search](#stock-full-search)
     - [How the Full Search AQL Statement Is Built](docs/FULL_SEARCH_AQL.md)
+  - [Count Stocks](#count-stocks)
   - [Update a Strain](#update-a-strain)
   - [Update a Plasmid](#update-a-plasmid)
   - [List Strains with Pagination and Filters](#list-strains-with-pagination-and-filters)
@@ -53,7 +54,7 @@ modware-stock start-server \
 
 | Flag | Default | Env Variable | Description |
 |------|---------|--------------|-------------|
-| `--port` | `9560` | — | gRPC server listen port |
+| `--port` | `9560` | — | Listen port, shared by the gRPC server and the HTTP gateway |
 | `--arangodb-database, --db` | `stock` | `ARANGODB_DATABASE` | ArangoDB database name |
 | `--arangodb-user` | — | `ARANGODB_USER` | ArangoDB user |
 | `--arangodb-pass` | — | `ARANGODB_PASS` | ArangoDB password |
@@ -137,6 +138,7 @@ Full protobuf definitions: [dictybaseapis/stock.proto](https://github.com/dictyB
 | `RemoveStock` | `StockId` | `Empty` | Delete a stock (strain or plasmid) by ID |
 | `AutocompleteStock` | `StockAutocompleteParameters` | `StockSuggestionCollection` | Type-ahead suggestions for a partial stock identifier, name or attribute value |
 | `SearchStock` | `StockSearchParameters` | `StockSearchResultCollection` | Ranked full search over identifier, name and prose fields; returns at most 50 results |
+| `CountStocks` | `Empty` | `StockCounts` | Totals and subtype counts for strains and plasmids |
 | `OboJSONFileUpload` | `stream FileUploadRequest` | `FileUploadResponse` | Stream-upload an OBO JSON ontology file to populate the ontology collections |
 
 ### Connect with Go
@@ -258,6 +260,25 @@ resp, err := client.SearchStock(ctx, &stock.StockSearchParameters{
 ```
 
 The server runs one generated AQL statement per search: 19 `LET` search branches over the `stock_full_search` view, plus a merge block that keeps the best-scoring hit per stock. [How the Full Search AQL Statement Is Built](docs/FULL_SEARCH_AQL.md) walks through that statement step by step, from the field definitions to the rendered AQL.
+
+### Count Stocks
+
+The `CountStocks` method returns the total number of strains and plasmids, with the count of each subtype group. Strain groups follow the `searchStocks` mapping: `gwdi` (`REMI-seq`), `bacterial` (`bacterial strain`), and `regular` (every other strain, including strains without an ontology term). Plasmid groups are `goldenbraid` (`GB vector`) and `regular`. Both entity records always list all of their subtype groups, with `0` when a group has no stocks.
+
+```go
+resp, err := client.CountStocks(ctx, &emptypb.Empty{})
+// resp.Strains.Total — total number of strains
+// resp.Strains.Subtypes — [{regular, n}, {gwdi, n}, {bacterial, n}]
+// resp.Plasmids.Total — total number of plasmids
+// resp.Plasmids.Subtypes — [{regular, n}, {goldenbraid, n}]
+```
+
+The same RPC is also available as an HTTP endpoint, served by `grpc-gateway` on the same `--port` as the gRPC server:
+
+```bash
+curl http://localhost:9560/v1/stocks/counts
+# {"strains":{"total":"12","subtypes":[{"name":"regular","count":"5"},{"name":"gwdi","count":"7"},{"name":"bacterial","count":"0"}]},"plasmids":{"total":"4","subtypes":[{"name":"regular","count":"1"},{"name":"goldenbraid","count":"3"}]}}
+```
 
 ### Update a Strain
 
