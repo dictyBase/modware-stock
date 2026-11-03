@@ -5,7 +5,7 @@ require (
 	github.com/cockroachdb/errors v1.14.0
 	github.com/dictyBase/aphgrpc v1.4.2
 	github.com/dictyBase/arangomanager v0.8.0
-	github.com/dictyBase/go-genproto v0.0.0-20261102200223-10fc5fce0532
+	github.com/dictyBase/go-genproto v0.0.0-20261103171053-0818812c00d6
 	github.com/dictyBase/go-obograph v1.6.1
 	github.com/go-playground/validator/v10 v10.30.5
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -22,7 +22,8 @@ require (
 	github.com/IBM/fp-go v1.1.84
 	github.com/IBM/fp-go/v2 v2.13.0
 	github.com/bufbuild/protovalidate-go v0.10.0
-	github.com/dictyBase/fp-go-loom v0.2.0
+	github.com/dictyBase/fp-go-loom v0.3.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2
 	github.com/testcontainers/testcontainers-go/modules/nats v0.44.0
 	golang.org/x/text v0.43.0
 )
