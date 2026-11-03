@@ -24,16 +24,16 @@ func (contractCountServer) CountStocks(
 		Strains: &stock.StockEntityCounts{
 			Total: 12,
 			Subtypes: []*stock.StockSubtypeCount{
-				{Name: "regular", Count: 5},
-				{Name: "gwdi", Count: 7},
-				{Name: "bacterial", Count: 0},
+				{Name: subtypeRegularName, Count: 5},
+				{Name: subtypeGwdiName, Count: 7},
+				{Name: subtypeBacterialName, Count: 0},
 			},
 		},
 		Plasmids: &stock.StockEntityCounts{
 			Total: 4,
 			Subtypes: []*stock.StockSubtypeCount{
-				{Name: "regular", Count: 1},
-				{Name: "goldenbraid", Count: 3},
+				{Name: subtypeRegularName, Count: 1},
+				{Name: subtypeGoldenBraidName, Count: 3},
 			},
 		},
 	}, nil
