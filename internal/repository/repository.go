@@ -86,6 +86,31 @@ type (
 		Score float64
 	}
 
+	// SubtypeCount holds the distinct stock count for one subtype group.
+	SubtypeCount struct {
+		// Name is the subtype group name: regular, gwdi, or bacterial for
+		// strains; regular or goldenbraid for plasmids.
+		Name string
+		// Count is the number of distinct stocks in that subtype group.
+		Count int64
+	}
+
+	// EntityCounts holds the total and subtype counts for one stock kind.
+	EntityCounts struct {
+		// Total is the number of distinct stocks of this kind, including
+		// stocks without an ontology term.
+		Total int64
+		// Subtypes lists all subtype groups for this stock kind.
+		Subtypes []SubtypeCount
+	}
+
+	// StockCounts holds the totals and subtype counts for strains and
+	// plasmids.
+	StockCounts struct {
+		Strains  EntityCounts
+		Plasmids EntityCounts
+	}
+
 	// StockRepository is an interface for managing stock information
 	StockRepository interface {
 		GetStrain(id string) (*model.StockDoc, error)
@@ -113,6 +138,11 @@ type (
 			ctx context.Context,
 			params *AutocompleteQuery,
 		) IOEV2.IOEither[error, []*Suggestion]
+		// CountStocks returns the totals and subtype counts for strains and
+		// plasmids as a lazy IOEither pipeline.
+		CountStocks(
+			ctx context.Context,
+		) IOEV2.IOEither[error, *StockCounts]
 		Dbh() *manager.Database
 		LoadOboJSON(r io.Reader) (*storage.UploadInformation, error)
 	}
