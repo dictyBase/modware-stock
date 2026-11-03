@@ -1,15 +1,33 @@
 package server
 
 import (
+	"context"
 	"flag"
+	"io"
+	"net"
+	"net/http"
 	"os"
+	"strings"
 	"testing"
 
+	E "github.com/IBM/fp-go/v2/either"
+	F "github.com/IBM/fp-go/v2/function"
 	"github.com/dictyBase/aphgrpc"
+	ioeutils "github.com/dictyBase/fp-go-loom/ioeitherutils"
+	loomcheck "github.com/dictyBase/fp-go-loom/loomcheck"
+	"github.com/dictyBase/fp-go-loom/pipelinecheck"
+	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	empty "google.golang.org/protobuf/types/known/emptypb"
 )
+
+type stubGatewayStockServer struct {
+	stock.UnimplementedStockServiceServer
+}
 
 // runServerIntegrationTestDoc provides comprehensive documentation for testing RunServer.
 // This documentation describes the integration testing requirements for the RunServer function.
@@ -618,4 +636,136 @@ func createTestContextWithFlags(flags map[string]any) *cli.Context {
 	}
 
 	return cli.NewContext(app, set, nil)
+}
+
+func (stubGatewayStockServer) CountStocks(
+	_ context.Context,
+	_ *empty.Empty,
+) (*stock.StockCounts, error) {
+	return &stock.StockCounts{
+		Strains: &stock.StockEntityCounts{
+			Total: 8,
+			Subtypes: []*stock.StockSubtypeCount{
+				{Name: "regular", Count: 5},
+				{Name: "gwdi", Count: 2},
+				{Name: "bacterial", Count: 1},
+			},
+		},
+		Plasmids: &stock.StockEntityCounts{
+			Total: 3,
+			Subtypes: []*stock.StockSubtypeCount{
+				{Name: "regular", Count: 1},
+				{Name: "goldenbraid", Count: 2},
+			},
+		},
+	}, nil
+}
+
+func TestMultiplexedServerServesGRPCAndHTTPOnSamePort(t *testing.T) {
+	t.Parallel()
+	assert := require.New(t)
+
+	grpcS := grpc.NewServer()
+	svc := stubGatewayStockServer{}
+	stock.RegisterStockServiceServer(grpcS, svc)
+
+	httpSRes := F.Pipe1(
+		newMultiplexedServer(gatewayInput{
+			ctx:      context.Background(),
+			grpcS:    grpcS,
+			stockSvc: svc,
+		}),
+		ioeutils.ToEither[error, *http.Server],
+	)
+	assert.True(E.IsRight(httpSRes))
+	httpS := F.Pipe1(
+		httpSRes,
+		E.GetOrElse(F.Constant1[error]((*http.Server)(nil))),
+	)
+	assert.NotNil(httpS)
+
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(err)
+	go func() {
+		_ = httpS.Serve(lis)
+	}()
+	t.Cleanup(func() {
+		_ = httpS.Close()
+		grpcS.Stop()
+	})
+
+	addr := lis.Addr().String()
+	conn, err := grpc.NewClient(
+		addr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	assert.NoError(err)
+	t.Cleanup(func() {
+		_ = conn.Close()
+	})
+
+	client := stock.NewStockServiceClient(conn)
+	grpcResp, err := client.CountStocks(context.Background(), &empty.Empty{})
+	assert.NoError(err)
+	assert.Equal(int64(8), grpcResp.GetStrains().GetTotal())
+	assert.Equal(int64(3), grpcResp.GetPlasmids().GetTotal())
+
+	httpResp, err := http.Get("http://" + addr + "/v1/stocks/counts")
+	assert.NoError(err)
+	defer func() { _ = httpResp.Body.Close() }()
+	assert.Equal(http.StatusOK, httpResp.StatusCode)
+	body, err := io.ReadAll(httpResp.Body)
+	assert.NoError(err)
+	assert.JSONEq(
+		`{
+		  "strains": {
+		    "total": "8",
+		    "subtypes": [
+		      {"name": "regular", "count": "5"},
+		      {"name": "gwdi", "count": "2"},
+		      {"name": "bacterial", "count": "1"}
+		    ]
+		  },
+		  "plasmids": {
+		    "total": "3",
+		    "subtypes": [
+		      {"name": "regular", "count": "1"},
+		      {"name": "goldenbraid", "count": "2"}
+		    ]
+		  }
+		}`,
+		string(body),
+	)
+
+	unmappedResp, err := http.Get("http://" + addr + "/v1/stocks/strains")
+	assert.NoError(err)
+	defer func() { _ = unmappedResp.Body.Close() }()
+	assert.Equal(http.StatusNotFound, unmappedResp.StatusCode)
+}
+
+func TestServerPipelineAndLoomStyle(t *testing.T) {
+	t.Parallel()
+	cfg := pipelinecheck.Config{
+		Roots: []string{"."},
+		IsEntrypoint: func(name string) bool {
+			return strings.HasPrefix(name, "Run") || strings.HasPrefix(name, "run")
+		},
+		RequirePointFreeSeed:      true,
+		RequirePointFreeBranching: true,
+		RequireTrivialDelegate:    true,
+	}
+	pipelinecheck.Require(t, cfg)
+	pipelinecheck.RequireBareIf(t, cfg)
+	pipelinecheck.RequireNoIfErrInTryCatch(t, cfg)
+	pipelinecheck.RequireNoNonRawTryCatchCallback(t, cfg)
+	pipelinecheck.RequireSafePrintf(t, cfg)
+	pipelinecheck.RequireNoRedundantFold(t, cfg)
+	pipelinecheck.RequireNoHandRolledFileJoinInArrayMap(t, cfg)
+	pipelinecheck.RequireNoImperativeLoop(t, cfg)
+	pipelinecheck.RequireNoImperativeBranch(t, cfg)
+	pipelinecheck.RequireNoDirectApply(t, cfg)
+	loomcheck.Require(t, loomcheck.Config{
+		Roots:               []string{"."},
+		StrictAllPredicates: true,
+	})
 }

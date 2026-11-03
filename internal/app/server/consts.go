@@ -1,5 +1,7 @@
 package server
 
+import "time"
+
 const (
 	// CLI flag names read by the server.
 	flagLogFormat    = "log-format"
@@ -11,4 +13,10 @@ const (
 	logFormatText = "text"
 	logFormatJSON = "json"
 	logLevelError = "error"
+
+	// Multiplexed server constants.
+	contentTypeHeader       = "Content-Type"
+	grpcContentTypePrefix   = "application/grpc"
+	httpProtoMajor2         = 2
+	serverReadHeaderTimeout = 10 * time.Second
 )
