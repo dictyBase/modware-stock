@@ -35,6 +35,7 @@ type (
 		ttl     time.Duration
 		raw     []byte
 		resp    any
+		epoch   int64
 	}
 
 	unaryResult struct {
@@ -69,6 +70,13 @@ var (
 			return c
 		},
 	)
+	callEpochLens = L.MakeLens(
+		func(c unaryCall) int64 { return c.epoch },
+		func(c unaryCall, epoch int64) unaryCall {
+			c.epoch = epoch
+			return c
+		},
+	)
 
 	mutationMethods = R.Record[string, bool]{
 		stock.StockService_CreateStrain_FullMethodName:  true,
@@ -100,6 +108,8 @@ var (
 	constNoneBytes      = F.Constant1[struct{}](emptyBytesOption)
 	emptyBytesOptionIOE = IOE.Memoize(IOE.Of[error](emptyBytesOption))
 	recoverNoneBytes    = F.Constant1[error](emptyBytesOptionIOE)
+	emptyEpochIOE       = IOE.Memoize(IOE.Of[error](int64(0)))
+	recoverZeroEpoch    = F.Constant1[error](emptyEpochIOE)
 
 	hasCachedPayload = F.Flow2(
 		callCachedRawLens.Get,
@@ -149,6 +159,15 @@ func handleMutationCall(c unaryCall) IOE.IOEither[error, any] {
 	)
 }
 
+func lookupCacheEpoch(
+	c unaryCall,
+) IOE.IOEither[error, int64] {
+	return F.Pipe1(
+		c.store.Epoch(c.ctx, StockCountsCacheKey),
+		IOE.OrElse(recoverZeroEpoch),
+	)
+}
+
 func lookupCachedBytes(
 	c unaryCall,
 ) IOE.IOEither[error, O.Option[[]byte]] {
@@ -171,8 +190,8 @@ func writeCallRawToStore(
 ) IOE.IOEither[error, O.Option[[]byte]] {
 	raw := callRawLens.Get(c)
 	return F.Pipe1(
-		c.store.Set(c.ctx, StockCountsCacheKey, raw, c.ttl),
-		IOE.Map[error](F.Constant1[struct{}](O.Some(raw))),
+		c.store.SetIfEpoch(c.ctx, StockCountsCacheKey, raw, c.ttl, c.epoch),
+		IOE.Map[error](F.Constant1[bool](O.Some(raw))),
 	)
 }
 
@@ -221,8 +240,9 @@ func decodeCachedStockCounts(
 }
 
 func handleCountStocksCall(c unaryCall) IOE.IOEither[error, any] {
-	return F.Pipe3(
+	return F.Pipe4(
 		IOE.Of[error](c),
+		IOE.Bind(callEpochLens.Set, lookupCacheEpoch),
 		IOE.Bind(callCachedRawLens.Set, lookupCachedBytes),
 		IOE.Chain(resolveCachedStockCounts),
 		IOE.Map[error](callRespLens.Get),

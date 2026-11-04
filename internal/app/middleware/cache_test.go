@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -32,13 +33,21 @@ func (failingStore) Get(
 	return IOE.Left[O.Option[[]byte]](errors.New("cache get error"))
 }
 
-func (failingStore) Set(
+func (failingStore) Epoch(
+	_ context.Context,
+	_ string,
+) IOE.IOEither[error, int64] {
+	return IOE.Left[int64](errors.New("cache epoch error"))
+}
+
+func (failingStore) SetIfEpoch(
 	_ context.Context,
 	_ string,
 	_ []byte,
 	_ time.Duration,
-) IOE.IOEither[error, struct{}] {
-	return IOE.Left[struct{}](errors.New("cache set error"))
+	_ int64,
+) IOE.IOEither[error, bool] {
+	return IOE.Left[bool](errors.New("cache set error"))
 }
 
 func (failingStore) Delete(
@@ -267,4 +276,62 @@ func TestMiddlewarePipelineAndLoomStyle(t *testing.T) {
 		Roots:               []string{"."},
 		StrictAllPredicates: true,
 	})
+}
+
+func TestStockCountsCacheInterceptorRejectsStaleWriteAfterInvalidation(t *testing.T) {
+	t.Parallel()
+	assert := require.New(t)
+
+	store := cache.NewMemoryStore()
+	t.Cleanup(func() { _ = store.Close() })
+
+	interceptor := StockCountsCacheInterceptor(store, DefaultStockCountsCacheTTL)
+	countInfo := &grpc.UnaryServerInfo{
+		FullMethod: stock.StockService_CountStocks_FullMethodName,
+	}
+	createInfo := &grpc.UnaryServerInfo{
+		FullMethod: stock.StockService_CreateStrain_FullMethodName,
+	}
+
+	started := make(chan struct{})
+	proceed := make(chan struct{})
+	var countCalls atomic.Int32
+	//nolint:unparam // grpc.UnaryHandler requires the (any, error) result.
+	slowHandler := func(_ context.Context, _ any) (any, error) {
+		if countCalls.Add(1) == 1 {
+			close(started)
+			<-proceed
+			// stale snapshot taken before the mutation
+			return sampleStockCounts(1, 1), nil
+		}
+		return sampleStockCounts(50, 25), nil
+	}
+
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		_, _ = interceptor(context.Background(), &empty.Empty{}, countInfo, slowHandler)
+	})
+
+	// The mutation wins the race while the slow read still computes.
+	<-started
+	_, err := interceptor(
+		context.Background(),
+		&stock.NewStrain{},
+		createInfo,
+		func(ctx context.Context, req any) (any, error) {
+			return &stock.Strain{}, nil
+		},
+	)
+	assert.NoError(err)
+	close(proceed)
+	wg.Wait()
+
+	// The slow read must not restore its stale snapshot over the
+	// mutation's invalidation, so the next call recomputes.
+	resp, err := interceptor(context.Background(), &empty.Empty{}, countInfo, slowHandler)
+	assert.NoError(err)
+	counts, ok := resp.(*stock.StockCounts)
+	assert.True(ok)
+	assert.Equal(int64(50), counts.GetStrains().GetTotal())
+	assert.Equal(int32(2), countCalls.Load())
 }

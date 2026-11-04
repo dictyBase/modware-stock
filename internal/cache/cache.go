@@ -11,10 +11,21 @@ import (
 )
 
 // Store defines the functional key-value cache contract for serialized
-// protobuf payloads.
+// protobuf payloads. Mutations advance a per-key invalidation epoch:
+// a reader captures the Epoch before it computes a value and writes the
+// value back with SetIfEpoch only when the epoch is unchanged. A slow
+// reader can therefore not restore data that a mutation invalidated
+// while the reader computed its value.
 type Store interface {
 	Get(ctx context.Context, key string) IOE.IOEither[error, O.Option[[]byte]]
-	Set(ctx context.Context, key string, val []byte, ttl time.Duration) IOE.IOEither[error, struct{}]
+	Epoch(ctx context.Context, key string) IOE.IOEither[error, int64]
+	SetIfEpoch(
+		ctx context.Context,
+		key string,
+		val []byte,
+		ttl time.Duration,
+		epoch int64,
+	) IOE.IOEither[error, bool]
 	Delete(ctx context.Context, key string) IOE.IOEither[error, struct{}]
 	Close() error
 }

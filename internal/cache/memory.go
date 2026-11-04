@@ -3,6 +3,7 @@ package cache
 import (
 	"bytes"
 	"context"
+	"sync"
 	"time"
 
 	F "github.com/IBM/fp-go/v2/function"
@@ -11,19 +12,13 @@ import (
 	"github.com/jellydator/ttlcache/v3"
 )
 
-// MemoryStore is an in-memory TTL cache backed by ttlcache/v3.
-type (
-	MemoryStore struct {
-		cache *ttlcache.Cache[string, []byte]
-	}
-
-	memorySetInput struct {
-		store *MemoryStore
-		key   string
-		val   []byte
-		ttl   time.Duration
-	}
-)
+// MemoryStore is an in-memory TTL cache backed by ttlcache/v3 with a
+// mutex-guarded invalidation-epoch map.
+type MemoryStore struct {
+	mu     sync.Mutex
+	cache  *ttlcache.Cache[string, []byte]
+	epochs map[string]int64
+}
 
 // NewMemoryStore creates an in-memory TTL cache store with touch-on-hit
 // disabled so entries expire strictly after their configured TTL.
@@ -31,7 +26,7 @@ func NewMemoryStore() Store {
 	c := ttlcache.New(
 		ttlcache.WithDisableTouchOnHit[string, []byte](),
 	)
-	return &MemoryStore{cache: c}
+	return &MemoryStore{cache: c, epochs: make(map[string]int64)}
 }
 
 // getMemoryCacheItem retrieves a raw ttlcache item for key without
@@ -55,10 +50,6 @@ func cloneCachedBytes(item *ttlcache.Item[string, []byte]) []byte {
 	return bytes.Clone(item.Value())
 }
 
-func applyMemoryCacheSet(in memorySetInput) {
-	in.store.cache.Set(in.key, bytes.Clone(in.val), in.ttl)
-}
-
 // Get retrieves the cached byte slice for key, returning O.None when
 // the key is missing or expired.
 func (m *MemoryStore) Get(
@@ -73,33 +64,53 @@ func (m *MemoryStore) Get(
 	)
 }
 
-// Set stores a defensive copy of val under key with the given TTL.
-func (m *MemoryStore) Set(
+// Epoch returns the current invalidation epoch for key.
+func (m *MemoryStore) Epoch(
+	_ context.Context,
+	key string,
+) IOE.IOEither[error, int64] {
+	return IOE.TryCatchError(func() (int64, error) {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		epoch := m.epochs[key]
+		return epoch, nil
+	})
+}
+
+// SetIfEpoch stores a defensive copy of val under key with the given
+// TTL only when the key's invalidation epoch still equals epoch. It
+// reports whether the write happened.
+func (m *MemoryStore) SetIfEpoch(
 	_ context.Context,
 	key string,
 	val []byte,
 	ttl time.Duration,
-) IOE.IOEither[error, struct{}] {
-	return F.Pipe1(
-		IOE.Of[error](memorySetInput{
-			store: m,
-			key:   key,
-			val:   val,
-			ttl:   ttl,
-		}),
-		IOE.ChainConsumer[error](applyMemoryCacheSet),
-	)
+	epoch int64,
+) IOE.IOEither[error, bool] {
+	return IOE.TryCatchError(func() (bool, error) {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		if m.epochs[key] != epoch {
+			return false, nil
+		}
+		m.cache.Set(key, bytes.Clone(val), ttl)
+		return true, nil
+	})
 }
 
-// Delete removes key from the in-memory cache.
+// Delete removes key and advances its invalidation epoch under one
+// lock so concurrent stale writers cannot repopulate the key.
 func (m *MemoryStore) Delete(
 	_ context.Context,
 	key string,
 ) IOE.IOEither[error, struct{}] {
-	return F.Pipe1(
-		IOE.Of[error](key),
-		IOE.ChainConsumer[error](m.cache.Delete),
-	)
+	return IOE.TryCatchError(func() (struct{}, error) {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		m.epochs[key]++
+		m.cache.Delete(key)
+		return struct{}{}, nil
+	})
 }
 
 // Close clears all entries from the in-memory cache.
