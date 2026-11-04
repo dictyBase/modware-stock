@@ -94,17 +94,6 @@ func newServerProtocols() *http.Protocols {
 	return protocols
 }
 
-func buildMultiplexedHTTPServer(
-	grpcS *grpc.Server,
-	gwMux *runtime.ServeMux,
-) *http.Server {
-	return &http.Server{
-		Handler:           newMultiplexedHandler(grpcS, gwMux),
-		Protocols:         newServerProtocols(),
-		ReadHeaderTimeout: serverReadHeaderTimeout,
-	}
-}
-
 func newMultiplexedServer(
 	in gatewayInput,
 ) IOE.IOEither[error, *http.Server] {
@@ -112,19 +101,30 @@ func newMultiplexedServer(
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
-	toServer := F.Bind1st(buildMultiplexedHTTPServer, in.grpcS)
+	// The gateway registration closes its client connection when the
+	// context is done, so tie that context to the http.Server shutdown.
+	gwCtx, cancel := context.WithCancel(in.ctx)
 	return F.Pipe2(
 		IOE.TryCatchError(func() (*runtime.ServeMux, error) {
 			return mux, stock.RegisterStockServiceHandlerFromEndpoint(
-				in.ctx,
+				gwCtx,
 				mux,
 				in.endpoint,
 				opts,
 			)
 		}),
-		IOE.MapLeft[*runtime.ServeMux](
-			exitErrorWithPrefix("failed to register stock gateway"),
-		),
-		IOE.Map[error](toServer),
+		IOE.MapLeft[*runtime.ServeMux](func(err error) error {
+			cancel()
+			return F.Pipe1(err, exitErrorWithPrefix("failed to register stock gateway"))
+		}),
+		IOE.Map[error](func(gwMux *runtime.ServeMux) *http.Server {
+			srv := &http.Server{
+				Handler:           newMultiplexedHandler(in.grpcS, gwMux),
+				Protocols:         newServerProtocols(),
+				ReadHeaderTimeout: serverReadHeaderTimeout,
+			}
+			srv.RegisterOnShutdown(cancel)
+			return srv
+		}),
 	)
 }

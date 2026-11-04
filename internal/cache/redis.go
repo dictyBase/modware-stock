@@ -80,9 +80,13 @@ func wrapRedisPingError(addr string, err error) error {
 // Ping, and returns the initialized Store.
 func NewRedisStore(addr string) IOE.IOEither[error, Store] {
 	client := rds.NewClient(&rds.Options{Addr: addr})
-	return F.Pipe2(
+	return F.Pipe3(
 		IOE.TryCatchError(func() (string, error) {
 			return client.Ping(context.Background()).Result()
+		}),
+		IOE.OrElse(func(err error) IOE.IOEither[error, string] {
+			_ = client.Close()
+			return IOE.Left[string](err)
 		}),
 		IOE.MapLeft[string](F.Bind1st(wrapRedisPingError, addr)),
 		IOE.Map[error](
