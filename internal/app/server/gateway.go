@@ -15,13 +15,14 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/urfave/cli"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type (
 	gatewayInput struct {
 		ctx      context.Context
 		grpcS    *grpc.Server
-		stockSvc stock.StockServiceServer
+		endpoint string
 	}
 
 	multiplexedRequest struct {
@@ -108,13 +109,17 @@ func newMultiplexedServer(
 	in gatewayInput,
 ) IOE.IOEither[error, *http.Server] {
 	mux := runtime.NewServeMux()
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
 	toServer := F.Bind1st(buildMultiplexedHTTPServer, in.grpcS)
 	return F.Pipe2(
 		IOE.TryCatchError(func() (*runtime.ServeMux, error) {
-			return mux, stock.RegisterStockServiceHandlerServer(
+			return mux, stock.RegisterStockServiceHandlerFromEndpoint(
 				in.ctx,
 				mux,
-				in.stockSvc,
+				in.endpoint,
+				opts,
 			)
 		}),
 		IOE.MapLeft[*runtime.ServeMux](

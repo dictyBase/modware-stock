@@ -12,7 +12,6 @@ import (
 
 	E "github.com/IBM/fp-go/v2/either"
 	F "github.com/IBM/fp-go/v2/function"
-	IO "github.com/IBM/fp-go/v2/io"
 	IOE "github.com/IBM/fp-go/v2/ioeither"
 	L "github.com/IBM/fp-go/v2/optics/lens"
 	O "github.com/IBM/fp-go/v2/option"
@@ -22,9 +21,12 @@ import (
 	manager "github.com/dictyBase/arangomanager"
 	eitherparse "github.com/dictyBase/fp-go-loom/either/parse"
 	ioeutils "github.com/dictyBase/fp-go-loom/ioeitherutils"
+	predord "github.com/dictyBase/fp-go-loom/predicate/ord"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	ontoarango "github.com/dictyBase/go-obograph/storage/arangodb"
+	"github.com/dictyBase/modware-stock/internal/app/middleware"
 	"github.com/dictyBase/modware-stock/internal/app/service"
+	"github.com/dictyBase/modware-stock/internal/cache"
 	"github.com/dictyBase/modware-stock/internal/message"
 	"github.com/dictyBase/modware-stock/internal/message/nats"
 	"github.com/dictyBase/modware-stock/internal/repository"
@@ -42,6 +44,7 @@ type serverState struct {
 	cliCtx   *cli.Context
 	repo     repository.StockRepository
 	pub      message.Publisher
+	cache    cache.Store
 	grpcS    *grpc.Server
 	stockSvc *service.StockService
 	httpS    *http.Server
@@ -62,6 +65,13 @@ var (
 		func(s serverState) message.Publisher { return s.pub },
 		func(s serverState, pub message.Publisher) serverState {
 			s.pub = pub
+			return s
+		},
+	)
+	serverCacheLens = L.MakeLens(
+		func(s serverState) cache.Store { return s.cache },
+		func(s serverState, c cache.Store) serverState {
+			s.cache = c
 			return s
 		},
 	)
@@ -94,6 +104,24 @@ var (
 		},
 	)
 
+	hasNonEmptyStr    = predord.MinStrLen(1)
+	hasRedisHost      = F.Pipe1(hasNonEmptyStr, P.ContraMap(redisHostFromState))
+	hasRedisPort      = F.Pipe1(hasNonEmptyStr, P.ContraMap(redisPortFromState))
+	hasRedisConfig    = F.Pipe1(hasRedisHost, P.And(hasRedisPort))
+	newMemoryStoreIOE = F.Pipe1(
+		IOE.Of[error](struct{}{}),
+		IOE.Map[error](func(struct{}) cache.Store {
+			return cache.NewMemoryStore()
+		}),
+	)
+	openCacheStore = F.Pipe1(
+		hasRedisConfig,
+		P.Fold(
+			F.Constant1[serverState](newMemoryStoreIOE),
+			openRedisCacheStore,
+		),
+	)
+
 	maybeRegisterReflection = F.Pipe1(
 		hasReflectionFlag,
 		P.Fold(F.Identity[serverState], registerReflectionOnState),
@@ -111,6 +139,40 @@ var (
 		"panic":       logrus.PanicLevel,
 	}
 )
+
+// redisHostFromState extracts the Redis master service host flag from
+// the server CLI context.
+//
+// fp-go:allow-trivial-delegate cli.Context exposes flag values only
+// through its String method.
+func redisHostFromState(s serverState) string {
+	return s.cliCtx.String(flagRedisHost)
+}
+
+// redisPortFromState extracts the Redis master service port flag from
+// the server CLI context.
+//
+// fp-go:allow-trivial-delegate cli.Context exposes flag values only
+// through its String method.
+func redisPortFromState(s serverState) string {
+	return s.cliCtx.String(flagRedisPort)
+}
+
+func openRedisCacheStore(
+	s serverState,
+) IOE.IOEither[error, cache.Store] {
+	addr := fmt.Sprintf(
+		"%s:%s",
+		s.cliCtx.String(flagRedisHost),
+		s.cliCtx.String(flagRedisPort),
+	)
+	return F.Pipe1(
+		cache.NewRedisStore(addr),
+		IOE.MapLeft[cache.Store](
+			exitErrorWithPrefix("cannot connect to redis cache"),
+		),
+	)
+}
 
 func openStockRepository(
 	s serverState,
@@ -150,6 +212,10 @@ func buildGRPCServer(s serverState) *grpc.Server {
 		grpc.ChainUnaryInterceptor(
 			grpc_ctxtags.UnaryServerInterceptor(),
 			grpc_logrus.UnaryServerInterceptor(logger),
+			middleware.StockCountsCacheInterceptor(
+				s.cache,
+				middleware.DefaultStockCountsCacheTTL,
+			),
 		),
 	)
 }
@@ -184,12 +250,9 @@ func registerReflectionOnState(s serverState) serverState {
 	return s
 }
 
-func registerGRPCServices(s serverState) IO.IO[struct{}] {
-	return func() struct{} {
-		stock.RegisterStockServiceServer(s.grpcS, s.stockSvc)
-		_ = maybeRegisterReflection(s)
-		return struct{}{}
-	}
+func registerGRPCServices(s serverState) {
+	stock.RegisterStockServiceServer(s.grpcS, s.stockSvc)
+	_ = maybeRegisterReflection(s)
 }
 
 func buildGatewayServerFromState(
@@ -198,7 +261,7 @@ func buildGatewayServerFromState(
 	in := gatewayInput{
 		ctx:      context.Background(),
 		grpcS:    s.grpcS,
-		stockSvc: s.stockSvc,
+		endpoint: s.lis.Addr().String(),
 	}
 	return newMultiplexedServer(in)
 }
@@ -233,16 +296,17 @@ func serveHTTPFromState(
 
 // RunServer starts and runs the multiplexed gRPC and HTTP gateway server.
 func RunServer(c *cli.Context) error {
-	return F.Pipe11(
+	return F.Pipe12(
 		serverState{cliCtx: c},
 		IOE.Of[error, serverState],
 		IOE.Bind(serverRepoLens.Set, openStockRepository),
 		IOE.Bind(serverPubLens.Set, openStockPublisher),
+		IOE.Bind(serverCacheLens.Set, openCacheStore),
 		IOE.Let[error](serverGRPCServerLens.Set, buildGRPCServer),
 		IOE.Let[error](serverStockSvcLens.Set, buildStockService),
-		IOE.ChainFirstIOK[error](registerGRPCServices),
-		IOE.Bind(serverHTTPServerLens.Set, buildGatewayServerFromState),
+		IOE.ChainFirstConsumer[error](registerGRPCServices),
 		IOE.Bind(serverListenerLens.Set, listenServerFromState),
+		IOE.Bind(serverHTTPServerLens.Set, buildGatewayServerFromState),
 		IOE.Chain(serveHTTPFromState),
 		ioeutils.ToEither[error, serverState],
 		E.ToError[serverState],

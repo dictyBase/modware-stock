@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -749,26 +748,18 @@ func testStartServerCommandFlags(t *testing.T) {
 
 func testAppRunsWithNoArgs(t *testing.T) {
 	t.Helper()
-	oldArgs := os.Args
-	defer func() { os.Args = oldArgs }()
-
-	os.Args = []string{appName}
 
 	app := cli.NewApp()
 	app.Name = appName
 	app.Usage = appUsage
 	app.Version = appVersion
 
-	err := app.Run(os.Args)
+	err := app.Run([]string{appName})
 	require.NoError(t, err, "app should run without error when no command is given")
 }
 
 func testAppRunsWithHelpFlag(t *testing.T) {
 	t.Helper()
-	oldArgs := os.Args
-	defer func() { os.Args = oldArgs }()
-
-	os.Args = []string{appName, "--help"}
 
 	app := cli.NewApp()
 	app.Name = appName
@@ -787,22 +778,18 @@ func testAppRunsWithHelpFlag(t *testing.T) {
 		},
 	}
 
-	err := app.Run(os.Args)
+	err := app.Run([]string{appName, "--help"})
 	require.NoError(t, err, "app should run without error when help flag is given")
 }
 
 func testAppRunsWithVersionFlag(t *testing.T) {
 	t.Helper()
-	oldArgs := os.Args
-	defer func() { os.Args = oldArgs }()
-
-	os.Args = []string{"modware-stock", "--version"}
 
 	app := cli.NewApp()
 	app.Name = "modware-stock"
 	app.Version = "1.0.0"
 
-	err := app.Run(os.Args)
+	err := app.Run([]string{"modware-stock", "--version"})
 	require.NoError(t, err, "app should run without error when version flag is given")
 }
 
@@ -851,11 +838,6 @@ func testMainFunctionStructure(t *testing.T) {
 
 func testCompleteApplicationLifecycle(t *testing.T) {
 	t.Helper()
-	oldArgs := os.Args
-	defer func() { os.Args = oldArgs }()
-
-	// Test with just the app name (no command)
-	os.Args = []string{appName}
 
 	// Create full app as main() does
 	app := cli.NewApp()
@@ -883,7 +865,7 @@ func testCompleteApplicationLifecycle(t *testing.T) {
 	}
 
 	// This should not error as the app is valid
-	err := app.Run(os.Args)
+	err := app.Run([]string{appName})
 	require.NoError(t, err, "app should run successfully with valid configuration")
 
 	// Verify the app structure after Run
@@ -1130,4 +1112,24 @@ func testMainFunctionComponents(t *testing.T) {
 
 	keyOffsetFlag := findFlagByName(startServerCmd.Flags, "keyoffset")
 	require.NotNil(t, keyOffsetFlag, "start-server must have keyoffset flag")
+}
+
+func TestRedisFlags(t *testing.T) {
+	t.Parallel()
+	flags := redisFlags()
+	require.Len(t, flags, 2)
+
+	hostFlag := findFlagByName(flags, flagRedisHost)
+	require.NotNil(t, hostFlag)
+	hostStrFlag, ok := hostFlag.(cli.StringFlag)
+	require.True(t, ok)
+	require.Equal(t, envRedisHost, hostStrFlag.EnvVar)
+	require.Equal(t, usageRedisHost, hostStrFlag.Usage)
+
+	portFlag := findFlagByName(flags, flagRedisPort)
+	require.NotNil(t, portFlag)
+	portStrFlag, ok := portFlag.(cli.StringFlag)
+	require.True(t, ok)
+	require.Equal(t, envRedisPort, portStrFlag.EnvVar)
+	require.Equal(t, usageRedisPort, portStrFlag.Usage)
 }

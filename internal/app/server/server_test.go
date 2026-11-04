@@ -8,15 +8,19 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	E "github.com/IBM/fp-go/v2/either"
 	F "github.com/IBM/fp-go/v2/function"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/dictyBase/aphgrpc"
 	ioeutils "github.com/dictyBase/fp-go-loom/ioeitherutils"
 	loomcheck "github.com/dictyBase/fp-go-loom/loomcheck"
 	"github.com/dictyBase/fp-go-loom/pipelinecheck"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
+	"github.com/dictyBase/modware-stock/internal/app/middleware"
+	"github.com/dictyBase/modware-stock/internal/cache"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
@@ -27,6 +31,7 @@ import (
 
 type stubGatewayStockServer struct {
 	stock.UnimplementedStockServiceServer
+	countCalls *atomic.Int32
 }
 
 // runServerIntegrationTestDoc provides comprehensive documentation for testing RunServer.
@@ -638,10 +643,13 @@ func createTestContextWithFlags(flags map[string]any) *cli.Context {
 	return cli.NewContext(app, set, nil)
 }
 
-func (stubGatewayStockServer) CountStocks(
+func (s stubGatewayStockServer) CountStocks(
 	_ context.Context,
 	_ *empty.Empty,
 ) (*stock.StockCounts, error) {
+	if s.countCalls != nil {
+		s.countCalls.Add(1)
+	}
 	return &stock.StockCounts{
 		Strains: &stock.StockEntityCounts{
 			Total: 8,
@@ -661,19 +669,41 @@ func (stubGatewayStockServer) CountStocks(
 	}, nil
 }
 
+func (stubGatewayStockServer) RemoveStock(
+	_ context.Context,
+	_ *stock.StockId,
+) (*empty.Empty, error) {
+	return &empty.Empty{}, nil
+}
+
 func TestMultiplexedServerServesGRPCAndHTTPOnSamePort(t *testing.T) {
 	t.Parallel()
 	assert := require.New(t)
 
-	grpcS := grpc.NewServer()
-	svc := stubGatewayStockServer{}
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(err)
+	addr := lis.Addr().String()
+
+	store := cache.NewMemoryStore()
+	t.Cleanup(func() { _ = store.Close() })
+
+	var calls atomic.Int32
+	grpcS := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			middleware.StockCountsCacheInterceptor(
+				store,
+				middleware.DefaultStockCountsCacheTTL,
+			),
+		),
+	)
+	svc := stubGatewayStockServer{countCalls: &calls}
 	stock.RegisterStockServiceServer(grpcS, svc)
 
 	httpSRes := F.Pipe1(
 		newMultiplexedServer(gatewayInput{
 			ctx:      context.Background(),
 			grpcS:    grpcS,
-			stockSvc: svc,
+			endpoint: addr,
 		}),
 		ioeutils.ToEither[error, *http.Server],
 	)
@@ -684,8 +714,6 @@ func TestMultiplexedServerServesGRPCAndHTTPOnSamePort(t *testing.T) {
 	)
 	assert.NotNil(httpS)
 
-	lis, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(err)
 	go func() {
 		_ = httpS.Serve(lis)
 	}()
@@ -694,7 +722,6 @@ func TestMultiplexedServerServesGRPCAndHTTPOnSamePort(t *testing.T) {
 		grpcS.Stop()
 	})
 
-	addr := lis.Addr().String()
 	conn, err := grpc.NewClient(
 		addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -709,13 +736,16 @@ func TestMultiplexedServerServesGRPCAndHTTPOnSamePort(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(int64(8), grpcResp.GetStrains().GetTotal())
 	assert.Equal(int64(3), grpcResp.GetPlasmids().GetTotal())
+	assert.Equal(int32(1), calls.Load())
 
+	// HTTP gateway request hits the gRPC cache interceptor and does not re-invoke CountStocks.
 	httpResp, err := http.Get("http://" + addr + "/v1/stocks/counts")
 	assert.NoError(err)
 	defer func() { _ = httpResp.Body.Close() }()
 	assert.Equal(http.StatusOK, httpResp.StatusCode)
 	body, err := io.ReadAll(httpResp.Body)
 	assert.NoError(err)
+	assert.Equal(int32(1), calls.Load())
 	assert.JSONEq(
 		`{
 		  "strains": {
@@ -737,10 +767,73 @@ func TestMultiplexedServerServesGRPCAndHTTPOnSamePort(t *testing.T) {
 		string(body),
 	)
 
+	// Mutation RPC invalidates the cache so the next HTTP request recomputes.
+	_, err = client.RemoveStock(context.Background(), &stock.StockId{Id: "DBS1"})
+	assert.NoError(err)
+
+	httpResp2, err := http.Get("http://" + addr + "/v1/stocks/counts")
+	assert.NoError(err)
+	defer func() { _ = httpResp2.Body.Close() }()
+	assert.Equal(http.StatusOK, httpResp2.StatusCode)
+	assert.Equal(int32(2), calls.Load())
+
 	unmappedResp, err := http.Get("http://" + addr + "/v1/stocks/strains")
 	assert.NoError(err)
 	defer func() { _ = unmappedResp.Body.Close() }()
 	assert.Equal(http.StatusNotFound, unmappedResp.StatusCode)
+}
+
+func TestOpenCacheStore(t *testing.T) {
+	t.Parallel()
+
+	t.Run("DefaultsToMemoryStoreWhenRedisFlagsAreEmpty", func(t *testing.T) {
+		t.Parallel()
+		ctx := createTestContextWithFlags(map[string]any{})
+		res := F.Pipe1(
+			openCacheStore(serverState{cliCtx: ctx}),
+			ioeutils.ToEither[error, cache.Store],
+		)
+		require.True(t, E.IsRight(res))
+		store := F.Pipe1(res, E.GetOrElse(F.Constant1[error](cache.Store(nil))))
+		require.IsType(t, &cache.MemoryStore{}, store)
+		_ = store.Close()
+	})
+
+	t.Run("UsesRedisStoreWhenRedisHostAndPortAreProvided", func(t *testing.T) {
+		t.Parallel()
+		mr, err := miniredis.Run()
+		require.NoError(t, err)
+		t.Cleanup(mr.Close)
+
+		host, port, err := net.SplitHostPort(mr.Addr())
+		require.NoError(t, err)
+
+		ctx := createTestContextWithFlags(map[string]any{
+			flagRedisHost: host,
+			flagRedisPort: port,
+		})
+		res := F.Pipe1(
+			openCacheStore(serverState{cliCtx: ctx}),
+			ioeutils.ToEither[error, cache.Store],
+		)
+		require.True(t, E.IsRight(res))
+		store := F.Pipe1(res, E.GetOrElse(F.Constant1[error](cache.Store(nil))))
+		require.IsType(t, &cache.RedisStore{}, store)
+		_ = store.Close()
+	})
+
+	t.Run("FailsWhenConfiguredRedisIsUnreachable", func(t *testing.T) {
+		t.Parallel()
+		ctx := createTestContextWithFlags(map[string]any{
+			flagRedisHost: "127.0.0.1",
+			flagRedisPort: "1",
+		})
+		res := F.Pipe1(
+			openCacheStore(serverState{cliCtx: ctx}),
+			ioeutils.ToEither[error, cache.Store],
+		)
+		require.True(t, E.IsLeft(res))
+	})
 }
 
 func TestServerPipelineAndLoomStyle(t *testing.T) {
