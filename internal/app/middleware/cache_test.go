@@ -570,3 +570,82 @@ func TestStockCountsCacheInterceptorFailsOpenOnSetError(t *testing.T) {
 	assert.Equal(int64(14), counts2.GetStrains().GetTotal())
 	assert.Equal(int32(2), countCalls.Load())
 }
+
+func TestStockCountsCacheInterceptorRejectsStaleWriteAcrossRedisReplicas(t *testing.T) {
+	t.Parallel()
+	assert := require.New(t)
+
+	mr, err := miniredis.Run()
+	assert.NoError(err)
+	t.Cleanup(mr.Close)
+
+	newReplica := func() cache.Store {
+		storeRes := F.Pipe1(
+			cache.NewRedisStore(mr.Addr()),
+			ioeutils.ToEither[error, cache.Store],
+		)
+		assert.True(E.IsRight(storeRes))
+		store := F.Pipe1(
+			storeRes,
+			E.GetOrElse(F.Constant1[error](cache.Store(nil))),
+		)
+		t.Cleanup(func() { _ = store.Close() })
+		return store
+	}
+
+	// Two replicas share one Redis instance: each side has its own
+	// store and interceptor, like two service processes behind a load
+	// balancer.
+	interceptorA := StockCountsCacheInterceptor(newReplica(), DefaultStockCountsCacheTTL)
+	interceptorB := StockCountsCacheInterceptor(newReplica(), DefaultStockCountsCacheTTL)
+
+	countInfo := &grpc.UnaryServerInfo{
+		FullMethod: stock.StockService_CountStocks_FullMethodName,
+	}
+	createInfo := &grpc.UnaryServerInfo{
+		FullMethod: stock.StockService_CreateStrain_FullMethodName,
+	}
+
+	started := make(chan struct{})
+	proceed := make(chan struct{})
+	var countCalls atomic.Int32
+	//nolint:unparam // grpc.UnaryHandler requires the (any, error) result.
+	slowHandler := func(_ context.Context, _ any) (any, error) {
+		if countCalls.Add(1) == 1 {
+			close(started)
+			<-proceed
+			// stale snapshot taken before the mutation
+			return sampleStockCounts(1, 1), nil
+		}
+		return sampleStockCounts(50, 25), nil
+	}
+
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		_, _ = interceptorA(context.Background(), &empty.Empty{}, countInfo, slowHandler)
+	})
+
+	// The mutation on replica B wins the race while replica A still
+	// computes.
+	<-started
+	_, err = interceptorB(
+		context.Background(),
+		&stock.NewStrain{},
+		createInfo,
+		func(_ context.Context, _ any) (any, error) {
+			return &stock.Strain{}, nil
+		},
+	)
+	assert.NoError(err)
+	close(proceed)
+	wg.Wait()
+
+	// The shared Redis epoch must reject replica A's stale write, so
+	// the next read through either replica recomputes.
+	resp, err := interceptorB(context.Background(), &empty.Empty{}, countInfo, slowHandler)
+	assert.NoError(err)
+	counts, ok := resp.(*stock.StockCounts)
+	assert.True(ok)
+	assert.Equal(int64(50), counts.GetStrains().GetTotal())
+	assert.Equal(int32(2), countCalls.Load())
+}
