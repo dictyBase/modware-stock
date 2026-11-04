@@ -54,6 +54,7 @@ func main() {
 func allFlags() []cli.Flag {
 	f := make([]cli.Flag, 0)
 	f = append(f, serverFlags()...)
+	f = append(f, redisFlags()...)
 	f = append(f, dbCollectionFlags()...)
 	f = append(f, arango.ArangoFlags()...)
 	f = append(f, []cli.Flag{
@@ -66,6 +67,21 @@ func allFlags() []cli.Flag {
 	}...)
 	f = append(f, oboflag.OntologyFlagsOnly()...)
 	return append(f, aphgrpc.NatsFlag()...)
+}
+
+func redisFlags() []cli.Flag {
+	return []cli.Flag{
+		cli.StringFlag{
+			Name:   flagRedisHost,
+			EnvVar: envRedisHost,
+			Usage:  usageRedisHost,
+		},
+		cli.StringFlag{
+			Name:   flagRedisPort,
+			EnvVar: envRedisPort,
+			Usage:  usageRedisPort,
+		},
+	}
 }
 
 func serverFlags() []cli.Flag {

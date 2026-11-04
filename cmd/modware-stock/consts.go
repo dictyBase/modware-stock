@@ -5,11 +5,19 @@ const (
 	flagLogFormat   = "log-format"
 	flagLogLevel    = "log-level"
 	flagStartServer = "start-server"
+	flagRedisHost   = "redis-master-service-host"
+	flagRedisPort   = "redis-master-service-port"
+
+	// Environment variable names for optional Redis caching.
+	envRedisHost = "REDIS_SERVICE_HOST"
+	envRedisPort = "REDIS_SERVICE_PORT"
 
 	// CLI flag usage strings.
 	usageLogFormat   = "format of the logging out, either of json or text."
 	usageLogLevel    = "log level for the application"
 	usageStartServer = "starts the modware-stock microservice with grpc backends"
+	usageRedisHost   = "redis master service host for stock counts caching"
+	usageRedisPort   = "redis master service port for stock counts caching"
 
 	// Accepted values for the logging flags.
 	logFormatJSON = "json"

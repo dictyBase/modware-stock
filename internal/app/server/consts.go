@@ -8,6 +8,8 @@ const (
 	flagLogLevel     = "log-level"
 	flagArangodbPort = "arangodb-port"
 	flagIsSecure     = "is-secure"
+	flagRedisHost    = "redis-master-service-host"
+	flagRedisPort    = "redis-master-service-port"
 
 	// Accepted logging option values.
 	logFormatText = "text"
