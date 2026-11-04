@@ -297,10 +297,22 @@ func serveHTTPFromState(
 	s serverState,
 ) IOE.IOEither[error, serverState] {
 	endP := fmt.Sprintf(":%s", s.cliCtx.String("port"))
-	return F.Pipe2(
+	return F.Pipe3(
 		IOE.TryCatchError(func() (struct{}, error) {
 			log.Printf("starting grpc and http gateway server on %s", endP)
 			return struct{}{}, s.httpS.Serve(s.lis)
+		}),
+		// Serve always returns a non-nil error on exit, so the recovery
+		// below is the exit path: Shutdown runs the registered hooks
+		// that cancel the gateway context and close its connection.
+		IOE.OrElse(func(err error) IOE.IOEither[error, struct{}] {
+			shutdownCtx, done := context.WithTimeout(
+				context.Background(),
+				serverShutdownTimeout,
+			)
+			defer done()
+			_ = s.httpS.Shutdown(shutdownCtx)
+			return IOE.Left[struct{}](err)
 		}),
 		IOE.MapLeft[struct{}](func(err error) error {
 			return fmt.Errorf("error in running server %s", err)
