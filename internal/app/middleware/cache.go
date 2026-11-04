@@ -249,14 +249,6 @@ func handleCountStocksCall(c unaryCall) IOE.IOEither[error, any] {
 	)
 }
 
-func failedUnaryResult(err error) unaryResult {
-	return unaryResult{err: err}
-}
-
-func successfulUnaryResult(resp any) unaryResult {
-	return unaryResult{resp: resp}
-}
-
 // StockCountsCacheInterceptor returns a grpc.UnaryServerInterceptor that
 // caches CountStocks responses under StockCountsCacheKey for ttl (or
 // DefaultStockCountsCacheTTL when ttl <= 0) and invalidates the entry
@@ -286,7 +278,10 @@ func StockCountsCacheInterceptor(
 				P.Fold(dispatchNonCountCall, handleCountStocksCall),
 			),
 			ioeutils.ToEither[error, any],
-			E.Fold(failedUnaryResult, successfulUnaryResult),
+			E.Fold(
+				func(err error) unaryResult { return unaryResult{err: err} },
+				func(resp any) unaryResult { return unaryResult{resp: resp} },
+			),
 		)
 		return res.resp, res.err
 	}

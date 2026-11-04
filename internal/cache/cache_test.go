@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -294,4 +295,45 @@ func TestCachePipelineAndLoomStyle(t *testing.T) {
 		Roots:               []string{"."},
 		StrictAllPredicates: true,
 	})
+}
+
+func TestRedisStoreClosesClientOnFailedPing(t *testing.T) {
+	t.Parallel()
+	assert := require.New(t)
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(err)
+	t.Cleanup(func() { _ = ln.Close() })
+
+	connClosed := make(chan struct{})
+	go func() {
+		conn, cerr := ln.Accept()
+		if cerr != nil {
+			return
+		}
+		// Answer the client PING with a RESP error so the ping fails
+		// fast, then watch for the client to close the connection.
+		buf := make([]byte, 256)
+		_, _ = conn.Read(buf)
+		_, _ = conn.Write([]byte("-ERR ping failed\r\n"))
+		for {
+			if _, rerr := conn.Read(buf); rerr != nil {
+				break
+			}
+		}
+		_ = conn.Close()
+		close(connClosed)
+	}()
+
+	res := F.Pipe1(
+		NewRedisStore(ln.Addr().String()),
+		ioeutils.ToEither[error, Store],
+	)
+	assert.True(E.IsLeft(res))
+
+	select {
+	case <-connClosed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("redis client connection was not closed after failed ping")
+	}
 }
