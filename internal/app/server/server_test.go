@@ -862,3 +862,95 @@ func TestServerPipelineAndLoomStyle(t *testing.T) {
 		StrictAllPredicates: true,
 	})
 }
+
+func TestLoopbackDialEndpoint(t *testing.T) {
+	t.Parallel()
+	assert := require.New(t)
+
+	//nolint:gosec // G102: the test intentionally binds a wildcard listener.
+	wildcardLis, err := net.Listen("tcp", ":0")
+	assert.NoError(err)
+	t.Cleanup(func() { _ = wildcardLis.Close() })
+	_, port, err := net.SplitHostPort(wildcardLis.Addr().String())
+	assert.NoError(err)
+
+	endpoint, err := loopbackDialEndpoint(wildcardLis)
+	assert.NoError(err)
+	assert.Equal(net.JoinHostPort("127.0.0.1", port), endpoint)
+
+	loopbackLis, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(err)
+	t.Cleanup(func() { _ = loopbackLis.Close() })
+	loopbackEndpoint, err := loopbackDialEndpoint(loopbackLis)
+	assert.NoError(err)
+	assert.Equal(loopbackLis.Addr().String(), loopbackEndpoint)
+}
+
+func TestGatewayWithWildcardListenerServesHTTPParity(t *testing.T) {
+	t.Parallel()
+	assert := require.New(t)
+
+	//nolint:gosec // G102: the test intentionally binds a wildcard listener.
+	lis, err := net.Listen("tcp", ":0")
+	assert.NoError(err)
+
+	store := cache.NewMemoryStore()
+	t.Cleanup(func() { _ = store.Close() })
+
+	var calls atomic.Int32
+	grpcS := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			middleware.StockCountsCacheInterceptor(
+				store,
+				middleware.DefaultStockCountsCacheTTL,
+			),
+		),
+	)
+	stock.RegisterStockServiceServer(grpcS, stubGatewayStockServer{countCalls: &calls})
+
+	httpSRes := F.Pipe1(
+		buildGatewayServerFromState(serverState{grpcS: grpcS, lis: lis}),
+		ioeutils.ToEither[error, *http.Server],
+	)
+	assert.True(E.IsRight(httpSRes))
+	httpS := F.Pipe1(
+		httpSRes,
+		E.GetOrElse(F.Constant1[error]((*http.Server)(nil))),
+	)
+	assert.NotNil(httpS)
+
+	go func() {
+		_ = httpS.Serve(lis)
+	}()
+	t.Cleanup(func() {
+		_ = httpS.Close()
+		grpcS.Stop()
+	})
+
+	_, port, err := net.SplitHostPort(lis.Addr().String())
+	assert.NoError(err)
+	dialAddr := net.JoinHostPort("127.0.0.1", port)
+
+	conn, err := grpc.NewClient(
+		dialAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	assert.NoError(err)
+	t.Cleanup(func() {
+		_ = conn.Close()
+	})
+
+	client := stock.NewStockServiceClient(conn)
+	grpcResp, err := client.CountStocks(context.Background(), &empty.Empty{})
+	assert.NoError(err)
+	assert.Equal(int64(8), grpcResp.GetStrains().GetTotal())
+	assert.Equal(int32(1), calls.Load())
+
+	// The HTTP gateway must reach the same cache entry through the
+	// loopback endpoint even when the listener binds a wildcard address.
+	httpResp, err := http.Get("http://" + dialAddr + "/v1/stocks/counts")
+	assert.NoError(err)
+	defer func() { _ = httpResp.Body.Close() }()
+	assert.Equal(http.StatusOK, httpResp.StatusCode)
+	assert.Equal(int32(1), calls.Load())
+}

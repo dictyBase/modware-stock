@@ -258,12 +258,27 @@ func registerGRPCServices(s serverState) {
 func buildGatewayServerFromState(
 	s serverState,
 ) IOE.IOEither[error, *http.Server] {
-	in := gatewayInput{
-		ctx:      context.Background(),
-		grpcS:    s.grpcS,
-		endpoint: s.lis.Addr().String(),
-	}
-	return newMultiplexedServer(in)
+	return F.Pipe2(
+		IOE.TryCatchError(func() (string, error) {
+			return loopbackDialEndpoint(s.lis)
+		}),
+		IOE.Map[error](func(endpoint string) gatewayInput {
+			return gatewayInput{
+				ctx:      context.Background(),
+				grpcS:    s.grpcS,
+				endpoint: endpoint,
+			}
+		}),
+		IOE.Chain(newMultiplexedServer),
+	)
+}
+
+// loopbackDialEndpoint derives the explicit loopback dial endpoint for
+// a bound listener. The listener address can be a wildcard bind, so
+// the gateway must dial the loopback host with the bound port.
+func loopbackDialEndpoint(lis net.Listener) (string, error) {
+	_, port, err := net.SplitHostPort(lis.Addr().String())
+	return net.JoinHostPort(loopbackHost, port), err
 }
 
 func listenServerFromState(
