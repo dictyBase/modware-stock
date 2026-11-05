@@ -31,8 +31,15 @@ import (
 
 type stubGatewayStockServer struct {
 	stock.UnimplementedStockServiceServer
-	countCalls *atomic.Int32
+	countCalls   *atomic.Int32
+	strainCalls  *atomic.Int32
+	plasmidCalls *atomic.Int32
 }
+
+const (
+	testStrainID  = "DBS1"
+	testPlasmidID = "DBP1"
+)
 
 // runServerIntegrationTestDoc provides comprehensive documentation for testing RunServer.
 // This documentation describes the integration testing requirements for the RunServer function.
@@ -676,6 +683,43 @@ func (stubGatewayStockServer) RemoveStock(
 	return &empty.Empty{}, nil
 }
 
+func (s stubGatewayStockServer) GetStrain(
+	_ context.Context,
+	req *stock.StockId,
+) (*stock.Strain, error) {
+	if s.strainCalls != nil {
+		s.strainCalls.Add(1)
+	}
+	return &stock.Strain{
+		Data: &stock.Strain_Data{
+			Type: "strain",
+			Id:   req.GetId(),
+			Attributes: &stock.StrainAttributes{
+				Label:   "ax4",
+				Species: "Dictyostelium discoideum",
+			},
+		},
+	}, nil
+}
+
+func (s stubGatewayStockServer) GetPlasmid(
+	_ context.Context,
+	req *stock.StockId,
+) (*stock.Plasmid, error) {
+	if s.plasmidCalls != nil {
+		s.plasmidCalls.Add(1)
+	}
+	return &stock.Plasmid{
+		Data: &stock.Plasmid_Data{
+			Type: "plasmid",
+			Id:   req.GetId(),
+			Attributes: &stock.PlasmidAttributes{
+				Name: "pDNeo2",
+			},
+		},
+	}, nil
+}
+
 func TestMultiplexedServerServesGRPCAndHTTPOnSamePort(t *testing.T) {
 	t.Parallel()
 	assert := require.New(t)
@@ -688,6 +732,8 @@ func TestMultiplexedServerServesGRPCAndHTTPOnSamePort(t *testing.T) {
 	t.Cleanup(func() { _ = store.Close() })
 
 	var calls atomic.Int32
+	var strainCalls atomic.Int32
+	var plasmidCalls atomic.Int32
 	grpcS := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			middleware.StockCountsCacheInterceptor(
@@ -696,7 +742,11 @@ func TestMultiplexedServerServesGRPCAndHTTPOnSamePort(t *testing.T) {
 			),
 		),
 	)
-	svc := stubGatewayStockServer{countCalls: &calls}
+	svc := stubGatewayStockServer{
+		countCalls:   &calls,
+		strainCalls:  &strainCalls,
+		plasmidCalls: &plasmidCalls,
+	}
 	stock.RegisterStockServiceServer(grpcS, svc)
 
 	httpSRes := F.Pipe1(
@@ -767,9 +817,37 @@ func TestMultiplexedServerServesGRPCAndHTTPOnSamePort(t *testing.T) {
 		string(body),
 	)
 
-	// Mutation RPC invalidates the cache so the next HTTP request recomputes.
-	_, err = client.RemoveStock(context.Background(), &stock.StockId{Id: "DBS1"})
+	// GetStrain and GetPlasmid responses are cached and invalidated by RemoveStock.
+	strainResp, err := client.GetStrain(context.Background(), &stock.StockId{Id: testStrainID})
 	assert.NoError(err)
+	assert.Equal("ax4", strainResp.GetData().GetAttributes().GetLabel())
+	assert.Equal(int32(1), strainCalls.Load())
+
+	_, err = client.GetStrain(context.Background(), &stock.StockId{Id: testStrainID})
+	assert.NoError(err)
+	assert.Equal(int32(1), strainCalls.Load())
+
+	plasmidResp, err := client.GetPlasmid(context.Background(), &stock.StockId{Id: testPlasmidID})
+	assert.NoError(err)
+	assert.Equal("pDNeo2", plasmidResp.GetData().GetAttributes().GetName())
+	assert.Equal(int32(1), plasmidCalls.Load())
+
+	_, err = client.GetPlasmid(context.Background(), &stock.StockId{Id: testPlasmidID})
+	assert.NoError(err)
+	assert.Equal(int32(1), plasmidCalls.Load())
+
+	// Mutation RPC invalidates the cache so the next HTTP request recomputes.
+	_, err = client.RemoveStock(context.Background(), &stock.StockId{Id: testStrainID})
+	assert.NoError(err)
+
+	_, err = client.GetStrain(context.Background(), &stock.StockId{Id: testStrainID})
+	assert.NoError(err)
+	assert.Equal(int32(2), strainCalls.Load())
+
+	// DBP1 was not removed, so its cache entry remains warm.
+	_, err = client.GetPlasmid(context.Background(), &stock.StockId{Id: testPlasmidID})
+	assert.NoError(err)
+	assert.Equal(int32(1), plasmidCalls.Load())
 
 	httpResp2, err := http.Get("http://" + addr + "/v1/stocks/counts")
 	assert.NoError(err)
