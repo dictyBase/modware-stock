@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -31,7 +32,10 @@ type (
 	}
 )
 
-const testStockID = "DBS1"
+const (
+	testStockID   = "DBS1"
+	testPlasmidID = "DBP1"
+)
 
 func (failingStore) Get(
 	_ context.Context,
@@ -102,6 +106,311 @@ func sampleStockCounts(totalStrains, totalPlasmids int64) *stock.StockCounts {
 			},
 		},
 	}
+}
+
+func sampleStrain(id, label string) *stock.Strain {
+	return &stock.Strain{
+		Data: &stock.Strain_Data{
+			Type: "strain",
+			Id:   id,
+			Attributes: &stock.StrainAttributes{
+				Label:   label,
+				Species: "Dictyostelium discoideum",
+				Names:   []string{"name-" + label},
+			},
+		},
+	}
+}
+
+func samplePlasmid(id, name string) *stock.Plasmid {
+	return &stock.Plasmid{
+		Data: &stock.Plasmid_Data{
+			Type: "plasmid",
+			Id:   id,
+			Attributes: &stock.PlasmidAttributes{
+				Name:    name,
+				Summary: "summary-" + name,
+				Genes:   []string{"gene-" + name},
+			},
+		},
+	}
+}
+
+func TestGetStrainAndGetPlasmidCacheInterceptorWithMemoryStore(t *testing.T) {
+	t.Parallel()
+	assert := require.New(t)
+
+	store := cache.NewMemoryStore()
+	t.Cleanup(func() { _ = store.Close() })
+
+	interceptor := StockCountsCacheInterceptor(store, DefaultStockCountsCacheTTL)
+	var strainCalls atomic.Int32
+	var plasmidCalls atomic.Int32
+
+	strainInfo := &grpc.UnaryServerInfo{
+		FullMethod: stock.StockService_GetStrain_FullMethodName,
+	}
+	plasmidInfo := &grpc.UnaryServerInfo{
+		FullMethod: stock.StockService_GetPlasmid_FullMethodName,
+	}
+
+	strainHandler := func(_ context.Context, req any) (any, error) {
+		n := strainCalls.Add(1)
+		id := req.(*stock.StockId).GetId()
+		return sampleStrain(id, "ax4-"+strconv.Itoa(int(n))), nil
+	}
+	plasmidHandler := func(_ context.Context, req any) (any, error) {
+		n := plasmidCalls.Add(1)
+		id := req.(*stock.StockId).GetId()
+		return samplePlasmid(id, "pDNeo2-"+strconv.Itoa(int(n))), nil
+	}
+
+	resp1, err := interceptor(context.Background(), &stock.StockId{Id: testStockID}, strainInfo, strainHandler)
+	assert.NoError(err)
+	assert.Equal(int32(1), strainCalls.Load())
+	st1, ok := resp1.(*stock.Strain)
+	assert.True(ok)
+	assert.Equal("ax4-1", st1.GetData().GetAttributes().GetLabel())
+
+	// Mutating the returned pointer must not corrupt the cached value.
+	st1.Data.Attributes.Label = "tampered"
+	st1.Data.Attributes.Names[0] = "tampered-name"
+
+	resp2, err := interceptor(context.Background(), &stock.StockId{Id: testStockID}, strainInfo, strainHandler)
+	assert.NoError(err)
+	assert.Equal(int32(1), strainCalls.Load())
+	st2, ok := resp2.(*stock.Strain)
+	assert.True(ok)
+	assert.NotSame(st1, st2)
+	assert.Equal("ax4-1", st2.GetData().GetAttributes().GetLabel())
+	assert.Equal("name-ax4-1", st2.GetData().GetAttributes().GetNames()[0])
+
+	// Different strain ID has its own cache key.
+	_, err = interceptor(context.Background(), &stock.StockId{Id: "DBS2"}, strainInfo, strainHandler)
+	assert.NoError(err)
+	assert.Equal(int32(2), strainCalls.Load())
+
+	// GetPlasmid caches independently.
+	pResp1, err := interceptor(context.Background(), &stock.StockId{Id: testPlasmidID}, plasmidInfo, plasmidHandler)
+	assert.NoError(err)
+	assert.Equal(int32(1), plasmidCalls.Load())
+	pl1, ok := pResp1.(*stock.Plasmid)
+	assert.True(ok)
+	assert.Equal("pDNeo2-1", pl1.GetData().GetAttributes().GetName())
+
+	pl1.Data.Attributes.Name = "tampered-plasmid"
+	pl1.Data.Attributes.Genes[0] = "tampered-gene"
+
+	pResp2, err := interceptor(context.Background(), &stock.StockId{Id: testPlasmidID}, plasmidInfo, plasmidHandler)
+	assert.NoError(err)
+	assert.Equal(int32(1), plasmidCalls.Load())
+	pl2, ok := pResp2.(*stock.Plasmid)
+	assert.True(ok)
+	assert.NotSame(pl1, pl2)
+	assert.Equal("pDNeo2-1", pl2.GetData().GetAttributes().GetName())
+	assert.Equal("gene-pDNeo2-1", pl2.GetData().GetAttributes().GetGenes()[0])
+
+	// UpdateStrain for testStockID invalidates only that strain, not testPlasmidID or DBS2.
+	updateStrainInfo := &grpc.UnaryServerInfo{
+		FullMethod: stock.StockService_UpdateStrain_FullMethodName,
+	}
+	_, err = interceptor(
+		context.Background(),
+		&stock.StrainUpdate{Data: &stock.StrainUpdate_Data{Id: testStockID}},
+		updateStrainInfo,
+		func(_ context.Context, _ any) (any, error) {
+			return &stock.Strain{}, nil
+		},
+	)
+	assert.NoError(err)
+
+	// DBS2 is still cached.
+	_, err = interceptor(context.Background(), &stock.StockId{Id: "DBS2"}, strainInfo, strainHandler)
+	assert.NoError(err)
+	assert.Equal(int32(2), strainCalls.Load())
+
+	// testStockID was invalidated and re-fetches.
+	resp3, err := interceptor(context.Background(), &stock.StockId{Id: testStockID}, strainInfo, strainHandler)
+	assert.NoError(err)
+	assert.Equal(int32(3), strainCalls.Load())
+	assert.Equal("ax4-3", resp3.(*stock.Strain).GetData().GetAttributes().GetLabel())
+
+	// testPlasmidID is still cached after UpdateStrain.
+	_, err = interceptor(context.Background(), &stock.StockId{Id: testPlasmidID}, plasmidInfo, plasmidHandler)
+	assert.NoError(err)
+	assert.Equal(int32(1), plasmidCalls.Load())
+
+	// UpdatePlasmid for testPlasmidID invalidates testPlasmidID.
+	updatePlasmidInfo := &grpc.UnaryServerInfo{
+		FullMethod: stock.StockService_UpdatePlasmid_FullMethodName,
+	}
+	_, err = interceptor(
+		context.Background(),
+		&stock.PlasmidUpdate{Data: &stock.PlasmidUpdate_Data{Id: testPlasmidID}},
+		updatePlasmidInfo,
+		func(_ context.Context, _ any) (any, error) {
+			return &stock.Plasmid{}, nil
+		},
+	)
+	assert.NoError(err)
+
+	pResp3, err := interceptor(context.Background(), &stock.StockId{Id: testPlasmidID}, plasmidInfo, plasmidHandler)
+	assert.NoError(err)
+	assert.Equal(int32(2), plasmidCalls.Load())
+	assert.Equal("pDNeo2-2", pResp3.(*stock.Plasmid).GetData().GetAttributes().GetName())
+}
+
+func TestGetStrainAndGetPlasmidCacheInterceptorWithRedisStore(t *testing.T) {
+	t.Parallel()
+	assert := require.New(t)
+
+	mr, err := miniredis.Run()
+	assert.NoError(err)
+	t.Cleanup(mr.Close)
+
+	storeRes := F.Pipe1(
+		cache.NewRedisStore(mr.Addr()),
+		ioeutils.ToEither[error, cache.Store],
+	)
+	assert.True(E.IsRight(storeRes))
+	store := F.Pipe1(
+		storeRes,
+		E.GetOrElse(F.Constant1[error](cache.Store(nil))),
+	)
+	t.Cleanup(func() { _ = store.Close() })
+
+	interceptor := StockCountsCacheInterceptor(store, 0)
+	var strainCalls atomic.Int32
+	var plasmidCalls atomic.Int32
+
+	strainInfo := &grpc.UnaryServerInfo{
+		FullMethod: stock.StockService_GetStrain_FullMethodName,
+	}
+	plasmidInfo := &grpc.UnaryServerInfo{
+		FullMethod: stock.StockService_GetPlasmid_FullMethodName,
+	}
+	strainHandler := func(_ context.Context, _ any) (any, error) {
+		n := strainCalls.Add(1)
+		return sampleStrain(testStockID, "ax4-"+strconv.Itoa(int(n))), nil
+	}
+	plasmidHandler := func(_ context.Context, _ any) (any, error) {
+		n := plasmidCalls.Add(1)
+		return samplePlasmid(testPlasmidID, "pDNeo2-"+strconv.Itoa(int(n))), nil
+	}
+
+	_, err = interceptor(context.Background(), &stock.StockId{Id: testStockID}, strainInfo, strainHandler)
+	assert.NoError(err)
+	assert.Equal(int32(1), strainCalls.Load())
+	strainKey := StrainCacheKeyPrefix + testStockID
+	assert.Equal(DefaultStockCountsCacheTTL, mr.TTL(strainKey))
+
+	_ = mr.Set(strainKey, "not-valid-protobuf-\xff\xfe")
+	sResp, err := interceptor(context.Background(), &stock.StockId{Id: testStockID}, strainInfo, strainHandler)
+	assert.NoError(err)
+	assert.Equal(int32(2), strainCalls.Load())
+	assert.Equal("ax4-2", sResp.(*stock.Strain).GetData().GetAttributes().GetLabel())
+
+	_, err = interceptor(context.Background(), &stock.StockId{Id: testPlasmidID}, plasmidInfo, plasmidHandler)
+	assert.NoError(err)
+	assert.Equal(int32(1), plasmidCalls.Load())
+	plasmidKey := PlasmidCacheKeyPrefix + testPlasmidID
+	assert.Equal(DefaultStockCountsCacheTTL, mr.TTL(plasmidKey))
+
+	_ = mr.Set(plasmidKey, "not-valid-protobuf-\xff\xfe")
+	pResp, err := interceptor(context.Background(), &stock.StockId{Id: testPlasmidID}, plasmidInfo, plasmidHandler)
+	assert.NoError(err)
+	assert.Equal(int32(2), plasmidCalls.Load())
+	assert.Equal("pDNeo2-2", pResp.(*stock.Plasmid).GetData().GetAttributes().GetName())
+}
+
+func TestGetStrainAndGetPlasmidInvalidationOnLoadAndRemove(t *testing.T) {
+	t.Parallel()
+	assert := require.New(t)
+
+	store := cache.NewMemoryStore()
+	t.Cleanup(func() { _ = store.Close() })
+
+	interceptor := StockCountsCacheInterceptor(store, DefaultStockCountsCacheTTL)
+	var strainCalls atomic.Int32
+	var plasmidCalls atomic.Int32
+
+	strainInfo := &grpc.UnaryServerInfo{FullMethod: stock.StockService_GetStrain_FullMethodName}
+	plasmidInfo := &grpc.UnaryServerInfo{FullMethod: stock.StockService_GetPlasmid_FullMethodName}
+	strainHandler := func(_ context.Context, _ any) (any, error) {
+		strainCalls.Add(1)
+		return sampleStrain(testStockID, "ax4"), nil
+	}
+	plasmidHandler := func(_ context.Context, _ any) (any, error) {
+		plasmidCalls.Add(1)
+		return samplePlasmid(testPlasmidID, "pDNeo2"), nil
+	}
+
+	_, err := interceptor(context.Background(), &stock.StockId{Id: testStockID}, strainInfo, strainHandler)
+	assert.NoError(err)
+	_, err = interceptor(context.Background(), &stock.StockId{Id: testPlasmidID}, plasmidInfo, plasmidHandler)
+	assert.NoError(err)
+	assert.Equal(int32(1), strainCalls.Load())
+	assert.Equal(int32(1), plasmidCalls.Load())
+
+	// Missing ID on GetStrain/GetPlasmid bypasses cache and forwards to handler.
+	_, err = interceptor(context.Background(), &stock.StockId{Id: ""}, strainInfo, strainHandler)
+	assert.NoError(err)
+	assert.Equal(int32(2), strainCalls.Load())
+
+	_, err = interceptor(context.Background(), &stock.StockId{Id: ""}, plasmidInfo, plasmidHandler)
+	assert.NoError(err)
+	assert.Equal(int32(2), plasmidCalls.Load())
+
+	// LoadStrain invalidates strain key.
+	_, err = interceptor(
+		context.Background(),
+		&stock.ExistingStrain{Data: &stock.ExistingStrain_Data{Id: testStockID}},
+		&grpc.UnaryServerInfo{FullMethod: stock.StockService_LoadStrain_FullMethodName},
+		func(_ context.Context, _ any) (any, error) { return &stock.Strain{}, nil },
+	)
+	assert.NoError(err)
+
+	_, err = interceptor(context.Background(), &stock.StockId{Id: testStockID}, strainInfo, strainHandler)
+	assert.NoError(err)
+	assert.Equal(int32(3), strainCalls.Load())
+
+	// LoadPlasmid invalidates plasmid key.
+	_, err = interceptor(
+		context.Background(),
+		&stock.ExistingPlasmid{Data: &stock.ExistingPlasmid_Data{Id: testPlasmidID}},
+		&grpc.UnaryServerInfo{FullMethod: stock.StockService_LoadPlasmid_FullMethodName},
+		func(_ context.Context, _ any) (any, error) { return &stock.Plasmid{}, nil },
+	)
+	assert.NoError(err)
+
+	_, err = interceptor(context.Background(), &stock.StockId{Id: testPlasmidID}, plasmidInfo, plasmidHandler)
+	assert.NoError(err)
+	assert.Equal(int32(3), plasmidCalls.Load())
+
+	// RemoveStock invalidates both strain and plasmid candidate keys for the given ID.
+	_, err = interceptor(
+		context.Background(),
+		&stock.StockId{Id: testStockID},
+		&grpc.UnaryServerInfo{FullMethod: stock.StockService_RemoveStock_FullMethodName},
+		func(_ context.Context, _ any) (any, error) { return &empty.Empty{}, nil },
+	)
+	assert.NoError(err)
+
+	_, err = interceptor(context.Background(), &stock.StockId{Id: testStockID}, strainInfo, strainHandler)
+	assert.NoError(err)
+	assert.Equal(int32(4), strainCalls.Load())
+
+	_, err = interceptor(
+		context.Background(),
+		&stock.StockId{Id: testPlasmidID},
+		&grpc.UnaryServerInfo{FullMethod: stock.StockService_RemoveStock_FullMethodName},
+		func(_ context.Context, _ any) (any, error) { return &empty.Empty{}, nil },
+	)
+	assert.NoError(err)
+
+	_, err = interceptor(context.Background(), &stock.StockId{Id: testPlasmidID}, plasmidInfo, plasmidHandler)
+	assert.NoError(err)
+	assert.Equal(int32(4), plasmidCalls.Load())
 }
 
 func TestStockCountsCacheInterceptorWithMemoryStore(t *testing.T) {

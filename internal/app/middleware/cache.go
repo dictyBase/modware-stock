@@ -27,30 +27,48 @@ import (
 
 type (
 	unaryCall struct {
-		ctx     context.Context
-		req     any
-		info    *grpc.UnaryServerInfo
-		handler grpc.UnaryHandler
-		store   cache.Store
-		ttl     time.Duration
-		raw     []byte
-		resp    any
+		ctx        context.Context
+		req        any
+		info       *grpc.UnaryServerInfo
+		handler    grpc.UnaryHandler
+		store      cache.Store
+		ttl        time.Duration
+		key        string
+		newMessage func() proto.Message
+		raw        []byte
+		resp       any
 	}
 
 	unaryResult struct {
 		resp any
 		err  error
 	}
+
+	readCacheSpec struct {
+		keyFromReq func(any) O.Option[string]
+		newMessage func() proto.Message
+	}
 )
 
 const (
 	// StockCountsCacheKey is the cache key used for the CountStocks RPC response.
 	StockCountsCacheKey = "stock:counts:v1"
-	// DefaultStockCountsCacheTTL is the default 1-month (30-day) TTL for cached stock counts.
-	DefaultStockCountsCacheTTL = 30 * 24 * time.Hour
+	// StrainCacheKeyPrefix is the cache key prefix used for GetStrain RPC responses.
+	StrainCacheKeyPrefix = "stock:strain:v1:"
+	// PlasmidCacheKeyPrefix is the cache key prefix used for GetPlasmid RPC responses.
+	PlasmidCacheKeyPrefix = "stock:plasmid:v1:"
+	// DefaultStockCountsCacheTTL is the default 1-day (24-hour) TTL for cached stock responses.
+	DefaultStockCountsCacheTTL = 24 * time.Hour
 )
 
 var (
+	callKeyLens = L.MakeLens(
+		func(c unaryCall) string { return c.key },
+		func(c unaryCall, key string) unaryCall {
+			c.key = key
+			return c
+		},
+	)
 	callRawLens = L.MakeLens(
 		func(c unaryCall) []byte { return c.raw },
 		func(c unaryCall, raw []byte) unaryCall {
@@ -70,14 +88,91 @@ var (
 		},
 	)
 
-	mutationMethods = R.Record[string, bool]{
-		stock.StockService_CreateStrain_FullMethodName:  true,
-		stock.StockService_CreatePlasmid_FullMethodName: true,
-		stock.StockService_LoadStrain_FullMethodName:    true,
-		stock.StockService_LoadPlasmid_FullMethodName:   true,
-		stock.StockService_UpdateStrain_FullMethodName:  true,
-		stock.StockService_UpdatePlasmid_FullMethodName: true,
-		stock.StockService_RemoveStock_FullMethodName:   true,
+	hasNonEmptyID      = predord.MinStrLen(1)
+	nonEmptyIDOpt      = O.FromPredicate(hasNonEmptyID)
+	stockIDFromMessage = F.Flow3(
+		O.InstanceOf[*stock.StockId],
+		O.Map((*stock.StockId).GetId),
+		O.Chain(nonEmptyIDOpt),
+	)
+	existingStrainIDFromMessage = F.Flow4(
+		O.InstanceOf[*stock.ExistingStrain],
+		O.Map((*stock.ExistingStrain).GetData),
+		O.Map((*stock.ExistingStrain_Data).GetId),
+		O.Chain(nonEmptyIDOpt),
+	)
+	existingPlasmidIDFromMessage = F.Flow4(
+		O.InstanceOf[*stock.ExistingPlasmid],
+		O.Map((*stock.ExistingPlasmid).GetData),
+		O.Map((*stock.ExistingPlasmid_Data).GetId),
+		O.Chain(nonEmptyIDOpt),
+	)
+	strainUpdateIDFromMessage = F.Flow4(
+		O.InstanceOf[*stock.StrainUpdate],
+		O.Map((*stock.StrainUpdate).GetData),
+		O.Map((*stock.StrainUpdate_Data).GetId),
+		O.Chain(nonEmptyIDOpt),
+	)
+	plasmidUpdateIDFromMessage = F.Flow4(
+		O.InstanceOf[*stock.PlasmidUpdate],
+		O.Map((*stock.PlasmidUpdate).GetData),
+		O.Map((*stock.PlasmidUpdate_Data).GetId),
+		O.Chain(nonEmptyIDOpt),
+	)
+
+	strainKeyFromStockID = F.Flow2(
+		stockIDFromMessage,
+		O.Map(strainCacheKey),
+	)
+	plasmidKeyFromStockID = F.Flow2(
+		stockIDFromMessage,
+		O.Map(plasmidCacheKey),
+	)
+
+	readCacheSpecs = R.Record[string, readCacheSpec]{
+		stock.StockService_CountStocks_FullMethodName: {
+			keyFromReq: F.Constant1[any](O.Some(StockCountsCacheKey)),
+			newMessage: func() proto.Message { return &stock.StockCounts{} },
+		},
+		stock.StockService_GetStrain_FullMethodName: {
+			keyFromReq: strainKeyFromStockID,
+			newMessage: func() proto.Message { return &stock.Strain{} },
+		},
+		stock.StockService_GetPlasmid_FullMethodName: {
+			keyFromReq: plasmidKeyFromStockID,
+			newMessage: func() proto.Message { return &stock.Plasmid{} },
+		},
+	}
+
+	mutationEntityKeys = R.Record[string, func(any) []string]{
+		stock.StockService_CreateStrain_FullMethodName:  F.Constant1[any]([]string(nil)),
+		stock.StockService_CreatePlasmid_FullMethodName: F.Constant1[any]([]string(nil)),
+		stock.StockService_LoadStrain_FullMethodName: F.Flow3(
+			existingStrainIDFromMessage,
+			O.Map(strainCacheKey),
+			O.Fold(emptyKeySlice, singleKeySlice),
+		),
+		stock.StockService_LoadPlasmid_FullMethodName: F.Flow3(
+			existingPlasmidIDFromMessage,
+			O.Map(plasmidCacheKey),
+			O.Fold(emptyKeySlice, singleKeySlice),
+		),
+		stock.StockService_UpdateStrain_FullMethodName: F.Flow3(
+			strainUpdateIDFromMessage,
+			O.Map(strainCacheKey),
+			O.Fold(emptyKeySlice, singleKeySlice),
+		),
+		stock.StockService_UpdatePlasmid_FullMethodName: F.Flow3(
+			plasmidUpdateIDFromMessage,
+			O.Map(plasmidCacheKey),
+			O.Fold(emptyKeySlice, singleKeySlice),
+		),
+		stock.StockService_RemoveStock_FullMethodName: F.Flow2(
+			stockIDFromMessage,
+			O.Fold(emptyKeySlice, func(id string) []string {
+				return []string{strainCacheKey(id), plasmidCacheKey(id)}
+			}),
+		),
 	}
 
 	durationOrd   = ORD.FromStrictCompare[time.Duration]()
@@ -97,28 +192,45 @@ var (
 	marshalProtoMessage = E.Eitherize1(proto.Marshal)
 
 	emptyBytesOption    = O.None[[]byte]()
-	constNoneBytes      = F.Constant1[struct{}](emptyBytesOption)
+	constNoneBytes      = F.Constant1[[]struct{}](emptyBytesOption)
 	emptyBytesOptionIOE = IOE.Memoize(IOE.Of[error](emptyBytesOption))
 	recoverNoneBytes    = F.Constant1[error](emptyBytesOptionIOE)
+	constEmptyStruct    = F.Constant1[error](IOE.Of[error](struct{}{}))
 
 	hasCachedPayload = F.Flow2(
 		callCachedRawLens.Get,
 		O.IsSome[[]byte],
 	)
-	resolveCachedStockCounts = F.Pipe1(
+	resolveCachedReadCall = F.Pipe1(
 		hasCachedPayload,
-		P.Fold(fetchAndCacheStockCounts, decodeCachedStockCounts),
+		P.Fold(fetchAndCacheReadCall, decodeCachedReadCall),
 	)
 
-	isCountStocksMethod  = predord.StrEq(stock.StockService_CountStocks_FullMethodName)
-	isCountStocksCall    = F.Pipe1(isCountStocksMethod, P.ContraMap(callFullMethod))
-	isMutationMethod     = F.Bind2nd(R.Has[string], mutationMethods)
-	isMutationCall       = F.Pipe1(isMutationMethod, P.ContraMap(callFullMethod))
-	dispatchNonCountCall = F.Pipe1(
+	isCachedReadMethod = F.Bind2nd(R.Has[string], readCacheSpecs)
+	isCachedReadCall   = F.Pipe1(isCachedReadMethod, P.ContraMap(callFullMethod))
+	isMutationMethod   = F.Bind2nd(R.Has[string], mutationEntityKeys)
+	isMutationCall     = F.Pipe1(isMutationMethod, P.ContraMap(callFullMethod))
+	dispatchNonRead    = F.Pipe1(
 		isMutationCall,
 		P.Fold(invokeUnaryHandler, handleMutationCall),
 	)
 )
+
+func strainCacheKey(id string) string {
+	return StrainCacheKeyPrefix + id
+}
+
+func plasmidCacheKey(id string) string {
+	return PlasmidCacheKeyPrefix + id
+}
+
+func singleKeySlice(key string) []string {
+	return []string{key}
+}
+
+func emptyKeySlice() []string {
+	return nil
+}
 
 func callFullMethod(c unaryCall) string {
 	return c.info.FullMethod
@@ -133,8 +245,25 @@ func invokeUnaryHandler(c unaryCall) IOE.IOEither[error, any] {
 func clearCachedRawInStore(
 	c unaryCall,
 ) IOE.IOEither[error, O.Option[[]byte]] {
-	return F.Pipe2(
-		c.store.Delete(c.ctx, StockCountsCacheKey),
+	extraKeys := F.Pipe2(
+		mutationEntityKeys,
+		R.Lookup[func(any) []string](c.info.FullMethod),
+		O.Fold(
+			emptyKeySlice,
+			func(extract func(any) []string) []string {
+				return extract(c.req)
+			},
+		),
+	)
+	keys := append([]string{StockCountsCacheKey}, extraKeys...)
+	return F.Pipe3(
+		keys,
+		IOE.TraverseArray(func(key string) IOE.IOEither[error, struct{}] {
+			return F.Pipe1(
+				c.store.Delete(c.ctx, key),
+				IOE.OrElse(constEmptyStruct),
+			)
+		}),
 		IOE.Map[error](constNoneBytes),
 		IOE.OrElse(recoverNoneBytes),
 	)
@@ -153,7 +282,7 @@ func lookupCachedBytes(
 	c unaryCall,
 ) IOE.IOEither[error, O.Option[[]byte]] {
 	return F.Pipe1(
-		c.store.Get(c.ctx, StockCountsCacheKey),
+		c.store.Get(c.ctx, callKeyLens.Get(c)),
 		IOE.OrElse(recoverNoneBytes),
 	)
 }
@@ -171,7 +300,7 @@ func writeCallRawToStore(
 ) IOE.IOEither[error, O.Option[[]byte]] {
 	raw := callRawLens.Get(c)
 	return F.Pipe1(
-		c.store.Set(c.ctx, StockCountsCacheKey, raw, c.ttl),
+		c.store.Set(c.ctx, callKeyLens.Get(c), raw, c.ttl),
 		IOE.Map[error](F.Constant1[struct{}](O.Some(raw))),
 	)
 }
@@ -188,7 +317,7 @@ func persistCallResp(
 	)
 }
 
-func fetchAndCacheStockCounts(
+func fetchAndCacheReadCall(
 	c unaryCall,
 ) IOE.IOEither[error, unaryCall] {
 	return F.Pipe2(
@@ -198,40 +327,64 @@ func fetchAndCacheStockCounts(
 	)
 }
 
-func unmarshalStockCounts(c unaryCall) IOE.IOEither[error, any] {
-	counts := &stock.StockCounts{}
+func unmarshalCachedResponse(c unaryCall) IOE.IOEither[error, any] {
+	msg := c.newMessage()
 	return F.Pipe1(
 		IOE.TryCatchError(func() (struct{}, error) {
-			return struct{}{}, proto.Unmarshal(callRawLens.Get(c), counts)
+			return struct{}{}, proto.Unmarshal(callRawLens.Get(c), msg)
 		}),
-		IOE.Map[error](F.Constant1[struct{}](any(counts))),
+		IOE.Map[error](F.Constant1[struct{}](any(msg))),
 	)
 }
 
-func decodeCachedStockCounts(
+func decodeCachedReadCall(
 	c unaryCall,
 ) IOE.IOEither[error, unaryCall] {
 	return F.Pipe2(
 		IOE.Of[error](c),
-		IOE.Bind(callRespLens.Set, unmarshalStockCounts),
+		IOE.Bind(callRespLens.Set, unmarshalCachedResponse),
 		IOE.OrElse(
-			F.Constant1[error](fetchAndCacheStockCounts(c)),
+			F.Constant1[error](fetchAndCacheReadCall(c)),
 		),
 	)
 }
 
-func handleCountStocksCall(c unaryCall) IOE.IOEither[error, any] {
-	return F.Pipe3(
-		IOE.Of[error](c),
-		IOE.Bind(callCachedRawLens.Set, lookupCachedBytes),
-		IOE.Chain(resolveCachedStockCounts),
-		IOE.Map[error](callRespLens.Get),
+func handleCachedReadCall(c unaryCall) IOE.IOEither[error, any] {
+	return F.Pipe2(
+		readCacheSpecs,
+		R.Lookup[readCacheSpec](c.info.FullMethod),
+		O.Fold(
+			func() IOE.IOEither[error, any] {
+				return invokeUnaryHandler(c)
+			},
+			func(spec readCacheSpec) IOE.IOEither[error, any] {
+				return F.Pipe2(
+					c.req,
+					spec.keyFromReq,
+					O.Fold(
+						func() IOE.IOEither[error, any] {
+							return invokeUnaryHandler(c)
+						},
+						func(key string) IOE.IOEither[error, any] {
+							c.key = key
+							c.newMessage = spec.newMessage
+							return F.Pipe3(
+								IOE.Of[error](c),
+								IOE.Bind(callCachedRawLens.Set, lookupCachedBytes),
+								IOE.Chain(resolveCachedReadCall),
+								IOE.Map[error](callRespLens.Get),
+							)
+						},
+					),
+				)
+			},
+		),
 	)
 }
 
 // StockCountsCacheInterceptor returns a grpc.UnaryServerInterceptor that
-// caches CountStocks responses under StockCountsCacheKey for ttl (or
-// DefaultStockCountsCacheTTL when ttl <= 0) and invalidates the entry
+// caches CountStocks, GetStrain, and GetPlasmid responses for ttl (or
+// DefaultStockCountsCacheTTL when ttl <= 0) and invalidates cached entries
 // after successful stock mutation RPCs.
 func StockCountsCacheInterceptor(
 	store cache.Store,
@@ -254,8 +407,8 @@ func StockCountsCacheInterceptor(
 				ttl:     effectiveTTL,
 			},
 			F.Pipe1(
-				isCountStocksCall,
-				P.Fold(dispatchNonCountCall, handleCountStocksCall),
+				isCachedReadCall,
+				P.Fold(dispatchNonRead, handleCachedReadCall),
 			),
 			ioeutils.ToEither[error, any],
 			E.Fold(
