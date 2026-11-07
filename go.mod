@@ -21,7 +21,7 @@ require (
 require (
 	github.com/IBM/fp-go v1.1.84
 	github.com/IBM/fp-go/v2 v2.13.0
-	github.com/alicebob/miniredis/v2 v2.39.0
+	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/bufbuild/protovalidate-go v0.10.0
 	github.com/dictyBase/fp-go-loom v0.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2
