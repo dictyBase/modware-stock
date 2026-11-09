@@ -111,12 +111,22 @@ var (
 	}
 
 	// propFields lists the indexed fields of the stock property
-	// collection. Each field gets a prefix branch and a fuzzy branch in
-	// the statement.
+	// collection that receive a prefix branch in the statement.
 	propFields = []autocompleteField{
 		{label: fieldLabel, display: autocompleteScalar, entity: repository.EntityStrain},
 		{label: fieldNames, display: autocompleteArray, entity: repository.EntityStrain},
 		{label: fieldSpecies, display: autocompleteScalar, entity: repository.EntityStrain},
+		{label: fieldPlasmid, display: autocompleteScalar, entity: repository.EntityStrain},
+		{label: fieldName, display: autocompleteScalar, entity: repository.EntityPlasmid},
+	}
+
+	// propFuzzyFields lists the indexed fields of the stock property
+	// collection that receive an n-gram fuzzy branch. It omits species
+	// because nearly all strains share "Dictyostelium discoideum", so a
+	// 2-gram fuzzy match on species matches almost the entire catalog.
+	propFuzzyFields = []autocompleteField{
+		{label: fieldLabel, display: autocompleteScalar, entity: repository.EntityStrain},
+		{label: fieldNames, display: autocompleteArray, entity: repository.EntityStrain},
 		{label: fieldPlasmid, display: autocompleteScalar, entity: repository.EntityStrain},
 		{label: fieldName, display: autocompleteScalar, entity: repository.EntityPlasmid},
 	}
@@ -224,6 +234,7 @@ func autocompleteNgramDef() *driver.ArangoSearchAnalyzerDefinition {
 func (ar *arangorepository) autocompleteLinks() driver.ArangoSearchLinks {
 	stockIndex := driver.ArangoSearchFields{}
 	propIndex := driver.ArangoSearchFields{}
+	normOnly := []string{autocompleteNormAnalyzer}
 	analyzers := []string{autocompleteNormAnalyzer, autocompleteNgramAnalyzer}
 	for _, f := range stockFields {
 		stockIndex[f.label] = driver.ArangoSearchElementProperties{
@@ -231,6 +242,11 @@ func (ar *arangorepository) autocompleteLinks() driver.ArangoSearchLinks {
 		}
 	}
 	for _, f := range propFields {
+		propIndex[f.label] = driver.ArangoSearchElementProperties{
+			Analyzers: normOnly,
+		}
+	}
+	for _, f := range propFuzzyFields {
 		propIndex[f.label] = driver.ArangoSearchElementProperties{
 			Analyzers: analyzers,
 		}

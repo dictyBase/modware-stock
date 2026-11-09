@@ -86,7 +86,7 @@ var (
 	// branches, prose token branches, and the summary phrase branch.
 	fullSearchSpecSets = []fullSearchSpecSet{
 		{fullSearchIdentifierFields, fullSearchPrefixSpec},
-		{fullSearchIdentifierFields, fullSearchFuzzySpec},
+		{fullSearchFuzzyFields, fullSearchFuzzySpec},
 		{fullSearchProseFields, fullSearchTokenSpec},
 		{A.Of(fullSearchProseFields[0]), fullSearchPhraseSpec},
 	}

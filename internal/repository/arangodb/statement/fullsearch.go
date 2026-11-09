@@ -93,11 +93,11 @@ const (
     }
 )`
 
-	// FullSearchMerge merges the 19 branches of the full search statement
+	// FullSearchMerge merges the 18 branches of the full search statement
 	// and returns the top rows with their complete stored summaries and
 	// ontology term labels. The builder fills it with one verb:
 	//
-	//  1. %s — the comma-separated list of the 19 branch variables
+	//  1. %s — the comma-separated list of the 18 branch variables
 	//
 	// It requires the bind parameters limit, stock_collection,
 	// stock_cvterm_graph, @cv_collection, strain_ontology, and

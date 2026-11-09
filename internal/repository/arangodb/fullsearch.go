@@ -124,9 +124,9 @@ const (
 
 var (
 	// fullSearchIdentifierFields lists the 8 identifier and name fields
-	// that the view indexes with both custom analyzers. The first three
-	// live on the stock collection, the last five on the stock property
-	// collection. Each field serves one prefix branch and one fuzzy branch.
+	// that the view indexes for prefix search. The first three live on
+	// the stock collection, the last five on the stock property
+	// collection.
 	fullSearchIdentifierFields = []fullSearchField{
 		{label: paramStockID, coll: fullSearchCollStock, display: fullSearchScalar},
 		{label: fieldGenes, coll: fullSearchCollStock, display: fullSearchArray},
@@ -134,6 +134,20 @@ var (
 		{label: fieldLabel, coll: fullSearchCollProp, display: fullSearchScalar, entity: repository.EntityStrain},
 		{label: fieldNames, coll: fullSearchCollProp, display: fullSearchArray, entity: repository.EntityStrain},
 		{label: fieldSpecies, coll: fullSearchCollProp, display: fullSearchScalar, entity: repository.EntityStrain},
+		{label: fieldPlasmid, coll: fullSearchCollProp, display: fullSearchScalar, entity: repository.EntityStrain},
+		{label: fieldName, coll: fullSearchCollProp, display: fullSearchScalar, entity: repository.EntityPlasmid},
+	}
+
+	// fullSearchFuzzyFields lists the 7 identifier and name fields that
+	// receive an n-gram fuzzy branch. It omits species because nearly all
+	// strains share "Dictyostelium discoideum", so a 2-gram fuzzy match on
+	// species matches almost the entire strain catalog.
+	fullSearchFuzzyFields = []fullSearchField{
+		{label: paramStockID, coll: fullSearchCollStock, display: fullSearchScalar},
+		{label: fieldGenes, coll: fullSearchCollStock, display: fullSearchArray},
+		{label: fieldDbxrefs, coll: fullSearchCollStock, display: fullSearchArray},
+		{label: fieldLabel, coll: fullSearchCollProp, display: fullSearchScalar, entity: repository.EntityStrain},
+		{label: fieldNames, coll: fullSearchCollProp, display: fullSearchArray, entity: repository.EntityStrain},
 		{label: fieldPlasmid, coll: fullSearchCollProp, display: fullSearchScalar, entity: repository.EntityStrain},
 		{label: fieldName, coll: fullSearchCollProp, display: fullSearchScalar, entity: repository.EntityPlasmid},
 	}
@@ -456,15 +470,28 @@ func fullSearchNgramDef() *driver.ArangoSearchAnalyzerDefinition {
 }
 
 // fullSearchLinks builds the view links from the collection names of
-// the repository. It never hardcodes a production name. The identifier
-// fields carry both custom analyzers; the prose fields carry the
-// built-in text analyzer only, and no field carries both.
+// the repository. It never hardcodes a production name. The fuzzy
+// identifier fields carry both custom analyzers, species carries the
+// norm analyzer only, and the prose fields carry the built-in text
+// analyzer only.
 func (ar *arangorepository) fullSearchLinks() driver.ArangoSearchLinks {
 	stockFields := driver.ArangoSearchFields{}
 	propFields := driver.ArangoSearchFields{}
+	normOnly := []string{fullSearchNormAnalyzer}
 	identifier := []string{fullSearchNormAnalyzer, fullSearchNgramAnalyzer}
 	prose := []string{fullSearchTextAnalyzer}
 	for _, f := range fullSearchIdentifierFields {
+		if f.coll == fullSearchCollStock {
+			stockFields[f.label] = driver.ArangoSearchElementProperties{
+				Analyzers: normOnly,
+			}
+		} else {
+			propFields[f.label] = driver.ArangoSearchElementProperties{
+				Analyzers: normOnly,
+			}
+		}
+	}
+	for _, f := range fullSearchFuzzyFields {
 		if f.coll == fullSearchCollStock {
 			stockFields[f.label] = driver.ArangoSearchElementProperties{
 				Analyzers: identifier,

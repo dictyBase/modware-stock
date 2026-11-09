@@ -48,7 +48,7 @@ var (
 		{stockFields, statement.AutocompleteStockBranch, prefixBranch},
 		{stockFields, statement.AutocompleteStockBranch, fuzzyBranch},
 		{propFields, statement.AutocompletePropBranch, prefixBranch},
-		{propFields, statement.AutocompletePropBranch, fuzzyBranch},
+		{propFuzzyFields, statement.AutocompletePropBranch, fuzzyBranch},
 	}
 )
 

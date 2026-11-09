@@ -12,19 +12,19 @@ makes which piece of AQL.
 - [The Shape of the Final Statement](#the-shape-of-the-final-statement)
 - [Visual Overview of the Build Pipeline](#visual-overview-of-the-build-pipeline)
 - [Step 1: The Field Definitions](#step-1-the-field-definitions)
-  - [The 8 Identifier Fields](#the-8-identifier-fields)
+  - [The 8 Identifier Fields and the 7 Fuzzy Fields](#the-8-identifier-fields-and-the-7-fuzzy-fields)
   - [The 2 Prose Fields](#the-2-prose-fields)
   - [The Four Spec Sets](#the-four-spec-sets)
-- [Step 2: From Four Groups to 19 Branch Specs](#step-2-from-four-groups-to-19-branch-specs)
+- [Step 2: From Four Groups to 18 Branch Specs](#step-2-from-four-groups-to-18-branch-specs)
   - [How specsFromSet Expands One Group](#how-specsfromset-expands-one-group)
   - [The Four SEARCH Expressions](#the-four-search-expressions)
   - [The Four Score Bands](#the-four-score-bands)
-  - [The Full List of 19 Branches](#the-full-list-of-19-branches)
+  - [The Full List of 18 Branches](#the-full-list-of-18-branches)
   - [The Tests That Hold the Order and the Bands](#the-tests-that-hold-the-order-and-the-bands)
 - [Step 3: From One Branch Spec to One AQL LET Block](#step-3-from-one-branch-spec-to-one-aql-let-block)
   - [withDisplay Picks the Display Expression](#withdisplay-picks-the-display-expression)
   - [withTemplate Picks the Branch Template](#withtemplate-picks-the-branch-template)
-  - [renderBranch Fills the Five Slots](#renderbranch-fills-the-five-slots)
+  - [renderBranch Fills the Template Slots](#renderbranch-fills-the-template-slots)
   - [What Each Clause in the Branch Template Does](#what-each-clause-in-the-branch-template-does)
 - [Step 4: The Merge Block and the Complete Statement](#step-4-the-merge-block-and-the-complete-statement)
   - [fullSearchMergeBlock Builds the Tail](#fullsearchmergeblock-builds-the-tail)
@@ -75,14 +75,14 @@ functional name.
 
 ## The Shape of the Final Statement
 
-The generated statement is 539 lines long and has two regions.
+The generated statement has two regions.
 
-1. **19 `LET` search branches.** Each branch is an independent
+1. **18 `LET` search branches.** Each branch is an independent
    sub-query over the `stock_full_search` view. Each branch searches one
    field in one way, keeps at most `@limit` rows, and returns a flat row
    object. The branch variables come in four groups: `p0` to `p7`, then
-   `n0` to `n7`, then `t0` and `t1`, then `h0`.
-2. **One merge and rank region.** It collects the rows of all 19
+   `n0` to `n6`, then `t0` and `t1`, then `h0`.
+2. **One merge and rank region.** It collects the rows of all 18
    branches and keeps the best row for each stock. It then sorts the
    survivors, cuts the list to `@limit`, and reads the stock summary.
 
@@ -93,20 +93,20 @@ LET p1 = ( ... )     <- branch  2: prefix on genes
 LET p7 = ( ... )     <- branch  8: prefix on name
 LET n0 = ( ... )     <- branch  9: fuzzy  on stock_id
 ...
-LET n7 = ( ... )     <- branch 16: fuzzy  on name
-LET t0 = ( ... )     <- branch 17: token  on summary
-LET t1 = ( ... )     <- branch 18: token  on depositor
-LET h0 = ( ... )     <- branch 19: phrase on summary
-LET hits = FLATTEN([p0, ..., p7, n0, ..., n7, t0, t1, h0])
+LET n6 = ( ... )     <- branch 15: fuzzy  on name
+LET t0 = ( ... )     <- branch 16: token  on summary
+LET t1 = ( ... )     <- branch 17: token  on depositor
+LET h0 = ( ... )     <- branch 18: phrase on summary
+LET hits = FLATTEN([p0, ..., p7, n0, ..., n6, t0, t1, h0])
 LET best = ( ... )   <- one best row per stock key
 FOR x IN best        <- final sort, final LIMIT, summary lookup
 ```
 
-The 19 branches stand in band groups: all prefix branches, then all
+The 18 branches stand in band groups: all prefix branches, then all
 fuzzy branches, then the token branches, then the phrase branch. The
 branches never share state. The build code can therefore treat each
 branch as one independent value. A reader can also read one branch
-without the other 18.
+without the other 17.
 
 ## Visual Overview of the Build Pipeline
 
@@ -120,8 +120,8 @@ that step.
 - **Step 1** holds four field sets. Each set pairs a group of indexed
   fields with one spec builder. The colour of a set is the score band of
   its branches.
-- **Step 2** expands the sets into 19 branch specs. The 8 prefix specs
-  come first, then the 8 fuzzy specs, then the 2 token specs, then the
+- **Step 2** expands the sets into 18 branch specs. The 8 prefix specs
+  come first, then the 7 fuzzy specs, then the 2 token specs, then the
   single phrase spec.
 - **Step 3** resolves the two field-dependent values of each spec, the
   display expression and the branch template, and then renders one `LET`
@@ -131,37 +131,40 @@ that step.
 
 ## Step 1: The Field Definitions
 
-The build starts from data, not from text. Two slices in
+The build starts from data, not from text. Three slices in
 `internal/repository/arangodb/fullsearch.go` name the indexed fields.
-Each entry is a `fullSearchField` with three parts.
+Each entry is a `fullSearchField` with four parts.
 
 | Part | Meaning |
 |------|---------|
 | `label` | The attribute name in the document, such as `stock_id`. It appears in the AQL as `d.stock_id`. |
 | `coll` | The collection that holds the field: `fullSearchCollStock` or `fullSearchCollProp`. This part selects the branch template in [Step 3](#withtemplate-picks-the-branch-template). |
 | `display` | `fullSearchScalar` for a single value, `fullSearchArray` for a list. This part selects the display expression in [Step 3](#withdisplay-picks-the-display-expression). |
+| `entity` | The static owner entity (`strain` or `plasmid`) of a `stockprop` field, empty for `stock` fields. The property branch template uses this value to pre-filter rows before the `LIMIT`. |
 
-### The 8 Identifier Fields
+### The 8 Identifier Fields and the 7 Fuzzy Fields
 
-`fullSearchIdentifierFields` holds the short, name-like fields. The
-position of a field in this slice becomes the digit of its branch
-variables.
+`fullSearchIdentifierFields` holds the 8 short, name-like fields for
+the prefix stage.
 
-| Index | Label | Collection | Display |
-|-------|-------|------------|---------|
-| 0 | `stock_id` | `stock` | scalar |
-| 1 | `genes` | `stock` | array |
-| 2 | `dbxrefs` | `stock` | array |
-| 3 | `label` | `stockprop` | scalar |
-| 4 | `names` | `stockprop` | array |
-| 5 | `species` | `stockprop` | scalar |
-| 6 | `plasmid` | `stockprop` | scalar |
-| 7 | `name` | `stockprop` | scalar |
+| Prefix Index | Fuzzy Index | Label | Collection | Display | Owner Entity |
+|--------------|-------------|-------|------------|---------|--------------|
+| 0 (`p0`) | 0 (`n0`) | `stock_id` | `stock` | scalar | — |
+| 1 (`p1`) | 1 (`n1`) | `genes` | `stock` | array | — |
+| 2 (`p2`) | 2 (`n2`) | `dbxrefs` | `stock` | array | — |
+| 3 (`p3`) | 3 (`n3`) | `label` | `stockprop` | scalar | `strain` |
+| 4 (`p4`) | 4 (`n4`) | `names` | `stockprop` | array | `strain` |
+| 5 (`p5`) | — | `species` | `stockprop` | scalar | `strain` |
+| 6 (`p6`) | 5 (`n5`) | `plasmid` | `stockprop` | scalar | `strain` |
+| 7 (`p7`) | 6 (`n6`) | `name` | `stockprop` | scalar | `plasmid` |
 
 The first three fields live on the `stock` collection. The last five
-live on the `stockprop` collection. This slice appears twice in the
-spec sets, once for the prefix branches and once for the fuzzy
-branches. These 8 fields therefore produce 16 of the 19 branches.
+live on the `stockprop` collection. `fullSearchFuzzyFields` holds the 7
+identifier fields that receive an n-gram fuzzy branch: it omits
+`species` because almost every strain carries `"Dictyostelium discoideum"`,
+so a 2-gram fuzzy match on `species` would match nearly the entire
+catalog. These two slices therefore produce 15 of the 18 branches (`8`
+prefix and `7` fuzzy).
 
 ### The 2 Prose Fields
 
@@ -185,7 +188,7 @@ the order of the branches in the final statement.
 ```go
 fullSearchSpecSets = []fullSearchSpecSet{
 	{fullSearchIdentifierFields, fullSearchPrefixSpec},
-	{fullSearchIdentifierFields, fullSearchFuzzySpec},
+	{fullSearchFuzzyFields, fullSearchFuzzySpec},
 	{fullSearchProseFields, fullSearchTokenSpec},
 	{A.Of(fullSearchProseFields[0]), fullSearchPhraseSpec},
 }
@@ -197,12 +200,12 @@ produces one score band.
 | Set | Fields | Builder | Branches |
 |-----|--------|---------|----------|
 | 1 | `fullSearchIdentifierFields` | `fullSearchPrefixSpec` | `p0` to `p7` |
-| 2 | `fullSearchIdentifierFields` | `fullSearchFuzzySpec` | `n0` to `n7` |
+| 2 | `fullSearchFuzzyFields` | `fullSearchFuzzySpec` | `n0` to `n6` |
 | 3 | `fullSearchProseFields` | `fullSearchTokenSpec` | `t0`, `t1` |
 | 4 | `A.Of(fullSearchProseFields[0])` | `fullSearchPhraseSpec` | `h0` |
 
-Sets 1 and 2 read the same field slice. The identifier fields get a
-prefix branch and a fuzzy branch, and each stage has its own set.
+Set 1 reads all 8 identifier fields for prefix search, and Set 2 reads
+the 7 fuzzy identifier fields (omitting `species`).
 
 The fourth set is the unusual one. `A.Of(fullSearchProseFields[0])`
 makes a one-item slice that holds the `summary` field only. The phrase
@@ -222,7 +225,7 @@ The builder returns one `branchSpec`, not a slice of them. One set,
 one field, one branch. That rule is the reason that Step 2 is a single
 map, and it is why the statement groups the branches by band.
 
-## Step 2: From Four Groups to 19 Branch Specs
+## Step 2: From Four Groups to 18 Branch Specs
 
 A `branchSpec` is the complete plan of one branch before any AQL text
 exists. It carries six values.
@@ -264,7 +267,7 @@ variable name with `fmt.Sprintf`:
 | Builder | Name | Index range | Branches |
 |---------|------|-------------|----------|
 | `fullSearchPrefixSpec(i, f)` | `p<i>` | 0 to 7 | `p0` to `p7` |
-| `fullSearchFuzzySpec(i, f)` | `n<i>` | 0 to 7 | `n0` to `n7` |
+| `fullSearchFuzzySpec(i, f)` | `n<i>` | 0 to 6 | `n0` to `n6` |
 | `fullSearchTokenSpec(i, f)` | `t<i>` | 0 to 1 | `t0`, `t1` |
 | `fullSearchPhraseSpec(i, f)` | `h<i>` | 0 | `h0` |
 
@@ -275,15 +278,14 @@ group in the same way.
 
 `buildFullSearchQuery` then applies `specsFromSet` to all four groups
 with `A.Chain(specsFromSet)`. `A.Chain` maps and joins in one
-operation, so the four groups give one list of 19 specs in this order:
+operation, so the four groups give one list of 18 specs in this order:
 
 ```
-p0 p1 p2 p3 p4 p5 p6 p7 n0 n1 n2 n3 n4 n5 n6 n7 t0 t1 h0
+p0 p1 p2 p3 p4 p5 p6 p7 n0 n1 n2 n3 n4 n5 n6 t0 t1 h0
 ```
 
 The order follows the sets. All 8 prefix specs come from set 1, so they
-come first, and the fuzzy spec of a field stands 8 positions after its
-prefix spec.
+come first, followed by the 7 fuzzy specs from set 2.
 
 This order does not change the result rows. The merge in Step 4 groups
 the rows by stock key and breaks a tie on the score and then on the
@@ -329,7 +331,7 @@ four bands are constants in `fullsearch.go`.
 | `fullSearchPrefixBand` | `1000 + BM25(d)` | `p0` to `p7` |
 | `fullSearchPhraseBand` | `500 + BM25(d)` | `h0` |
 | `fullSearchProseBand` | `250 + BM25(d)` | `t0`, `t1` |
-| `fullSearchFuzzyBand` | `BM25(d)` | `n0` to `n7` |
+| `fullSearchFuzzyBand` | `BM25(d)` | `n0` to `n6` |
 
 The offsets are 250 apart, and they fix the rank order: prefix above
 phrase, phrase above token, token above fuzzy. The offsets must be
@@ -340,7 +342,7 @@ the band width of 250. A pure `STARTS_WITH` match can also score a
 `BM25` of 0, so the constant, and not `BM25`, must carry the stage
 order.
 
-### The Full List of 19 Branches
+### The Full List of 18 Branches
 
 The rows are in statement order.
 
@@ -359,16 +361,11 @@ The rows are in statement order.
 | 11 | `n2` | `dbxrefs` | `stock` | fuzzy | `BM25(d)` |
 | 12 | `n3` | `label` | `stockprop` | fuzzy | `BM25(d)` |
 | 13 | `n4` | `names` | `stockprop` | fuzzy | `BM25(d)` |
-| 14 | `n5` | `species` | `stockprop` | fuzzy | `BM25(d)` |
-| 15 | `n6` | `plasmid` | `stockprop` | fuzzy | `BM25(d)` |
-| 16 | `n7` | `name` | `stockprop` | fuzzy | `BM25(d)` |
-| 17 | `t0` | `summary` | `stock` | token | `250 + BM25(d)` |
-| 18 | `t1` | `depositor` | `stock` | token | `250 + BM25(d)` |
-| 19 | `h0` | `summary` | `stock` | phrase | `500 + BM25(d)` |
-
-A prefix branch and the fuzzy branch of the same field share a digit.
-The pair `p4` and `n4` searches `names`, and the two `LET` blocks stand
-8 positions apart in the text.
+| 14 | `n5` | `plasmid` | `stockprop` | fuzzy | `BM25(d)` |
+| 15 | `n6` | `name` | `stockprop` | fuzzy | `BM25(d)` |
+| 16 | `t0` | `summary` | `stock` | token | `250 + BM25(d)` |
+| 17 | `t1` | `depositor` | `stock` | token | `250 + BM25(d)` |
+| 18 | `h0` | `summary` | `stock` | phrase | `500 + BM25(d)` |
 
 ### The Tests That Hold the Order and the Bands
 
@@ -378,8 +375,8 @@ request data.
 
 | Test | What it pins |
 |------|--------------|
-| `TestBuildFullSearchQueryBranchOrder` | It reads every `LET <var> = (` of the generated text and asserts the exact list `p0` to `p7`, `n0` to `n7`, `t0`, `t1`, `h0`. A change of the set order or of a builder name breaks it. |
-| `TestBuildFullSearchQueryBandCounts` | It counts each band in its `s: ` slot and asserts 8 prefix, 8 fuzzy, 2 prose, and 1 phrase. A branch that silently changes band breaks it. |
+| `TestBuildFullSearchQueryBranchOrder` | It reads every `LET <var> = (` of the generated text and asserts the exact list `p0` to `p7`, `n0` to `n6`, `t0`, `t1`, `h0`. A change of the set order or of a builder name breaks it. |
+| `TestBuildFullSearchQueryBandCounts` | It counts each band in its `s: ` slot and asserts 8 prefix, 7 fuzzy, 2 prose, and 1 phrase. A branch that silently changes band breaks it. |
 
 The band test counts the `s: ` slot and not the bare band text. The
 fuzzy band is `BM25(d)` with no offset, so a plain count of that text
@@ -488,20 +485,16 @@ graph traversal that finds the stock.
 `withTemplate` stores the template with `specTemplateLens.Set`, in the
 same way that `withDisplay` stores the display expression.
 
-### renderBranch Fills the Five Slots
+### renderBranch Fills the Template Slots
 
-Both templates carry exactly five `fmt.Sprintf` verbs in the same
-order. `renderBranch` supplies the five values.
+`FullSearchStockBranch` carries five `fmt.Sprintf` verbs, and
+`FullSearchPropBranch` carries six (adding the static owner `entity`
+for the pre-traversal filter). `selectSpecParts` picks `stockSpecParts`
+or `propSpecParts`, and `renderBranch` formats the chosen template.
 
 ```go
 func renderBranch(spec branchSpec) queryBranch {
-	parts := A.From[any](
-		spec.name,
-		spec.search,
-		spec.field.label,
-		spec.display,
-		spec.band,
-	)
+	parts := selectSpecParts(spec)
 	return queryBranch{
 		name: spec.name,
 		body: fmt.Sprintf(spec.template, parts...),
@@ -509,16 +502,17 @@ func renderBranch(spec branchSpec) queryBranch {
 }
 ```
 
-| Slot | Verb | Value | Position in the AQL |
-|------|------|-------|---------------------|
-| 1 | `%s` | `spec.name` | the `LET <name> = (` variable |
-| 2 | `%s` | `spec.search` | the text after `SEARCH` |
-| 3 | `%q` | `spec.field.label` | the `f:` attribute, as a quoted string |
-| 4 | `%s` | `spec.display` | the `v:` attribute |
-| 5 | `%s` | `spec.band` | the `s:` attribute |
+| Stock Slot | Prop Slot | Verb | Value | Position in the AQL |
+|------------|-----------|------|-------|---------------------|
+| 1 | 1 | `%s` | `spec.name` | the `LET <name> = (` variable |
+| 2 | 2 | `%s` | `spec.search` | the text after `SEARCH` |
+| — | 3 | `%q` | `string(spec.field.entity)` | the pre-traversal `FILTER @entity == "" OR @entity == %q` clause |
+| 3 | 4 | `%q` | `spec.field.label` | the `f:` attribute, as a quoted string |
+| 4 | 5 | `%s` | `spec.display` | the `v:` attribute |
+| 5 | 6 | `%s` | `spec.band` | the `s:` attribute |
 
-Slot 3 uses `%q` and not `%s`. The field label must appear in the AQL
-as a string literal, so `%q` adds the quotation marks.
+The field label and static entity slots use `%q` and not `%s` so they
+appear in the AQL as quoted string literals.
 
 The output is a `queryBranch` with two fields: `name` is the AQL
 variable, and `body` is the rendered text. The merge step needs the
@@ -528,34 +522,27 @@ search features share them.
 
 ### What Each Clause in the Branch Template Does
 
-Every rendered branch has the same five clauses. The example uses the
-stock template. The property template differs only in the traversal and
-in the source of the row attributes.
-
 1. **`FOR d IN stock_full_search` and `SEARCH <expression>`.** This
    pair asks the index for the matched documents. The view name is
    literal text and not a bind parameter, because ArangoDB does not
    accept a bind parameter for a view name in `SEARCH`.
-2. **`LET meta = FIRST(FOR prop, edge IN 1..1 OUTBOUND d GRAPH @stock_prop_graph ...)`.**
-   One hop over the stock property graph reads `edge.type`, which is
-   `strain` or `plasmid`. It also reads `prop.label` for a strain or
-   `prop.name` for a plasmid as the stock label.
-   `FIRST` keeps one result, because a stock has one property document.
-   The property branch uses `INBOUND` here and reads `v._key`,
-   `v.stock_id` and `e.type` from the owner stock instead.
-3. **`FILTER meta != null` and `FILTER @entity == "" OR @entity == meta.entity`.**
-   The first filter drops a document that has no property edge. The
-   second filter applies the caller entity filter. An empty `@entity`
-   accepts every row, so one statement serves all three cases: all
-   stocks, strains only, and plasmids only.
-4. **`SORT BM25(d) DESC, d._key ASC` and `LIMIT @limit`.** The branch
-   keeps its own best rows and discards the rest. The key tiebreak makes
-   the cut deterministic between two rows of equal relevance. The
-   property branch sorts on `own.k` instead of `d._key`. Because every
-   branch caps itself, at most 19 × `@limit` rows reach the merge, which
-   is 950 rows at the default limit of 50.
+2. **Stock branch (`FullSearchStockBranch`):** Runs one `OUTBOUND` hop
+   over `@stock_prop_graph` to read `edge.type` (`strain` or `plasmid`)
+   and the stock label, filters by `@entity`, and then applies
+   `SORT BM25(d) DESC, d._key ASC` and `LIMIT @limit`.
+3. **Property branch (`FullSearchPropBranch`):** Because each property
+   field belongs to a single entity type (`strain` or `plasmid`), the
+   branch pre-filters by `@entity`, sorts by `BM25(d) DESC, d._key ASC`,
+   and caps at `LIMIT @limit` **before** running the `INBOUND`
+   traversal over `@stock_prop_graph`. In ArangoDB Cluster mode, an
+   `ArangoSearch` view branch does not use the `cluster-one-shard` rule,
+   so capping before the traversal bounds coordinator-to-DBServer
+   network hops to at most `@limit` per branch.
+4. **Total rows into the merge:** Because every branch caps itself at
+   `@limit`, at most 18 × `@limit` rows reach the merge, which is 900
+   rows at the default limit of 50.
 5. **`RETURN { k, id, entity, sl, f, v, s }`.** The branch returns a
-   flat object and not a document. All 19 branches return the same
+   flat object and not a document. All 18 branches return the same
    shape, which is the reason that the merge can treat the rows as one
    list.
 
@@ -573,7 +560,7 @@ in the source of the row attributes.
 
 ### fullSearchMergeBlock Builds the Tail
 
-The merge block needs one value only: the list of the 19 branch
+The merge block needs one value only: the list of the 18 branch
 variable names.
 
 ```go
@@ -644,10 +631,10 @@ func buildFullSearchQuery() string {
 | Line | Input | Output |
 |------|-------|--------|
 | `fullSearchSpecSets` | — | the 4 groups of Step 1 |
-| `A.Chain(specsFromSet)` | 4 groups | 19 `branchSpec` values of Step 2 |
-| `A.Map(fullSearchBranch)` | 19 specs | 19 `queryBranch` values of Step 3 |
-| `appendFullSearchMerge` | 19 branches | 20 strings: 19 bodies and the merge block |
-| `S.Join("\n")` | 20 strings | the complete statement |
+| `A.Chain(specsFromSet)` | 4 groups | 18 `branchSpec` values of Step 2 |
+| `A.Map(fullSearchBranch)` | 18 specs | 18 `queryBranch` values of Step 3 |
+| `appendFullSearchMerge` | 18 branches | 19 strings: 18 bodies and the merge block |
+| `S.Join("\n")` | 19 strings | the complete statement |
 
 The fourth step needs the branches twice, once for the merge and once
 for the bodies:
@@ -665,7 +652,7 @@ func appendFullSearchMerge(branches []queryBranch) []string {
 
 `A.Map(bodyLens.Get)` extracts the rendered text of each branch.
 `A.Push(merge)` gives a function that adds the merge block to the end of
-any slice of strings, so the 19 bodies and the merge become 20 strings.
+any slice of strings, so the 18 bodies and the merge become 19 strings.
 `A.Push` always returns a new slice, and it reads the element type from
 `merge`. A plain `A.Append` can write into the spare capacity of its
 input, which `A.Push` never does.
@@ -707,10 +694,10 @@ func (ar *arangorepository) buildFullSearchQueryParams(
 | Bind parameter | Source | Used by |
 |----------------|--------|---------|
 | `@q` | the normalized query text | every `SEARCH` expression and the array display expression |
-| `@th` | `fullSearchNgramThreshold`, the constant `0.3` | the 8 fuzzy branches only |
-| `@limit` | the clamped request limit, 1 to 50 | the `LIMIT` of all 19 branches and the final `LIMIT` |
-| `@entity` | the entity filter, an empty string for no filter | the second `FILTER` of all 19 branches |
-| `@stock_prop_graph` | the live graph name from the repository | the traversal of all 19 branches |
+| `@th` | `fullSearchNgramThreshold`, the constant `0.3` | the 7 fuzzy branches only |
+| `@limit` | the clamped request limit, 1 to 50 | the `LIMIT` of all 18 branches and the final `LIMIT` |
+| `@entity` | the entity filter, an empty string for no filter | the entity `FILTER` of all 18 branches |
+| `@stock_prop_graph` | the live graph name from the repository | the traversal of all 18 branches |
 | `@stock_collection` | the live stock collection name | the `DOCUMENT` lookup in the merge |
 | `@stock_cvterm_graph` | the live stock ontology graph name | the ontology traversal in the merge |
 | `@@cv_collection` | the live ontology graph info collection name | the ontology filter in the merge |
@@ -726,14 +713,14 @@ there.
 ## The Assembled AQL
 
 The extracts below are the exact output of `buildFullSearchQuery()`.
-They show five of the 19 branches and the merge block. The five
+They show five of the 18 branches and the merge block. The five
 branches are not next to each other in the statement. The number of
-each one in the [full list](#the-full-list-of-19-branches) gives its
+each one in the [full list](#the-full-list-of-18-branches) gives its
 place.
 
 ### Branch p0, Prefix on stock_id
 
-Branch 1 of 19. Field index 0, scalar display, stock template.
+Branch 1 of 18. Field index 0, scalar display, stock template.
 
 ```aql
 LET p0 = (
@@ -766,7 +753,7 @@ LET p0 = (
 
 ### Branch n0, Fuzzy on stock_id
 
-Branch 9 of 19. It reads the same field and the same template as `p0`,
+Branch 9 of 18. It reads the same field and the same template as `p0`,
 and only slot 2 and slot 5 differ. It is the ninth `LET` block and not
 the second, because set 1 emits all 8 prefix branches first.
 
@@ -801,14 +788,17 @@ LET n0 = (
 
 ### Branch p3, Prefix on label in the Property Collection
 
-Branch 4 of 19. Field index 3 lives on `stockprop`, so `withTemplate`
-picks `FullSearchPropBranch`. The traversal is `INBOUND`, and the row
-key comes from the owner stock through `own.k`.
+Branch 4 of 18. Field index 3 lives on `stockprop`, so `withTemplate`
+picks `FullSearchPropBranch`. The branch pre-filters by `@entity` and
+applies `SORT` and `LIMIT` before the `INBOUND` traversal.
 
 ```aql
 LET p3 = (
   FOR d IN stock_full_search
     SEARCH ANALYZER(STARTS_WITH(d.label, @q), "stock_search_norm")
+    FILTER @entity == "" OR @entity == "strain"
+    SORT BM25(d) DESC, d._key ASC
+    LIMIT @limit
     LET own = FIRST(
       FOR v, e IN 1..1 INBOUND d GRAPH @stock_prop_graph
         RETURN {
@@ -822,8 +812,6 @@ LET p3 = (
     )
     FILTER own != null
     FILTER @entity == "" OR @entity == own.entity
-    SORT BM25(d) DESC, own.k ASC
-    LIMIT @limit
     RETURN {
       k: own.k,
       id: own.id,
@@ -842,7 +830,7 @@ branch reads it from the matched document itself as `d.label` or `d.name`.
 
 ### Branch t0, Token on summary
 
-Branch 17 of 19, the first prose field. The `IN TOKENS` form matches a
+Branch 16 of 18, the first prose field. The `IN TOKENS` form matches a
 stock when the indexed prose contains any token of the query.
 
 ```aql
@@ -876,7 +864,7 @@ LET t0 = (
 
 ### Branch h0, Phrase on summary
 
-Branch 19 of 19. The last branch searches the same field as `t0`, but
+Branch 18 of 18. The last branch searches the same field as `t0`, but
 it demands the words in order and next to each other. The higher band
 of `500` puts a phrase hit above a loose token hit for the same stock.
 
@@ -920,10 +908,10 @@ The merge keeps the `h0` row and discards the other two.
 
 ### The Rendered Merge Block
 
-This is the tail of the statement, with all 19 names in place.
+This is the tail of the statement, with all 18 names in place.
 
 ```aql
-LET hits = FLATTEN([p0, p1, p2, p3, p4, p5, p6, p7, n0, n1, n2, n3, n4, n5, n6, n7, t0, t1, h0])
+LET hits = FLATTEN([p0, p1, p2, p3, p4, p5, p6, p7, n0, n1, n2, n3, n4, n5, n6, t0, t1, h0])
 LET best = (
   FOR x IN hits
     COLLECT stkey = x.k INTO grp = x

@@ -81,11 +81,11 @@ const (
     }
 )`
 
-	// AutocompleteMerge merges the 16 branches of the autocomplete
+	// AutocompleteMerge merges the 15 branches of the autocomplete
 	// statement and returns the top rows. The builder fills it with one
 	// verb:
 	//
-	//  1. %s — the comma-separated list of the 16 branch variables
+	//  1. %s — the comma-separated list of the 15 branch variables
 	//
 	// It requires the bind parameter limit. The merge keeps one best row
 	// per stock key by score DESC and field label ASC, then sorts by score

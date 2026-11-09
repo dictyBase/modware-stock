@@ -85,12 +85,19 @@ func assertFullSearchViewShape(
 		[]string{fieldSummary, fieldDepositor},
 		[]string{testFullSearchTextAnl},
 	)
-	// The property link carries 5 identifier fields.
+	// The property link carries 4 fuzzy-indexed identifier fields and
+	// species with the norm analyzer only.
 	assertFullSearchLink(
 		assert,
 		props.Links[testStockPropCol],
-		[]string{fieldLabel, fieldNames, fieldSpecies, fieldPlasmid, fieldName},
+		[]string{fieldLabel, fieldNames, fieldPlasmid, fieldName},
 		[]string{fullSearchNormAnalyzer, fullSearchNgramAnalyzer},
+	)
+	assertFullSearchLink(
+		assert,
+		props.Links[testStockPropCol],
+		[]string{fieldSpecies},
+		[]string{fullSearchNormAnalyzer},
 	)
 }
 
@@ -294,20 +301,20 @@ func TestBuildFullSearchQueryBranchCount(t *testing.T) {
 	assert := require.New(t)
 	q := buildFullSearchQuery()
 	assert.Equal(
-		19,
+		18,
 		strings.Count(q, "FOR d IN "+fullSearchViewName),
 		"expect one FOR per branch",
 	)
 	branchVars := regexp.MustCompile(`LET [pnth]\d+ = \(`).FindAllString(q, -1)
-	assert.Len(branchVars, 19, "expect 19 branch variables")
+	assert.Len(branchVars, 18, "expect 18 branch variables")
 	assert.Equal(9, strings.Count(q, "OUTBOUND d GRAPH"),
 		"expect one OUTBOUND traversal per stage of the 6 stock fields")
 	assert.Equal(1, strings.Count(q, "OUTBOUND stk GRAPH"),
 		"expect one OUTBOUND ontology traversal in the merge tail")
-	assert.Equal(10, strings.Count(q, "INBOUND"),
-		"expect one INBOUND traversal per stage of the 5 property fields")
+	assert.Equal(9, strings.Count(q, "INBOUND"),
+		"expect 5 prefix and 4 fuzzy INBOUND traversals for property fields")
 	assert.Equal(8, strings.Count(q, "ANALYZER(STARTS_WITH"))
-	assert.Equal(8, strings.Count(q, "NGRAM_MATCH"))
+	assert.Equal(7, strings.Count(q, "NGRAM_MATCH"))
 	assert.Equal(2, strings.Count(q, "IN TOKENS"))
 	assert.Equal(1, strings.Count(q, "PHRASE("))
 	assert.NotContains(q, fieldEditableSummary,
@@ -325,11 +332,11 @@ func TestBuildFullSearchQueryBranchOrder(t *testing.T) {
 	assert.Equal(
 		[]string{
 			"p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7",
-			"n0", "n1", "n2", "n3", "n4", "n5", "n6", "n7",
+			"n0", "n1", "n2", "n3", "n4", "n5", "n6",
 			"t0", "t1", "h0",
 		},
 		got,
-		"expect the 19 branch variables grouped by band, in statement order",
+		"expect the 18 branch variables grouped by band, in statement order",
 	)
 }
 
@@ -338,13 +345,13 @@ func TestBuildFullSearchQueryBandCounts(t *testing.T) {
 	q := buildFullSearchQuery()
 	// The score band of a branch decides its rank, so a branch that
 	// changes band changes results. One band per branch kind, eight
-	// identifier prefixes, eight identifier fuzzies, two prose tokens
+	// identifier prefixes, seven identifier fuzzies, two prose tokens
 	// and the single summary phrase. Each band is counted in its `s:`
 	// slot, because the fuzzy band is the bare BM25 term and would
 	// otherwise also match the other bands and every SORT clause.
 	bandSlot := func(band string) string { return "s: " + band + "\n" }
 	assert.Equal(8, strings.Count(q, bandSlot(fullSearchPrefixBand)), "prefix branches")
-	assert.Equal(8, strings.Count(q, bandSlot(fullSearchFuzzyBand)), "fuzzy branches")
+	assert.Equal(7, strings.Count(q, bandSlot(fullSearchFuzzyBand)), "fuzzy branches")
 	assert.Equal(2, strings.Count(q, bandSlot(fullSearchProseBand)), "token branches")
 	assert.Equal(1, strings.Count(q, bandSlot(fullSearchPhraseBand)), "phrase branches")
 }
@@ -352,11 +359,11 @@ func TestBuildFullSearchQueryBandCounts(t *testing.T) {
 func TestBuildFullSearchQueryHasNoNgramOnProse(t *testing.T) {
 	assert := require.New(t)
 	q := buildFullSearchQuery()
-	for _, prose := range []string{fieldSummary, fieldDepositor} {
+	for _, excluded := range []string{fieldSummary, fieldDepositor, fieldSpecies} {
 		assert.Equal(
 			0,
-			strings.Count(q, "NGRAM_MATCH(d."+prose),
-			prose+" must have no ngram branch",
+			strings.Count(q, "NGRAM_MATCH(d."+excluded),
+			excluded+" must have no ngram branch",
 		)
 	}
 }
