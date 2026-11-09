@@ -133,7 +133,7 @@ func TestBuildNoFilterBindParams(t *testing.T) {
 			params := ar.buildNoFilterBindParams(tc.params)
 
 			// Assertions
-			assert.Contains(t, params, bindStockCollection)
+			assert.Contains(t, params, bindCvtermCollection)
 			assert.Contains(t, params, nameStockPropGraph)
 			assert.Contains(t, params, nameStockCvtermGraph)
 			assert.Contains(t, params, paramOntology)
@@ -141,8 +141,10 @@ func TestBuildNoFilterBindParams(t *testing.T) {
 			assert.Contains(t, params, paramLimit)
 			assert.Equal(t, tc.params.Limit+1, params[paramLimit])
 
-			// Should NOT contain cvterm collection (stock first)
-			assert.NotContains(t, params, bindCvtermCollection)
+			// Should NOT contain stock collection (ontology first)
+			assert.NotContains(t, params, bindStockCollection)
+			assert.Contains(t, statement.PlasmidList, "FOR cv IN @@cv_collection")
+			assert.Contains(t, statement.PlasmidListWithCursor, "FOR cv IN @@cv_collection")
 
 			if tc.params.Cursor > 0 {
 				assert.Contains(t, params, "cursor")

@@ -150,42 +150,20 @@ func (ar *arangorepository) baseBindParams() map[string]any {
 	}
 }
 
-// Stock-first bind parameters (no filter queries)
-func (ar *arangorepository) stockFirstBindParams() map[string]any {
-	return map[string]any{
-		bindStockCollection: ar.stockc.stock.Name(),
-		nameStockPropGraph:  ar.stockc.stockPropType.Name(),
-	}
+// buildNoFilterBindParams builds bind params for no-filter queries
+func (ar *arangorepository) buildNoFilterBindParams(
+	params *stock.StockParameters,
+) map[string]any {
+	return ar.buildFilterBindParams(params)
 }
 
-// Ontology-first bind parameters (filtered queries)
+// Ontology-first bind parameters (filtered and unfiltered plasmid list queries)
 func (ar *arangorepository) ontologyFirstBindParams() map[string]any {
 	return map[string]any{
 		bindCvtermCollection: ar.ontoc.Term.Name(),
 		bindCVCollection:     ar.ontoc.Cv.Name(),
 		nameStockPropGraph:   ar.stockc.stockPropType.Name(),
 	}
-}
-
-// buildNoFilterBindParams builds bind params for no-filter queries
-func (ar *arangorepository) buildNoFilterBindParams(
-	params *stock.StockParameters,
-) map[string]any {
-	baseWithStock := F.Pipe2(
-		ar.baseBindParams(),
-		mergeParams(ar.stockFirstBindParams()),
-		addLimitParam(params.Limit+1),
-	)
-
-	return F.Pipe2(
-		params.Cursor,
-		hasCursor,
-		F.Ternary(
-			F.Identity[bool],
-			F.Constant1[bool](F.Pipe1(baseWithStock, addCursorParam(params.Cursor))),
-			F.Constant1[bool](baseWithStock),
-		),
-	)
 }
 
 // buildFilterBindParams builds bind params for filtered queries
