@@ -303,38 +303,46 @@ const (
 				)`
 
 	PlasmidList = `
-		FOR s IN @@stock_collection
-			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
-				FILTER e.type == 'plasmid'
-				SORT s.created_at DESC
-				LIMIT @limit` +
-		ontologyTermSubquery + `
-				RETURN MERGE(s, {
-					plasmid_properties: {
-						image_map: stock_prop.image_map,
-						sequence: stock_prop.sequence,
-						name: stock_prop.name,
-						dicty_plasmid_property: term[0]
-					}
-				})
+		FOR cv IN @@cv_collection
+			FILTER cv.metadata.namespace == @ontology
+			FOR cvterm IN @@cvterm_collection
+				FILTER cvterm.graph_id == cv._id
+				FILTER cvterm.deprecated == false
+				FOR s IN 1..1 INBOUND cvterm GRAPH @stock_cvterm_graph
+					SORT s.created_at DESC
+					LIMIT @limit
+					FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
+						FILTER e.type == 'plasmid'
+						RETURN MERGE(s, {
+							plasmid_properties: {
+								image_map: stock_prop.image_map,
+								sequence: stock_prop.sequence,
+								name: stock_prop.name,
+								dicty_plasmid_property: cvterm.label
+							}
+						})
 	`
 
 	PlasmidListWithCursor = `
-		FOR s IN @@stock_collection
-			FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
-				FILTER e.type == 'plasmid'
-				FILTER s.created_at <= DATE_ISO8601(@cursor)
-				SORT s.created_at DESC
-				LIMIT @limit` +
-		ontologyTermSubquery + `
-				RETURN MERGE(s, {
-					plasmid_properties: {
-						image_map: stock_prop.image_map,
-						sequence: stock_prop.sequence,
-						name: stock_prop.name,
-						dicty_plasmid_property: term[0]
-					}
-				})
+		FOR cv IN @@cv_collection
+			FILTER cv.metadata.namespace == @ontology
+			FOR cvterm IN @@cvterm_collection
+				FILTER cvterm.graph_id == cv._id
+				FILTER cvterm.deprecated == false
+				FOR s IN 1..1 INBOUND cvterm GRAPH @stock_cvterm_graph
+					FILTER s.created_at <= DATE_ISO8601(@cursor)
+					SORT s.created_at DESC
+					LIMIT @limit
+					FOR stock_prop, e IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
+						FILTER e.type == 'plasmid'
+						RETURN MERGE(s, {
+							plasmid_properties: {
+								image_map: stock_prop.image_map,
+								sequence: stock_prop.sequence,
+								name: stock_prop.name,
+								dicty_plasmid_property: cvterm.label
+							}
+						})
 	`
 
 	PlasmidListFilter = `
