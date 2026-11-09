@@ -68,6 +68,19 @@ var (
 		P.Fold(stockBranchTemplate, propBranchTemplate),
 	)
 
+	// isPropSpec lifts isPropCollection onto a branchSpec.
+	isPropSpec = F.Pipe1(
+		isPropCollection,
+		P.ContraMap(specField),
+	)
+
+	// selectSpecParts selects the format arguments of a branchSpec by its
+	// collection.
+	selectSpecParts = F.Pipe1(
+		isPropSpec,
+		P.Fold(stockSpecParts, propSpecParts),
+	)
+
 	// fullSearchSpecSets lists the four groups of branch specs in
 	// statement order: identifier prefix branches, identifier fuzzy
 	// branches, prose token branches, and the summary phrase branch.
@@ -136,17 +149,39 @@ func withTemplate(spec branchSpec) branchSpec {
 	return F.Pipe1(spec, specTemplateLens.Set(template))
 }
 
-// renderBranch is the terminal projection of one spec: the template over
-// the name, the SEARCH expression, the field label, the display
-// expression and the score band, in template order.
-func renderBranch(spec branchSpec) queryBranch {
-	parts := A.From[any](
+// specField extracts the indexed field of a branch spec.
+func specField(spec branchSpec) fullSearchField {
+	return spec.field
+}
+
+// stockSpecParts builds the format arguments of a stock branch spec.
+func stockSpecParts(spec branchSpec) []any {
+	return A.From[any](
 		spec.name,
 		spec.search,
 		spec.field.label,
 		spec.display,
 		spec.band,
 	)
+}
+
+// propSpecParts builds the format arguments of a property branch spec.
+func propSpecParts(spec branchSpec) []any {
+	return A.From[any](
+		spec.name,
+		spec.search,
+		string(spec.field.entity),
+		spec.field.label,
+		spec.display,
+		spec.band,
+	)
+}
+
+// renderBranch is the terminal projection of one spec: the template over
+// the name, the SEARCH expression, the field label, the display
+// expression and the score band, in template order.
+func renderBranch(spec branchSpec) queryBranch {
+	parts := selectSpecParts(spec)
 	return queryBranch{
 		name: spec.name,
 		body: fmt.Sprintf(spec.template, parts...),

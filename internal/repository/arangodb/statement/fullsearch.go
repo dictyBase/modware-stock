@@ -48,14 +48,27 @@ const (
 
 	// FullSearchPropBranch is one branch of the full search statement over
 	// the stock property collection. The builder fills it with fmt.Sprintf
-	// in the same verb order as FullSearchStockBranch. It requires the
-	// same bind parameters. The property _key is auto-generated and
-	// carries no relation to the stock key, so the row resolves its owner
+	// in this verb order:
+	//
+	//  1. %s — the branch variable (p<n> for prefix, n<n> for fuzzy)
+	//  2. %s — the SEARCH expression
+	//  3. %q — the static entity type that owns the property field
+	//     ("strain" or "plasmid")
+	//  4. %q — the field label that the branch reports
+	//  5. %s — the display expression
+	//  6. %s — the score expression
+	//
+	// It requires the same bind parameters as FullSearchStockBranch. Each
+	// property field belongs to one entity type, so the branch filters by
+	// @entity, ranks, and caps the view rows before it resolves the owner
 	// with one INBOUND traversal. A strain row carries d.label and a
 	// plasmid row carries d.name as the stock label.
 	FullSearchPropBranch = `LET %s = (
   FOR d IN stock_full_search
     SEARCH %s
+    FILTER @entity == "" OR @entity == %q
+    SORT BM25(d) DESC, d._key ASC
+    LIMIT @limit
     LET own = FIRST(
       FOR v, e IN 1..1 INBOUND d GRAPH @stock_prop_graph
         RETURN {
@@ -69,8 +82,6 @@ const (
     )
     FILTER own != null
     FILTER @entity == "" OR @entity == own.entity
-    SORT BM25(d) DESC, own.k ASC
-    LIMIT @limit
     RETURN {
       k: own.k,
       id: own.id,

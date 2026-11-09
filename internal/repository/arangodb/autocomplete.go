@@ -23,10 +23,12 @@ type (
 	autocompleteDisplay int
 
 	// autocompleteField is one indexed search field. The label names the
-	// field in the AQL, and the display selects the display expression.
+	// field in the AQL, the display selects the display expression, and
+	// entity names the static owner entity of a property field.
 	autocompleteField struct {
 		label   string
 		display autocompleteDisplay
+		entity  repository.StockEntityFilter
 	}
 
 	// autocompleteRequest is the validated and normalized input of one
@@ -112,11 +114,11 @@ var (
 	// collection. Each field gets a prefix branch and a fuzzy branch in
 	// the statement.
 	propFields = []autocompleteField{
-		{label: fieldLabel, display: autocompleteScalar},
-		{label: fieldNames, display: autocompleteArray},
-		{label: fieldSpecies, display: autocompleteScalar},
-		{label: fieldPlasmid, display: autocompleteScalar},
-		{label: fieldName, display: autocompleteScalar},
+		{label: fieldLabel, display: autocompleteScalar, entity: repository.EntityStrain},
+		{label: fieldNames, display: autocompleteArray, entity: repository.EntityStrain},
+		{label: fieldSpecies, display: autocompleteScalar, entity: repository.EntityStrain},
+		{label: fieldPlasmid, display: autocompleteScalar, entity: repository.EntityStrain},
+		{label: fieldName, display: autocompleteScalar, entity: repository.EntityPlasmid},
 	}
 
 	// autocompleteCtxLens focuses the caller context of a validated request.

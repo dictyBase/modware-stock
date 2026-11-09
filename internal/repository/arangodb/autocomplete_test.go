@@ -421,6 +421,25 @@ func TestBuildAutocompleteQueryFilterOrder(t *testing.T) {
 		assert.GreaterOrEqual(entity, 0, "branch must filter by entity")
 		assert.Less(entity, sort, "entity filter must precede SORT")
 		assert.Less(entity, limit, "entity filter must precede LIMIT")
+		assert.Less(sort, limit, "SORT must precede LIMIT")
+		if strings.Contains(branch, "INBOUND d GRAPH") {
+			own := strings.Index(branch, "LET own = FIRST(")
+			assert.GreaterOrEqual(own, 0, "property branch must resolve owner")
+			assert.Less(limit, own, "owner traversal must follow LIMIT")
+			if strings.Contains(branch, `f: "name"`) {
+				assert.Contains(
+					branch,
+					`FILTER @entity == "" OR @entity == "plasmid"`,
+					"plasmid property branch must pre-filter by plasmid entity",
+				)
+			} else {
+				assert.Contains(
+					branch,
+					`FILTER @entity == "" OR @entity == "strain"`,
+					"strain property branch must pre-filter by strain entity",
+				)
+			}
+		}
 	}
 }
 

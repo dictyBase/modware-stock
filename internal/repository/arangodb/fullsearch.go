@@ -39,12 +39,14 @@ type (
 	fullSearchDisplay int
 
 	// fullSearchField is one indexed search field. The label names the
-	// field in the AQL, the collection selects the branch template and
-	// the display selects the display expression.
+	// field in the AQL, the collection selects the branch template, the
+	// display selects the display expression, and entity names the static
+	// owner entity of a property field.
 	fullSearchField struct {
 		label   string
 		coll    fullSearchColl
 		display fullSearchDisplay
+		entity  repository.StockEntityFilter
 	}
 
 	// fullSearchRequest is the validated and normalized input of one
@@ -129,11 +131,11 @@ var (
 		{label: paramStockID, coll: fullSearchCollStock, display: fullSearchScalar},
 		{label: fieldGenes, coll: fullSearchCollStock, display: fullSearchArray},
 		{label: fieldDbxrefs, coll: fullSearchCollStock, display: fullSearchArray},
-		{label: fieldLabel, coll: fullSearchCollProp, display: fullSearchScalar},
-		{label: fieldNames, coll: fullSearchCollProp, display: fullSearchArray},
-		{label: fieldSpecies, coll: fullSearchCollProp, display: fullSearchScalar},
-		{label: fieldPlasmid, coll: fullSearchCollProp, display: fullSearchScalar},
-		{label: fieldName, coll: fullSearchCollProp, display: fullSearchScalar},
+		{label: fieldLabel, coll: fullSearchCollProp, display: fullSearchScalar, entity: repository.EntityStrain},
+		{label: fieldNames, coll: fullSearchCollProp, display: fullSearchArray, entity: repository.EntityStrain},
+		{label: fieldSpecies, coll: fullSearchCollProp, display: fullSearchScalar, entity: repository.EntityStrain},
+		{label: fieldPlasmid, coll: fullSearchCollProp, display: fullSearchScalar, entity: repository.EntityStrain},
+		{label: fieldName, coll: fullSearchCollProp, display: fullSearchScalar, entity: repository.EntityPlasmid},
 	}
 
 	// fullSearchProseFields lists the 2 prose fields that the view indexes
