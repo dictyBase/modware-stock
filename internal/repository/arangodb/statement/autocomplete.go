@@ -42,21 +42,35 @@ const (
 
 	// AutocompletePropBranch is one branch of the autocomplete statement
 	// over the stock property collection. The builder fills it with
-	// fmt.Sprintf in the same verb order as AutocompleteStockBranch. It
-	// requires the same bind parameters. The property _key is
-	// auto-generated and carries no relation to the stock key, so the row
-	// resolves its owner with one INBOUND traversal.
+	// fmt.Sprintf in this verb order:
+	//
+	//  1. %s — the branch variable (p_<field> or n_<field>)
+	//  2. %s — the SEARCH expression
+	//  3. %q — the static entity type that owns the property field
+	//     ("strain" or "plasmid")
+	//  4. %q — the field label that the branch reports
+	//  5. %s — the display expression
+	//  6. %s — the score expression
+	//
+	// It requires the bind parameters q, stock_prop_graph, entity, limit.
+	// Each property field belongs to one entity type, so the branch filters
+	// by @entity, ranks, and caps the view rows before it resolves the
+	// owner with one INBOUND traversal. An ArangoSearch view branch does
+	// not receive the cluster-one-shard optimizer rule, so capping before
+	// the traversal bounds network traversals to at most limit per branch
+	// while keeping entity filtering exact.
 	AutocompletePropBranch = `LET %s = (
   FOR d IN stock_autocomplete
     SEARCH %s
+    FILTER @entity == "" OR @entity == %q
+    SORT BM25(d) DESC, d._key ASC
+    LIMIT @limit
     LET own = FIRST(
       FOR v, e IN 1..1 INBOUND d GRAPH @stock_prop_graph
         RETURN { k: v._key, id: v.stock_id, entity: e.type }
     )
     FILTER own != null
     FILTER @entity == "" OR @entity == own.entity
-    SORT BM25(d) DESC, own.k ASC
-    LIMIT @limit
     RETURN {
       k: own.k,
       id: own.id,

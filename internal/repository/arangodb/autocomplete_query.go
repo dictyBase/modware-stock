@@ -30,8 +30,11 @@ type (
 )
 
 var (
-	scalarOrArray = F.Pipe1(isScalarField, P.Fold(displayArray, displayScalar))
-	nameLens      = L.MakeLens(
+	scalarOrArray     = F.Pipe1(isScalarField, P.Fold(displayArray, displayScalar))
+	hasPropEntity     = F.Pipe1(S.IsNonEmpty, P.ContraMap(autocompleteFieldEntity))
+	selectPrefixParts = F.Pipe1(hasPropEntity, P.Fold(stockPrefixParts, propPrefixParts))
+	selectFuzzyParts  = F.Pipe1(hasPropEntity, P.Fold(stockFuzzyParts, propFuzzyParts))
+	nameLens          = L.MakeLens(
 		func(b queryBranch) string { return b.name },
 		func(b queryBranch, v string) queryBranch { b.name = v; return b },
 	)
@@ -48,6 +51,11 @@ var (
 		{propFields, statement.AutocompletePropBranch, fuzzyBranch},
 	}
 )
+
+// autocompleteFieldEntity reads the static entity filter of one field.
+func autocompleteFieldEntity(f autocompleteField) string {
+	return string(f.entity)
+}
 
 // displayScalar is the display expression of a scalar field: its
 // value.
@@ -72,17 +80,43 @@ func isScalarField(f autocompleteField) bool {
 	return f.display == autocompleteScalar
 }
 
+// stockPrefixParts builds the format arguments of a stock prefix branch.
+func stockPrefixParts(f autocompleteField) []any {
+	name := strutils.JoinStrings("p_", f.label)
+	expr := autocompletePrefixExpr(f.label)
+	disp := scalarOrArray(f)
+	return A.From[any](name, expr, f.label, disp, autocompletePrefixScore)
+}
+
+// propPrefixParts builds the format arguments of a property prefix branch.
+func propPrefixParts(f autocompleteField) []any {
+	name := strutils.JoinStrings("p_", f.label)
+	expr := autocompletePrefixExpr(f.label)
+	disp := scalarOrArray(f)
+	return A.From[any](name, expr, string(f.entity), f.label, disp, autocompletePrefixScore)
+}
+
+// stockFuzzyParts builds the format arguments of a stock fuzzy branch.
+func stockFuzzyParts(f autocompleteField) []any {
+	name := strutils.JoinStrings("n_", f.label)
+	expr := autocompleteFuzzyExpr(f.label)
+	disp := scalarOrArray(f)
+	return A.From[any](name, expr, f.label, disp, autocompleteFuzzyScore)
+}
+
+// propFuzzyParts builds the format arguments of a property fuzzy branch.
+func propFuzzyParts(f autocompleteField) []any {
+	name := strutils.JoinStrings("n_", f.label)
+	expr := autocompleteFuzzyExpr(f.label)
+	disp := scalarOrArray(f)
+	return A.From[any](name, expr, string(f.entity), f.label, disp, autocompleteFuzzyScore)
+}
+
 // prefixBranch fills the prefix branch of one field: the variable
 // p_<label> with the prefix score. The template is the second
 // parameter so the field pipelines bind it with F.Bind2nd.
 func prefixBranch(f autocompleteField, tpl string) queryBranch {
-	parts := A.From[any](
-		strutils.JoinStrings("p_", f.label),
-		autocompletePrefixExpr(f.label),
-		f.label,
-		scalarOrArray(f),
-		autocompletePrefixScore,
-	)
+	parts := selectPrefixParts(f)
 
 	return queryBranch{
 		name: strutils.JoinStrings("p_", f.label),
@@ -94,13 +128,7 @@ func prefixBranch(f autocompleteField, tpl string) queryBranch {
 // n_<label> with the fuzzy score. The template is the second
 // parameter so the field pipelines bind it with F.Bind2nd.
 func fuzzyBranch(f autocompleteField, tpl string) queryBranch {
-	parts := A.From[any](
-		strutils.JoinStrings("n_", f.label),
-		autocompleteFuzzyExpr(f.label),
-		f.label,
-		scalarOrArray(f),
-		autocompleteFuzzyScore,
-	)
+	parts := selectFuzzyParts(f)
 
 	return queryBranch{
 		name: strutils.JoinStrings("n_", f.label),
