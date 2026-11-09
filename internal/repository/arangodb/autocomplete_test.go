@@ -108,10 +108,14 @@ func assertAutocompleteLink(
 		got := make([]string, 0, len(field.Analyzers))
 		got = append(got, field.Analyzers...)
 		slices.Sort(got)
+		want := []string{testNgramAnalyzer, testNormAnalyzer}
+		if name == fieldSpecies {
+			want = []string{testNormAnalyzer}
+		}
 		assert.Equal(
-			[]string{testNgramAnalyzer, testNormAnalyzer},
+			want,
 			got,
-			"expect both analyzers on field %s",
+			"expect the analyzer list on field %s",
 			name,
 		)
 	}
@@ -381,18 +385,23 @@ func TestBuildAutocompleteQueryBranchCount(t *testing.T) {
 	assert := require.New(t)
 	q := buildAutocompleteQuery()
 	assert.Equal(
-		16,
+		15,
 		strings.Count(q, "FOR d IN stock_autocomplete"),
 		"expect one FOR per branch",
 	)
 	branchVars := regexp.MustCompile(`LET [pn]_[a-z0-9_]+ = \(`).FindAllString(q, -1)
-	assert.Len(branchVars, 16, "expect 16 branch variables")
+	assert.Len(branchVars, 15, "expect 15 branch variables")
 	assert.Equal(6, strings.Count(q, "OUTBOUND"),
 		"expect one OUTBOUND traversal per stage of the 3 stock fields")
-	assert.Equal(10, strings.Count(q, "INBOUND"),
-		"expect one INBOUND traversal per stage of the 5 property fields")
+	assert.Equal(9, strings.Count(q, "INBOUND"),
+		"expect 5 prefix and 4 fuzzy INBOUND traversals for property fields")
 	assert.Equal(8, strings.Count(q, "ANALYZER(STARTS_WITH"))
-	assert.Equal(8, strings.Count(q, "NGRAM_MATCH"))
+	assert.Equal(7, strings.Count(q, "NGRAM_MATCH"))
+	assert.Equal(
+		0,
+		strings.Count(q, "NGRAM_MATCH(d."+fieldSpecies),
+		"species must have no ngram branch",
+	)
 }
 
 func TestBuildAutocompleteQueryIsValidAQL(t *testing.T) {
