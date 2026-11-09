@@ -419,8 +419,17 @@ func TestBuildAutocompleteQueryFilterOrder(t *testing.T) {
 		sort := strings.Index(branch, "SORT BM25")
 		limit := strings.Index(branch, "LIMIT @limit")
 		assert.GreaterOrEqual(entity, 0, "branch must filter by entity")
+		assert.Less(sort, limit, "SORT must precede LIMIT")
+		if strings.Contains(branch, "INBOUND d GRAPH") {
+			// A property branch caps the view rows before it resolves the
+			// owner, so the edge-based entity filter also runs after the
+			// branch limit.
+			own := strings.Index(branch, "LET own = FIRST(")
+			assert.Less(limit, own, "the owner traversal must follow LIMIT")
+			assert.Less(own, entity, "entity filter must follow the owner traversal")
+			continue
+		}
 		assert.Less(entity, sort, "entity filter must precede SORT")
-		assert.Less(entity, limit, "entity filter must precede LIMIT")
 	}
 }
 
