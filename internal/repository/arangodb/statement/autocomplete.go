@@ -46,26 +46,17 @@ const (
 	// requires the same bind parameters. The property _key is
 	// auto-generated and carries no relation to the stock key, so the row
 	// resolves its owner with one INBOUND traversal.
-	//
-	// The branch ranks and caps the view rows before the traversal. An
-	// ArangoSearch view branch does not receive the cluster-one-shard
-	// optimizer rule, so a traversal before the branch limit runs once
-	// per matching row over the network; after the limit it runs at most
-	// limit times per branch. The tiebreak falls back to the property
-	// key, because the owner key is not known yet; the merge re-sorts the
-	// capped rows by score and stock key. The owner and entity filters
-	// still read the traversal edge, so the entity filtering stays exact.
 	AutocompletePropBranch = `LET %s = (
   FOR d IN stock_autocomplete
     SEARCH %s
-    SORT BM25(d) DESC, d._key ASC
-    LIMIT @limit
     LET own = FIRST(
       FOR v, e IN 1..1 INBOUND d GRAPH @stock_prop_graph
         RETURN { k: v._key, id: v.stock_id, entity: e.type }
     )
     FILTER own != null
     FILTER @entity == "" OR @entity == own.entity
+    SORT BM25(d) DESC, own.k ASC
+    LIMIT @limit
     RETURN {
       k: own.k,
       id: own.id,
