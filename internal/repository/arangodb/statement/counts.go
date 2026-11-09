@@ -1,17 +1,16 @@
 package statement
 
 // StockCountsQ computes the total and subtype counts for strains and
-// plasmids in one AQL statement. Each stock resolves its ontology term
-// with the same FIRST(...) traversal over @stock_cvterm_graph used by
-// FullSearchMerge, then maps that label to its subtype group:
+// plasmids in one AQL statement by aggregating the edge and ontology
+// collections directly instead of running per-stock GRAPH traversals:
 //   - strain: "REMI-seq" -> "gwdi", "bacterial strain" -> "bacterial",
 //     everything else -> "regular"
 //   - plasmid: "GB vector" -> "goldenbraid", everything else -> "regular"
 //
 // Required bind variables:
-//   - @@stock_collection
-//   - @stock_prop_graph
-//   - @stock_cvterm_graph
+//   - @@stock_type_collection
+//   - @@stock_term_collection
+//   - @@cvterm_collection
 //   - @@cv_collection
 //   - @strain_ontology
 //   - @plasmid_ontology
@@ -19,70 +18,75 @@ package statement
 //   - @bacterial_strain_tag
 //   - @goldenbraid_plasmid_tag
 const StockCountsQ = `
-LET typed_stocks = (
-  FOR s IN @@stock_collection
-    LET kind = FIRST(
-      FOR prop, e IN 1..1 OUTBOUND s GRAPH @stock_prop_graph
-        FILTER e.type IN ["strain", "plasmid"]
-        RETURN e.type
-    )
-    FILTER kind != null
-    LET term = FIRST(
-      FOR cg IN 1..1 OUTBOUND s GRAPH @stock_cvterm_graph
-        FOR cv IN @@cv_collection
-          FILTER cg.deprecated == false
-          FILTER cg.graph_id == cv._id
-          FILTER cv.metadata.namespace == (kind == "strain" ? @strain_ontology : @plasmid_ontology)
-          RETURN cg.label
-    )
-    LET subtype = kind == "strain"
-      ? (term == @gwdi_strain_tag
-          ? "gwdi"
-          : (term == @bacterial_strain_tag ? "bacterial" : "regular"))
-      : (term == @goldenbraid_plasmid_tag ? "goldenbraid" : "regular")
-    RETURN {
-      kind: kind,
-      subtype: subtype
-    }
+LET type_totals = (
+  FOR e IN @@stock_type_collection
+    FILTER e.type IN ["strain", "plasmid"]
+    COLLECT kind = e.type WITH COUNT INTO total
+    RETURN { kind: kind, total: total }
 )
-LET strain_counts = (
-  FOR x IN typed_stocks
-    FILTER x.kind == "strain"
-    COLLECT name = x.subtype WITH COUNT INTO count
-    RETURN { name: name, count: count }
+LET strain_total = NOT_NULL(
+  FIRST(FOR t IN type_totals FILTER t.kind == "strain" RETURN t.total),
+  0
 )
-LET plasmid_counts = (
-  FOR x IN typed_stocks
-    FILTER x.kind == "plasmid"
-    COLLECT name = x.subtype WITH COUNT INTO count
-    RETURN { name: name, count: count }
+LET plasmid_total = NOT_NULL(
+  FIRST(FOR t IN type_totals FILTER t.kind == "plasmid" RETURN t.total),
+  0
 )
-LET strain_subtypes = (
-  FOR name IN ["regular", "gwdi", "bacterial"]
-    LET matched = FIRST(
-      FOR c IN strain_counts
-        FILTER c.name == name
-        RETURN c.count
-    )
-    RETURN { name: name, count: NOT_NULL(matched, 0) }
+LET special_terms = (
+  FOR cv IN @@cv_collection
+    FILTER cv.metadata.namespace IN [@strain_ontology, @plasmid_ontology]
+    FOR cg IN @@cvterm_collection
+      FILTER cg.graph_id == cv._id AND cg.deprecated == false
+      FILTER (cv.metadata.namespace == @strain_ontology AND cg.label IN [@gwdi_strain_tag, @bacterial_strain_tag])
+          OR (cv.metadata.namespace == @plasmid_ontology AND cg.label == @goldenbraid_plasmid_tag)
+      FOR st IN @@stock_term_collection
+        FILTER st._to == cg._id
+        FOR e IN @@stock_type_collection
+          FILTER e._from == st._from
+          FILTER (cv.metadata.namespace == @strain_ontology AND e.type == "strain")
+              OR (cv.metadata.namespace == @plasmid_ontology AND e.type == "plasmid")
+          COLLECT kind = e.type, label = cg.label WITH COUNT INTO count
+          RETURN { kind: kind, label: label, count: count }
 )
-LET plasmid_subtypes = (
-  FOR name IN ["regular", "goldenbraid"]
-    LET matched = FIRST(
-      FOR c IN plasmid_counts
-        FILTER c.name == name
-        RETURN c.count
-    )
-    RETURN { name: name, count: NOT_NULL(matched, 0) }
+LET gwdi_count = NOT_NULL(
+  FIRST(
+    FOR x IN special_terms
+      FILTER x.kind == "strain" AND x.label == @gwdi_strain_tag
+      RETURN x.count
+  ),
+  0
+)
+LET bacterial_count = NOT_NULL(
+  FIRST(
+    FOR x IN special_terms
+      FILTER x.kind == "strain" AND x.label == @bacterial_strain_tag
+      RETURN x.count
+  ),
+  0
+)
+LET gb_count = NOT_NULL(
+  FIRST(
+    FOR x IN special_terms
+      FILTER x.kind == "plasmid" AND x.label == @goldenbraid_plasmid_tag
+      RETURN x.count
+  ),
+  0
 )
 RETURN {
   strains: {
-    total: SUM(strain_subtypes[*].count),
-    subtypes: strain_subtypes
+    total: strain_total,
+    subtypes: [
+      { name: "regular", count: strain_total - gwdi_count - bacterial_count },
+      { name: "gwdi", count: gwdi_count },
+      { name: "bacterial", count: bacterial_count }
+    ]
   },
   plasmids: {
-    total: SUM(plasmid_subtypes[*].count),
-    subtypes: plasmid_subtypes
+    total: plasmid_total,
+    subtypes: [
+      { name: "regular", count: plasmid_total - gb_count },
+      { name: "goldenbraid", count: gb_count }
+    ]
   }
 }
 `

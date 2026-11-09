@@ -2,6 +2,7 @@ package arangodb
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	E "github.com/IBM/fp-go/v2/either"
@@ -9,7 +10,30 @@ import (
 	ioeutils "github.com/dictyBase/fp-go-loom/ioeitherutils"
 	"github.com/dictyBase/go-genproto/dictybaseapis/stock"
 	"github.com/dictyBase/modware-stock/internal/repository"
+	"github.com/dictyBase/modware-stock/internal/repository/arangodb/statement"
+	"github.com/stretchr/testify/require"
 )
+
+func TestBuildStockCountsQueryParamsAvoidsGraphTraversals(t *testing.T) {
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	ar, ok := repo.(*arangorepository)
+	require.True(t, ok, "expect concrete arangorepository")
+
+	params := ar.buildStockCountsQueryParams(context.Background())
+	assert.Equal(statement.StockCountsQ, params.statement)
+	assert.False(
+		strings.Contains(params.statement, "GRAPH @"),
+		"StockCountsQ must aggregate collections directly without per-stock GRAPH traversals",
+	)
+	assert.Contains(params.bindParams, bindStockTypeCollection)
+	assert.Contains(params.bindParams, bindStockTermCollection)
+	assert.Contains(params.bindParams, bindCvtermCollection)
+	assert.Contains(params.bindParams, bindCVCollection)
+	assert.NotContains(params.bindParams, bindStockCollection)
+	assert.NotContains(params.bindParams, nameStockPropGraph)
+	assert.NotContains(params.bindParams, nameStockCvtermGraph)
+}
 
 func TestCountStocksEmptyDatabase(t *testing.T) {
 	assert, repo := setUp(t)
