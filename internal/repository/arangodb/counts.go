@@ -59,9 +59,9 @@ func (ar *arangorepository) buildStockCountsQueryParams(
 		ctx:       normalizeQueryContext(ctx),
 		statement: statement.StockCountsQ,
 		bindParams: map[string]any{
-			bindStockCollection:        ar.stockc.stock.Name(),
-			nameStockPropGraph:         ar.stockc.stockPropType.Name(),
-			nameStockCvtermGraph:       ar.stockc.stockOnto.Name(),
+			bindStockTypeCollection:    ar.stockc.stockType.Name(),
+			bindStockTermCollection:    ar.stockc.stockTerm.Name(),
+			bindCvtermCollection:       ar.ontoc.Term.Name(),
 			bindCVCollection:           ar.ontoc.Cv.Name(),
 			paramStrainOntology:        ar.strainOnto,
 			paramPlasmidOntology:       ar.plasmidOnto,
