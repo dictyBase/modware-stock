@@ -1026,6 +1026,17 @@ func TestNormalizeQueryContextAndMaxRuntime(t *testing.T) {
 	assert.NotEqual(deadlineCtx, withRuntime, "expect deadline context to be wrapped with maxRuntime")
 }
 
+func TestWithSearchMaxRuntime(t *testing.T) {
+	assert := require.New(t)
+	plain := t.Context()
+	capped := withSearchMaxRuntime(plain)
+	assert.NotEqual(plain, capped, "expect a context without deadline to gain a maxRuntime")
+	deadlineCtx, cancel := context.WithTimeout(plain, time.Second)
+	defer cancel()
+	assert.Equal(deadlineCtx, withSearchMaxRuntime(deadlineCtx),
+		"expect a context with a deadline to keep its own limit")
+}
+
 func TestRepositoryContextCancellationAndDeadline(t *testing.T) {
 	assert, repo := setUp(t)
 	defer tearDown(repo)

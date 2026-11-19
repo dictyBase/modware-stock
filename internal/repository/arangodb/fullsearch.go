@@ -315,7 +315,7 @@ func (ar *arangorepository) SearchStock(
 	ctx context.Context,
 	params *repository.FullSearchQuery,
 ) IOE.IOEither[error, []*repository.FullSearchResult] {
-	baseCtx := normalizeQueryContext(ctx)
+	baseCtx := withSearchMaxRuntime(ctx)
 	withCtx := fullSearchCtxLens.Set(baseCtx)
 	return F.Pipe6(
 		IOE.Of[error](params),
