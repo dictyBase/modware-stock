@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"regexp"
 	"slices"
@@ -131,24 +132,20 @@ func assertFullSearchLink(
 	}
 }
 
-// assertNoTextEnAnalyzerCreated asserts that the setup did not create
-// a custom analyzer named text_en; the built-in one is not a creation
-// target.
-func assertNoTextEnAnalyzerCreated(
+// assertTextAnalyzerHasStopwords asserts that the setup created the text
+// analyzer of the token branches with the stopword list of the feature.
+func assertTextAnalyzerHasStopwords(
 	ctx context.Context,
 	assert *require.Assertions,
 	db driver.Database,
 ) {
 	anl, err := db.Analyzer(ctx, testFullSearchTextAnl)
-	assert.NoErrorf(
-		err,
-		"expect no error opening the built-in text_en analyzer, received %s",
-		err,
-	)
-	assert.Equal(
-		"text",
-		string(anl.Type()),
-		"the built-in text_en analyzer is a text analyzer of the server, not a creation of this repository",
+	assert.NoErrorf(err, "expect the text analyzer to exist, received %s", err)
+	assert.Equal("text", string(anl.Type()), "expect a text analyzer")
+	assert.ElementsMatch(
+		slices.Collect(maps.Keys(fullSearchStopwords)),
+		anl.Definition().Properties.Stopwords,
+		"expect the stopword list of the feature in the analyzer",
 	)
 }
 
@@ -170,7 +167,7 @@ func TestEnsureFullSearchCreatesAssets(t *testing.T) {
 	}
 	assert.Contains(names, fullSearchNormAnalyzer)
 	assert.Contains(names, fullSearchNgramAnalyzer)
-	assertNoTextEnAnalyzerCreated(ctx, assert, db)
+	assertTextAnalyzerHasStopwords(ctx, assert, db)
 	assertFullSearchViewShape(ctx, assert, db)
 }
 
@@ -1126,4 +1123,23 @@ func TestRepositoryContextCancellationAndDeadline(t *testing.T) {
 	assert.Eventually(func() bool {
 		return !hasRunningQuery("pure-cancel-stock")
 	}, 2*time.Second, 20*time.Millisecond, "expect canceled query without deadline to be killed on server")
+}
+
+func TestFullSearchTextDefCarriesSortedStopwords(t *testing.T) {
+	def := fullSearchTextDef()
+	require.Equal(t, fullSearchTextAnalyzer, def.Name)
+	require.Len(t, def.Properties.Stopwords, len(fullSearchStopwords))
+	require.True(t, slices.IsSorted(def.Properties.Stopwords))
+	require.Contains(t, def.Properties.Stopwords, "at")
+}
+
+func TestEnsureFullSearchIsIdempotentOnRestart(t *testing.T) {
+	assert, repo := setUp(t)
+	defer tearDown(repo)
+	ar, ok := repo.(*arangorepository)
+	assert.True(ok, "expect the arangodb repository")
+	assert.NoError(
+		ar.ensureFullSearch(context.Background()),
+		"expect a second setup to find the analyzers and the view unchanged",
+	)
 }
