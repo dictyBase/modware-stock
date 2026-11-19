@@ -14,21 +14,24 @@ const (
 	//  4. %s — the display expression
 	//  5. %s — the score expression
 	//
-	// It requires the bind parameters q, stock_prop_graph, entity, limit.
-	// The view name stock_autocomplete is written literally, because
+	// It requires the bind parameters q, stock_prop_graph, entity, limit,
+	// stock_cap. The branch ranks and caps the view rows at stock_cap
+	// before the OUTBOUND traversal, for the reason given on
+	// FullSearchStockBranch. The view name stock_autocomplete is written literally, because
 	// ArangoDB does not accept a bind parameter for a view name in SEARCH.
 	// The row key is the stock key, so the branch reads the entity from one
 	// OUTBOUND traversal over the stock property graph.
 	AutocompleteStockBranch = `LET %s = (
   FOR d IN stock_autocomplete
     SEARCH %s
+    SORT BM25(d) DESC, d._key ASC
+    LIMIT @stock_cap
     LET ent = FIRST(
       FOR v, e IN 1..1 OUTBOUND d GRAPH @stock_prop_graph
         RETURN e.type
     )
     FILTER ent != null
     FILTER @entity == "" OR @entity == ent
-    SORT BM25(d) DESC, d._key ASC
     LIMIT @limit
     RETURN {
       k: d._key,

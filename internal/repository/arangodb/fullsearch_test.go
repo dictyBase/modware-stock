@@ -388,6 +388,10 @@ func TestBuildFullSearchQueryFilterOrder(t *testing.T) {
 		if !regexp.MustCompile(`^LET [pnth]\d+ = \(`).MatchString(branch) {
 			continue
 		}
+		if strings.Contains(branch, "OUTBOUND d GRAPH") {
+			assertStockBranchCapOrder(t, branch)
+			continue
+		}
 		entity := strings.Index(branch, "FILTER @entity")
 		sort := strings.Index(branch, "SORT BM25")
 		limit := strings.Index(branch, "LIMIT @limit")
