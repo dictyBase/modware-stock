@@ -45,9 +45,14 @@ const (
 	// when a context deadline has already expired or is sub-millisecond, because
 	// go-driver omits a 0 maxRuntime (which ArangoDB treats as unlimited).
 	minQueryMaxRuntimeSeconds = 0.001
-	killQueryTimeout          = 2 * time.Second
-	killQueryAttempts         = 5
-	killQueryRetryInterval    = 20 * time.Millisecond
+	// defaultSearchMaxRuntimeSeconds is the server-side limit of a search
+	// query whose caller sets no deadline. Without it a runaway search keeps
+	// running in ArangoDB after the client has gone. The slowest healthy
+	// search measured on production takes about 10 seconds.
+	defaultSearchMaxRuntimeSeconds = 30.0
+	killQueryTimeout               = 2 * time.Second
+	killQueryAttempts              = 5
+	killQueryRetryInterval         = 20 * time.Millisecond
 )
 
 var (
@@ -125,6 +130,42 @@ func queryContextWithMaxRuntime(ctx context.Context) context.Context {
 		O.Map(deadlineRemainingSeconds),
 		O.Fold(F.Constant(baseCtx), withRuntime),
 	)
+}
+
+// withSearchMaxRuntime gives a search context without a deadline a default
+// server-side maxRuntime. A context with a deadline keeps its own limit,
+// which queryContextWithMaxRuntime derives from that deadline.
+func withSearchMaxRuntime(ctx context.Context) context.Context {
+	baseCtx := normalizeQueryContext(ctx)
+	capped := driver.WithQueryMaxRuntime(baseCtx, defaultSearchMaxRuntimeSeconds)
+	return F.Pipe2(
+		baseCtx,
+		O.FromValidation(context.Context.Deadline),
+		O.Fold(F.Constant(capped), F.Constant1[time.Time](baseCtx)),
+	)
+}
+
+// asDeadlineIfKilled reports a query that ArangoDB killed at its maxRuntime
+// as a deadline fault. The service maps context.DeadlineExceeded to the
+// gRPC DeadlineExceeded code, and an Arango 1500 error would map to
+// Internal. Any other error stays as it is.
+func asDeadlineIfKilled(err error) error {
+	return F.Pipe2(
+		err,
+		O.FromPredicate(isQueryKilledError),
+		O.Fold(
+			F.Constant(err),
+			F.Bind1st(joinDeadlineExceeded, err),
+		),
+	)
+}
+
+func isQueryKilledError(err error) bool {
+	return driver.IsArangoErrorWithErrorNum(err, driver.ErrQueryKilled)
+}
+
+func joinDeadlineExceeded(err, _ error) error {
+	return errors.Join(context.DeadlineExceeded, err)
 }
 
 func (ar *arangorepository) queryAPIBaseURL() string {
@@ -252,7 +293,7 @@ func (ar *arangorepository) searchRows(
 		}
 		return &contextResultset{empty: true, ctx: baseCtx}, fmt.Errorf(
 			"error in running search %w",
-			err,
+			asDeadlineIfKilled(err),
 		)
 	}
 	if !cursor.HasMore() {
@@ -299,7 +340,7 @@ func (r *contextResultset) Read(iface any) error {
 	}
 	meta, err := r.cursor.ReadDocument(r.ctx, iface)
 	if err != nil {
-		return fmt.Errorf("error in reading document %w", err)
+		return fmt.Errorf("error in reading document %w", asDeadlineIfKilled(err))
 	}
 	assignStockDocumentMeta(meta, iface)
 	return nil

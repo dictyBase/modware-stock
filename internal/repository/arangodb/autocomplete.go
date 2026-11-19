@@ -420,7 +420,7 @@ func (ar *arangorepository) AutocompleteStock(
 	ctx context.Context,
 	params *repository.AutocompleteQuery,
 ) IOE.IOEither[error, []*repository.Suggestion] {
-	baseCtx := normalizeQueryContext(ctx)
+	baseCtx := withSearchMaxRuntime(ctx)
 	withCtx := autocompleteCtxLens.Set(baseCtx)
 	return F.Pipe6(
 		params,
