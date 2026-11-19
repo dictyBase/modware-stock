@@ -424,6 +424,10 @@ func TestBuildAutocompleteQueryFilterOrder(t *testing.T) {
 		if !regexp.MustCompile(`^LET [pn]_[a-z0-9_]+ = \(`).MatchString(branch) {
 			continue
 		}
+		if strings.Contains(branch, "OUTBOUND d GRAPH") {
+			assertStockBranchCapOrder(t, branch)
+			continue
+		}
 		entity := strings.Index(branch, "FILTER @entity")
 		sort := strings.Index(branch, "SORT BM25")
 		limit := strings.Index(branch, "LIMIT @limit")

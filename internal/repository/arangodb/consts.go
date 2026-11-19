@@ -23,6 +23,7 @@ const (
 	paramStrainOntology  = "strain_ontology"
 	paramPlasmidOntology = "plasmid_ontology"
 	paramLimit           = "limit"
+	paramStockCap        = "stock_cap"
 	paramCursor          = "cursor"
 	paramKey             = "key"
 	nameFrom             = "from"

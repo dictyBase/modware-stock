@@ -14,14 +14,24 @@ const (
 	//  4. %s — the display expression
 	//  5. %s — the score expression
 	//
-	// It requires the bind parameters q, stock_prop_graph, entity, limit.
-	// The view name stock_full_search is written literally, because
-	// ArangoDB does not accept a bind parameter for a view name in SEARCH.
-	// The row key is the stock key, so one OUTBOUND traversal over the
-	// stock property graph supplies the entity and the stock label.
+	// It requires the bind parameters q, stock_prop_graph, entity, limit,
+	// stock_cap. The view name stock_full_search is written literally,
+	// because ArangoDB does not accept a bind parameter for a view name in
+	// SEARCH. The row key is the stock key, so one OUTBOUND traversal over
+	// the stock property graph supplies the entity and the stock label.
+	// The branch ranks and caps the view rows at stock_cap before that
+	// traversal. A view branch does not receive the cluster-one-shard
+	// optimizer rule, so each traversal is a network round trip, and a
+	// common token such as "at" matches about 22000 documents. Without the
+	// cap the traversal ran once per match. The caller binds stock_cap to
+	// limit when entity is empty, because then no row drops out. With an
+	// entity filter the caller binds a larger over-fetch, and the second
+	// LIMIT trims the filtered rows to limit.
 	FullSearchStockBranch = `LET %s = (
   FOR d IN stock_full_search
     SEARCH %s
+    SORT BM25(d) DESC, d._key ASC
+    LIMIT @stock_cap
     LET meta = FIRST(
       FOR prop, edge IN 1..1 OUTBOUND d GRAPH @stock_prop_graph
         RETURN {
@@ -33,7 +43,6 @@ const (
     )
     FILTER meta != null
     FILTER @entity == "" OR @entity == meta.entity
-    SORT BM25(d) DESC, d._key ASC
     LIMIT @limit
     RETURN {
       k: d._key,

@@ -388,6 +388,7 @@ func (ar *arangorepository) buildAutocompleteQueryParams(
 			"q":                req.query,
 			"th":               autocompleteNgramThreshold,
 			"limit":            req.limit,
+			paramStockCap:      stockBranchCap(req.limit, req.entity),
 			"entity":           string(req.entity),
 			nameStockPropGraph: ar.stockc.stockPropType.Name(),
 		},
