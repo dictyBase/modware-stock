@@ -2,6 +2,8 @@ package arangodb
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"strings"
 
 	A "github.com/IBM/fp-go/v2/array"
@@ -86,10 +88,12 @@ const (
 	// fullSearchNgramAnalyzer chains norm and ngram. It serves the fuzzy
 	// branches.
 	fullSearchNgramAnalyzer = "stock_search_ngram"
-	// fullSearchTextAnalyzer is the built-in English text analyzer. It
-	// serves the token branches and the phrase branches. It is built in,
-	// so the setup must not try to create it.
-	fullSearchTextAnalyzer = "text_en"
+	// fullSearchTextAnalyzer is the English text analyzer with the
+	// stopword list of this feature. It serves the token branches and the
+	// phrase branches. It mirrors the built-in text_en analyzer and adds
+	// the stopwords, so a stopword never enters the index and a query
+	// never searches for it.
+	fullSearchTextAnalyzer = "stock_search_text"
 	// defaultFullSearchLimit is the list length for a non-positive limit.
 	defaultFullSearchLimit = 50
 	// maxFullSearchLimit is the hard cap of the returned list length. The
@@ -163,9 +167,9 @@ var (
 	}
 
 	// fullSearchStopwords is the short stopword list of the token stage.
-	// Task 1 probe 18 recorded that the built-in text_en analyzer does not
-	// remove stopwords, so the repository rejects a query whose tokens are
-	// all stopwords before any AQL runs.
+	// The built-in text_en analyzer does not remove stopwords, so the
+	// text analyzer of this feature carries the list. The repository also
+	// rejects a query whose tokens are all stopwords before any AQL runs.
 	fullSearchStopwords = map[string]struct{}{
 		"a": {}, "an": {}, "and": {}, "are": {}, "as": {}, "at": {},
 		"be": {}, "but": {}, "by": {}, "for": {}, "from": {}, "had": {},
@@ -398,7 +402,7 @@ func fullSearchLimit(limit int) int {
 	return limit
 }
 
-// ensureFullSearch creates both custom analyzers and the view. It is
+// ensureFullSearch creates the three custom analyzers and the view. It is
 // idempotent, and a failure stops the start of the service.
 func (ar *arangorepository) ensureFullSearch(ctx context.Context) error {
 	if _, _, err := ar.database.Handler().EnsureCreatedAnalyzer(
@@ -421,7 +425,40 @@ func (ar *arangorepository) ensureFullSearch(ctx context.Context) error {
 			err,
 		)
 	}
+	if _, _, err := ar.database.Handler().EnsureCreatedAnalyzer(
+		ctx,
+		fullSearchTextDef(),
+	); err != nil {
+		return errors.Errorf(
+			"error in creating analyzer %s %s",
+			fullSearchTextAnalyzer,
+			err,
+		)
+	}
 	return ar.ensureFullSearchView(ctx)
+}
+
+// fullSearchTextDef is the text analyzer of the token and phrase
+// branches. It copies the settings of the built-in text_en analyzer and
+// adds the stopword list. The list is sorted, so the definition is the
+// same on every start.
+func fullSearchTextDef() *driver.ArangoSearchAnalyzerDefinition {
+	return &driver.ArangoSearchAnalyzerDefinition{
+		Name: fullSearchTextAnalyzer,
+		Type: driver.ArangoSearchAnalyzerTypeText,
+		Properties: driver.ArangoSearchAnalyzerProperties{
+			Locale:    "en",
+			Case:      driver.ArangoSearchCaseLower,
+			Accent:    new(false),
+			Stemming:  new(true),
+			Stopwords: slices.Sorted(maps.Keys(fullSearchStopwords)),
+		},
+		Features: []driver.ArangoSearchAnalyzerFeature{
+			driver.ArangoSearchAnalyzerFeatureFrequency,
+			driver.ArangoSearchAnalyzerFeatureNorm,
+			driver.ArangoSearchAnalyzerFeaturePosition,
+		},
+	}
 }
 
 // fullSearchNormDef is the norm analyzer of the prefix branches. It
